@@ -433,7 +433,7 @@ window.EMBEDDED_FIREBASE_CONFIG={
   messagingSenderId:"894679339944",
   appId:"1:894679339944:web:fcf8fc0bf6f45439c7c39d"
 };
-window.APP_VERSION="v83";
+window.APP_VERSION="v85";
 /* Mostra erros de JavaScript na tela em vez de ficar em branco */
 window.addEventListener('error',function(ev){
   try{
@@ -447,6 +447,39 @@ window.addEventListener('error',function(ev){
 </script>
 </head>
 <body>
+<div id="firebaseOverlay" class="firebase-overlay" aria-hidden="true">
+  <div class="firebase-modal" role="dialog" aria-modal="true" aria-labelledby="firebaseTitle">
+    <div class="firebase-head">
+      <div><h2 id="firebaseTitle">Configuração online — Firebase</h2><p>Conecte os computadores e celulares ao mesmo banco de dados.</p></div>
+      <button class="firebase-close" type="button" onclick="closeFirebaseModal()" aria-label="Fechar">×</button>
+    </div>
+    <div class="firebase-body">
+      <div class="firebase-note"><b>Configuração simples:</b> no Firebase Console, crie um app Web, ative <b>Authentication → Anonymous</b> e crie o <b>Cloud Firestore</b>. Depois copie o objeto <code>firebaseConfig</code> e cole abaixo. O Firebase usa esse objeto para identificar o projeto Web.</div>
+      <div class="firebase-field full" style="margin-top:14px"><label>Colar configuração do Firebase (recomendado)</label><textarea id="firebaseConfigPaste" placeholder="const firebaseConfig = {&#10;  apiKey: &quot;...&quot;,&#10;  authDomain: &quot;...firebaseapp.com&quot;,&#10;  projectId: &quot;...&quot;,&#10;  storageBucket: &quot;...appspot.com&quot;,&#10;  messagingSenderId: &quot;...&quot;,&#10;  appId: &quot;1:...:web:...&quot;&#10;};"></textarea></div>
+      <div class="firebase-actions"><button type="button" class="firebase-secondary" onclick="applyFirebasePaste()">Preencher campos</button><button type="button" class="firebase-secondary" onclick="copyFirebaseRules()">Copiar regras Firestore</button></div>
+      <div class="firebase-grid">
+        <div class="firebase-field"><label>API Key</label><input id="fbApiKey" autocomplete="off"></div>
+        <div class="firebase-field"><label>Auth Domain</label><input id="fbAuthDomain" autocomplete="off"></div>
+        <div class="firebase-field"><label>Project ID</label><input id="fbProjectId" autocomplete="off"></div>
+        <div class="firebase-field"><label>Storage Bucket</label><input id="fbStorageBucket" autocomplete="off"></div>
+        <div class="firebase-field"><label>Messaging Sender ID</label><input id="fbMessagingSenderId" autocomplete="off"></div>
+        <div class="firebase-field"><label>App ID</label><input id="fbAppId" autocomplete="off"></div>
+      </div>
+      <label class="firebase-check"><input type="checkbox" id="firebaseAutoSync" checked> Ativar sincronização automática com o Firestore</label>
+      <div id="firebaseStatus" class="firebase-status"></div>
+      <div class="firebase-actions"><button type="button" class="firebase-primary" onclick="saveAndConnectFirebase()">Salvar e conectar</button><button type="button" class="firebase-secondary" onclick="testFirebaseConnection()">Testar conexão</button><button type="button" class="firebase-secondary" onclick="uploadLocalToFirebase()">Enviar dados locais</button><button type="button" class="firebase-secondary" onclick="downloadFromFirebase()">Baixar do Firebase</button><button type="button" class="firebase-danger" onclick="disconnectFirebase()">Desconectar</button></div>
+      <div class="firebase-help"><details><summary>Regras simples do Firestore para o primeiro teste</summary><textarea id="firebaseRulesText" class="firebase-rules" readonly>rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /apps/controleRefugos2026/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}</textarea><div style="font-size:11px;color:var(--muted);margin-top:6px">Para produção, recomenda-se restringir as regras e/ou usar autenticação de usuários. O exemplo usa autenticação anônima para simplificar o primeiro teste.</div></details></div>
+    </div>
+  </div>
+</div>
+
 <div id="appLoading" class="app-loading" aria-hidden="true" role="status" aria-live="polite">
   <div class="app-loading-card">
     <div class="app-loading-spinner" aria-hidden="true"></div>
@@ -971,15 +1004,102 @@ function openFirebaseModal(){const ov=document.getElementById('firebaseOverlay')
 function closeFirebaseModal(){const ov=document.getElementById('firebaseOverlay');if(!ov)return;ov.classList.remove('open');ov.setAttribute('aria-hidden','true')}
 window.openFirebaseModal=openFirebaseModal;window.closeFirebaseModal=closeFirebaseModal;
 async function ensureFirebaseSDK(){if(window.firebase?.firestore&&window.firebase?.auth)return;throw new Error('Bibliotecas Firebase não carregadas. Verifique a internet e abra o sistema novamente.')}
-async function connectFirebase(cfg,show=true){try{await ensureFirebaseSDK();if(!firebaseAppOnline){firebaseAppOnline=window.firebase.apps?.length?window.firebase.app():window.firebase.initializeApp(cfg)}firebaseAuthOnline=window.firebase.auth();firebaseDbOnline=window.firebase.firestore();if(!firebaseAuthOnline.currentUser)await firebaseAuthOnline.signInAnonymously();firebaseOnlineConnected=true;setFirebaseStatus('Firebase conectado.','ok');if(show)alert('Conectado ao Firebase com sucesso.\n\nUse “Enviar dados locais” para publicar esta base ou “Baixar do Firebase” para carregar a base online.')}catch(e){firebaseOnlineConnected=false;setFirebaseStatus('Não foi possível conectar: '+(e?.message||e),'err');if(show)alert('Não foi possível conectar ao Firebase.\n\n'+(e?.message||e)+'\n\nConfira Authentication > Anonymous e as regras do Firestore.')}}
+async function connectFirebase(cfg,show=true){try{await ensureFirebaseSDK();if(!firebaseAppOnline){firebaseAppOnline=window.firebase.apps?.length?window.firebase.app():window.firebase.initializeApp(cfg)}firebaseAuthOnline=window.firebase.auth();firebaseDbOnline=window.firebase.firestore();if(!firebaseAuthOnline.currentUser)await firebaseAuthOnline.signInAnonymously();firebaseOnlineConnected=true;setFirebaseStatus('Firebase conectado.','ok');try{startFirebaseListener()}catch(e){console.error(e)}if(show)alert('Conectado ao Firebase com sucesso.\n\nUse “Enviar dados locais” para publicar esta base ou “Baixar do Firebase” para carregar a base online.')}catch(e){firebaseOnlineConnected=false;setFirebaseStatus('Não foi possível conectar: '+(e?.message||e),'err');if(show)alert('Não foi possível conectar ao Firebase.\n\n'+(e?.message||e)+'\n\nConfira Authentication > Anonymous e as regras do Firestore.')}}
 async function saveAndConnectFirebase(){const cfg=firebaseCfgFields();if(!cfg.apiKey||!cfg.authDomain||!cfg.projectId||!cfg.appId){setFirebaseStatus('Preencha pelo menos API Key, Auth Domain, Project ID e App ID.','err');return}localStorage.setItem(FIREBASE_CONFIG_KEY,JSON.stringify(cfg));localStorage.setItem(FIREBASE_SYNC_KEY,String(document.getElementById('firebaseAutoSync')?.checked!==false));await connectFirebase(cfg,true)}
 async function testFirebaseConnection(){const cfg=firebaseCfgFields();if(!cfg.projectId){setFirebaseStatus('Informe a configuração primeiro.','err');return}await connectFirebase(cfg,false)}
 function firebaseRoot(){return firebaseDbOnline.collection(FIREBASE_ROOT[0]).doc(FIREBASE_ROOT[1])}
-async function uploadLocalToFirebase(showMessage=true){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Enviando dados locais para o Firebase...');const root=firebaseRoot();const fonteHistorico={versao:'v79',custoRefugoKg:2.60,producaoFundicao:Array.isArray(producaoFundicao)?producaoFundicao.map(x=>({...x,custoKg:2.6})):[],reunioes:Array.isArray(window.reunioes)?window.reunioes:[]};const metaPayload={meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()};await root.collection('config').doc('estado').set(metaPayload,{merge:true});const chunks=[];for(let i=0;i<data.length;i+=FIREBASE_CHUNK_SIZE)chunks.push({index:Math.floor(i/FIREBASE_CHUNK_SIZE),records:data.slice(i,i+FIREBASE_CHUNK_SIZE),updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()});for(let i=0;i<chunks.length;i+=20){const batch=firebaseDbOnline.batch();chunks.slice(i,i+20).forEach(ch=>batch.set(root.collection('lancamentos').doc('chunk_'+String(ch.index).padStart(4,'0')),ch));await batch.commit()}const existing=await root.collection('lancamentos').get();const valid=new Set(chunks.map(ch=>'chunk_'+String(ch.index).padStart(4,'0')));let batch=firebaseDbOnline.batch(),count=0;existing.docs.forEach(d=>{if(!valid.has(d.id)){batch.delete(d.ref);count++}});if(count)await batch.commit();setFirebaseStatus('Dados locais enviados para o Firebase.','ok');if(showMessage)alert('Sincronização concluída: '+data.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao enviar: '+(e?.message||e),'err');alert('Erro ao enviar os dados para o Firebase.\n\n'+(e?.message||e))}}
+/* Firestore recusa nomes de campo que começam e terminam com "__" e valores undefined.
+   fsSanitize ajusta antes de enviar; fsDesanitize desfaz ao baixar. */
+function fsBadKey(k){return k.length>=2&&k.slice(0,2)==='__'&&k.slice(-2)==='__'}
+function fsSanitize(v){
+  if(v===undefined)return null;
+  if(Array.isArray(v))return v.map(fsSanitize);
+  if(v&&typeof v==='object'){
+    const p=Object.getPrototypeOf(v);
+    if(p!==Object.prototype&&p!==null)return v;
+    const o={};
+    Object.keys(v).forEach(k=>{o[fsBadKey(k)?'fs'+k:k]=fsSanitize(v[k])});
+    return o;
+  }
+  return v;
+}
+function fsDesanitize(v){
+  if(Array.isArray(v))return v.map(fsDesanitize);
+  if(v&&typeof v==='object'){
+    const p=Object.getPrototypeOf(v);
+    if(p!==Object.prototype&&p!==null)return v;
+    const o={};
+    Object.keys(v).forEach(k=>{o[(k.slice(0,2)==='fs'&&fsBadKey(k.slice(2)))?k.slice(2):k]=fsDesanitize(v[k])});
+    return o;
+  }
+  return v;
+}
+
+/* ===== Atualização em tempo real: escuta mudanças feitas por outros computadores ===== */
+let firebaseUnsub=[],firebasePullTimer=null,firebasePushPending=false,firebasePulling=false;
+function fsStable(v){
+  if(v===undefined||v===null)return 'null';
+  if(Array.isArray(v))return '['+v.map(fsStable).join(',')+']';
+  if(typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+fsStable(v[k])).join(',')+'}';
+  return JSON.stringify(v);
+}
+function stopFirebaseListener(){firebaseUnsub.forEach(u=>{try{u()}catch(e){}});firebaseUnsub=[];clearTimeout(firebasePullTimer)}
+function startFirebaseListener(){
+  stopFirebaseListener();
+  if(localStorage.getItem(FIREBASE_SYNC_KEY)==='false'||!firebaseDbOnline)return;
+  const root=firebaseRoot();
+  const onChange=snap=>{
+    if(snap&&snap.metadata&&snap.metadata.hasPendingWrites)return; /* escrita local, ainda não confirmada */
+    clearTimeout(firebasePullTimer);
+    firebasePullTimer=setTimeout(pullRemoteQuiet,700);
+  };
+  const onErr=e=>{console.error('Escuta Firebase:',e);setFirebaseStatus('Erro na atualização em tempo real: '+(e?.message||e),'err')};
+  firebaseUnsub.push(root.collection('lancamentos').onSnapshot(onChange,onErr));
+  firebaseUnsub.push(root.collection('config').doc('estado').onSnapshot(onChange,onErr));
+}
+async function pullRemoteQuiet(){
+  if(firebasePulling||!firebaseDbOnline)return;
+  if(firebasePushPending){clearTimeout(firebasePullTimer);firebasePullTimer=setTimeout(pullRemoteQuiet,1500);return} /* há mudança local a enviar */
+  firebasePulling=true;
+  try{
+    const root=firebaseRoot();
+    const cfgSnap=await root.collection('config').doc('estado').get();
+    const chunkSnap=await root.collection('lancamentos').orderBy('index').get();
+    const remote=[];
+    chunkSnap.docs.sort((a,b)=>(a.data().index||0)-(b.data().index||0)).forEach(d=>{const rs=fsDesanitize(d.data()?.records);if(Array.isArray(rs))remote.push(...rs)});
+    if(!remote.length)return; /* nuvem vazia: não apaga dados locais */
+    const cloudState=cfgSnap.exists?fsDesanitize(cfgSnap.data()):{};
+    const mesmoData=fsStable(remote)===fsStable(data);
+    const mesmoMeta=!cloudState.meta||fsStable(cloudState.meta)===fsStable(meta);
+    const mesmoCad=!cloudState.cadastros||fsStable(cloudState.cadastros)===fsStable(cadastros);
+    const mesmoProd=!Array.isArray(cloudState.producaoFundicao)||fsStable(cloudState.producaoFundicao)===fsStable(producaoFundicao);
+    if(mesmoData&&mesmoMeta&&mesmoCad&&mesmoProd)return;
+    try{localStorage.setItem('controle_refugos_2026_backup_antes_sync',JSON.stringify({quando:new Date().toISOString(),data}))}catch(e){}
+    firebaseApplyingRemote=true;
+    try{
+      data=remote;
+      if(cloudState.meta)meta=cloudState.meta;
+      if(Array.isArray(cloudState.producaoFundicao))producaoFundicao=cloudState.producaoFundicao;
+      if(cloudState.cadastros)cadastros=cloudState.cadastros;
+      if(Array.isArray(cloudState.reunioes)){window.reunioes=cloudState.reunioes;localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}
+      if(cloudState.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cloudState.historicoFonte))}catch(e){}}
+      producaoFundicao=(Array.isArray(producaoFundicao)?producaoFundicao:[]).map(x=>({...x,custoKg:2.6}));
+      localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));
+      salvarHistoricoFonte();
+      localStorage.setItem(KEY,JSON.stringify(data));
+      localStorage.setItem(KEY+'_meta',JSON.stringify(meta));
+      saveCad();
+      refresh();
+    }finally{firebaseApplyingRemote=false}
+    setFirebaseStatus('Atualizado em tempo real às '+new Date().toLocaleTimeString('pt-BR')+'.','ok');
+  }catch(e){console.error('Atualização remota:',e)}
+  finally{firebasePulling=false}
+}
+async function uploadLocalToFirebase(showMessage=true){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Enviando dados locais para o Firebase...');const root=firebaseRoot();const fonteHistorico={versao:'v79',custoRefugoKg:2.60,producaoFundicao:Array.isArray(producaoFundicao)?producaoFundicao.map(x=>({...x,custoKg:2.6})):[],reunioes:Array.isArray(window.reunioes)?window.reunioes:[]};const metaPayload={meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()};await root.collection('config').doc('estado').set(fsSanitize(metaPayload),{merge:true});const chunks=[];for(let i=0;i<data.length;i+=FIREBASE_CHUNK_SIZE)chunks.push({index:Math.floor(i/FIREBASE_CHUNK_SIZE),records:data.slice(i,i+FIREBASE_CHUNK_SIZE),updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()});for(let i=0;i<chunks.length;i+=20){const batch=firebaseDbOnline.batch();chunks.slice(i,i+20).forEach(ch=>batch.set(root.collection('lancamentos').doc('chunk_'+String(ch.index).padStart(4,'0')),fsSanitize(ch)));await batch.commit()}const existing=await root.collection('lancamentos').get();const valid=new Set(chunks.map(ch=>'chunk_'+String(ch.index).padStart(4,'0')));let batch=firebaseDbOnline.batch(),count=0;existing.docs.forEach(d=>{if(!valid.has(d.id)){batch.delete(d.ref);count++}});if(count)await batch.commit();setFirebaseStatus('Dados locais enviados para o Firebase.','ok');if(showMessage)alert('Sincronização concluída: '+data.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao enviar: '+(e?.message||e),'err');alert('Erro ao enviar os dados para o Firebase.\n\n'+(e?.message||e))}}
 async function downloadFromFirebase(){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Baixando dados do Firebase...');const root=firebaseRoot();const cfgSnap=await root.collection('config').doc('estado').get();const chunkSnap=await root.collection('lancamentos').orderBy('index').get();if(!cfgSnap.exists&&!chunkSnap.size){throw new Error('Não existem dados publicados neste Firebase para este sistema.')}
- const cloudState=cfgSnap.exists?cfgSnap.data():{};const remote=[];chunkSnap.docs.sort((a,b)=>(a.data().index||0)-(b.data().index||0)).forEach(d=>{const rs=d.data()?.records;if(Array.isArray(rs))remote.push(...rs)});if(!remote.length&&!data.length)throw new Error('O Firebase está conectado, mas não há lançamentos para baixar.');if(remote.length){data=remote;if(cloudState.meta)meta=cloudState.meta;if(Array.isArray(cloudState.producaoFundicao))producaoFundicao=cloudState.producaoFundicao;if(cloudState.cadastros)cadastros=cloudState.cadastros;if(Array.isArray(cloudState.reunioes)){window.reunioes=cloudState.reunioes;localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}if(cloudState.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cloudState.historicoFonte))}catch(e){}}producaoFundicao=(Array.isArray(producaoFundicao)?producaoFundicao:[]).map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));salvarHistoricoFonte();localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'_meta',JSON.stringify(meta));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));saveCad();refresh();}setFirebaseStatus('Dados do Firebase carregados neste navegador.','ok');alert('Dados do Firebase carregados: '+remote.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao baixar: '+(e?.message||e),'err');alert('Erro ao baixar os dados do Firebase.\n\n'+(e?.message||e))}}
-function disconnectFirebase(){try{if(firebaseAuthOnline)firebaseAuthOnline.signOut();if(firebaseAppOnline&&firebaseAppOnline.delete)firebaseAppOnline.delete()}catch{}firebaseOnlineConnected=false;firebaseAuthOnline=null;firebaseDbOnline=null;firebaseAppOnline=null;localStorage.removeItem(FIREBASE_CONFIG_KEY);localStorage.removeItem(FIREBASE_SYNC_KEY);setFirebaseStatus('Desconectado. O sistema voltou para o modo local.','')}
-function scheduleFirebasePush(){if(!firebaseOnlineConnected||firebaseApplyingRemote||localStorage.getItem(FIREBASE_SYNC_KEY)==='false')return;clearTimeout(firebasePushTimer);firebasePushTimer=setTimeout(()=>uploadLocalToFirebase(false).catch(()=>{}),800)}
+ const cloudState=cfgSnap.exists?fsDesanitize(cfgSnap.data()):{};const remote=[];chunkSnap.docs.sort((a,b)=>(a.data().index||0)-(b.data().index||0)).forEach(d=>{const rs=fsDesanitize(d.data()?.records);if(Array.isArray(rs))remote.push(...rs)});if(!remote.length&&!data.length)throw new Error('O Firebase está conectado, mas não há lançamentos para baixar.');if(remote.length){data=remote;if(cloudState.meta)meta=cloudState.meta;if(Array.isArray(cloudState.producaoFundicao))producaoFundicao=cloudState.producaoFundicao;if(cloudState.cadastros)cadastros=cloudState.cadastros;if(Array.isArray(cloudState.reunioes)){window.reunioes=cloudState.reunioes;localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}if(cloudState.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cloudState.historicoFonte))}catch(e){}}producaoFundicao=(Array.isArray(producaoFundicao)?producaoFundicao:[]).map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));salvarHistoricoFonte();localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'_meta',JSON.stringify(meta));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));saveCad();refresh();}setFirebaseStatus('Dados do Firebase carregados neste navegador.','ok');alert('Dados do Firebase carregados: '+remote.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao baixar: '+(e?.message||e),'err');alert('Erro ao baixar os dados do Firebase.\n\n'+(e?.message||e))}}
+function disconnectFirebase(){try{stopFirebaseListener();if(firebaseAuthOnline)firebaseAuthOnline.signOut();if(firebaseAppOnline&&firebaseAppOnline.delete)firebaseAppOnline.delete()}catch{}firebaseOnlineConnected=false;firebaseAuthOnline=null;firebaseDbOnline=null;firebaseAppOnline=null;localStorage.removeItem(FIREBASE_CONFIG_KEY);localStorage.removeItem(FIREBASE_SYNC_KEY);setFirebaseStatus('Desconectado. O sistema voltou para o modo local.','')}
+function scheduleFirebasePush(){if(!firebaseOnlineConnected||firebaseApplyingRemote||localStorage.getItem(FIREBASE_SYNC_KEY)==='false')return;clearTimeout(firebasePushTimer);firebasePushPending=true;firebasePushTimer=setTimeout(()=>{uploadLocalToFirebase(false).catch(()=>{}).finally(()=>{firebasePushPending=false})},800)}
 window.addEventListener('load',()=>{const cfg=getFirebaseConfig();if(cfg)setTimeout(()=>connectFirebase(cfg,false),700)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeFirebaseModal()});document.getElementById('firebaseOverlay')?.addEventListener('click',e=>{if(e.target.id==='firebaseOverlay')closeFirebaseModal()});
 document.getElementById('firebaseConfigBtn')?.addEventListener('click',e=>{e.preventDefault();window.openFirebaseModal();});
@@ -2534,31 +2654,7 @@ function printReport(){analysis();let w=window.open('','_blank');w.document.writ
 [data-theme="dark"] .plant-motives .pm-label{color:#ff9a70}
 </style></head><body><h1>Relatório de Refugo</h1>${report.innerHTML}<h2>Por cliente</h2><table>${clientAnalysis.parentElement.parentElement.innerHTML}</table><h2>Por peça</h2><table>${partAnalysis.parentElement.parentElement.innerHTML}</table><h2>Por OF</h2><table>${ofAnalysis.parentElement.parentElement.innerHTML}</table>
 
-<div id="firebaseOverlay" class="firebase-overlay" aria-hidden="true">
-  <div class="firebase-modal" role="dialog" aria-modal="true" aria-labelledby="firebaseTitle">
-    <div class="firebase-head">
-      <div><h2 id="firebaseTitle">Configuração online — Firebase</h2><p>Conecte os computadores e celulares ao mesmo banco de dados.</p></div>
-      <button class="firebase-close" type="button" onclick="closeFirebaseModal()" aria-label="Fechar">×</button>
-    </div>
-    <div class="firebase-body">
-      <div class="firebase-note"><b>Configuração simples:</b> no Firebase Console, crie um app Web, ative <b>Authentication → Anonymous</b> e crie o <b>Cloud Firestore</b>. Depois copie o objeto <code>firebaseConfig</code> e cole abaixo. O Firebase usa esse objeto para identificar o projeto Web.</div>
-      <div class="firebase-field full" style="margin-top:14px"><label>Colar configuração do Firebase (recomendado)</label><textarea id="firebaseConfigPaste" placeholder="const firebaseConfig = {\n  apiKey: \"...\",\n  authDomain: \"...firebaseapp.com\",\n  projectId: \"...\",\n  storageBucket: \"...appspot.com\",\n  messagingSenderId: \"...\",\n  appId: \"1:...:web:...\"\n};"></textarea></div>
-      <div class="firebase-actions"><button type="button" class="firebase-secondary" onclick="applyFirebasePaste()">Preencher campos</button><button type="button" class="firebase-secondary" onclick="copyFirebaseRules()">Copiar regras Firestore</button></div>
-      <div class="firebase-grid">
-        <div class="firebase-field"><label>API Key</label><input id="fbApiKey" autocomplete="off"></div>
-        <div class="firebase-field"><label>Auth Domain</label><input id="fbAuthDomain" autocomplete="off"></div>
-        <div class="firebase-field"><label>Project ID</label><input id="fbProjectId" autocomplete="off"></div>
-        <div class="firebase-field"><label>Storage Bucket</label><input id="fbStorageBucket" autocomplete="off"></div>
-        <div class="firebase-field"><label>Messaging Sender ID</label><input id="fbMessagingSenderId" autocomplete="off"></div>
-        <div class="firebase-field"><label>App ID</label><input id="fbAppId" autocomplete="off"></div>
-      </div>
-      <label class="firebase-check"><input type="checkbox" id="firebaseAutoSync" checked> Ativar sincronização automática com o Firestore</label>
-      <div id="firebaseStatus" class="firebase-status"></div>
-      <div class="firebase-actions"><button type="button" class="firebase-primary" onclick="saveAndConnectFirebase()">Salvar e conectar</button><button type="button" class="firebase-secondary" onclick="testFirebaseConnection()">Testar conexão</button><button type="button" class="firebase-secondary" onclick="uploadLocalToFirebase()">Enviar dados locais</button><button type="button" class="firebase-secondary" onclick="downloadFromFirebase()">Baixar do Firebase</button><button type="button" class="firebase-danger" onclick="disconnectFirebase()">Desconectar</button></div>
-      <div class="firebase-help"><details><summary>Regras simples do Firestore para o primeiro teste</summary><textarea id="firebaseRulesText" class="firebase-rules" readonly>rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /apps/controleRefugos2026/{document=**} {\n      allow read, write: if request.auth != null;\n    }\n  }\n}</textarea><div style="font-size:11px;color:var(--muted);margin-top:6px">Para produção, recomenda-se restringir as regras e/ou usar autenticação de usuários. O exemplo usa autenticação anônima para simplificar o primeiro teste.</div></details></div>
-    </div>
-  </div>
-</div>
+
 </body></html>`);w.document.close();w.print()}
 function exportReportCSV(){
   const rows=analysisFiltered(),f=analysisFilters(),prodPeriodo=analysisProductionTotal(f),totalKg=rows.reduce((a,r)=>a+kg(r),0),totalCost=rows.reduce((a,r)=>a+cost(r),0),perc=prodPeriodo?totalKg/prodPeriodo*100:0;
