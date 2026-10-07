@@ -433,7 +433,7 @@ window.EMBEDDED_FIREBASE_CONFIG={
   messagingSenderId:"894679339944",
   appId:"1:894679339944:web:fcf8fc0bf6f45439c7c39d"
 };
-window.APP_VERSION="v87";
+window.APP_VERSION="v88";
 /* Mostra erros de JavaScript na tela em vez de ficar em branco */
 window.addEventListener('error',function(ev){
   try{
@@ -1013,12 +1013,13 @@ function firebaseRoot(){return firebaseDbOnline.collection(FIREBASE_ROOT[0]).doc
 function fsBadKey(k){return k.length>=2&&k.slice(0,2)==='__'&&k.slice(-2)==='__'}
 function fsSanitize(v){
   if(v===undefined)return null;
-  if(Array.isArray(v))return v.map(fsSanitize);
+  /* Firestore não aceita array dentro de array: o array interno vira {fsNestedArray:[...]} */
+  if(Array.isArray(v))return v.map(x=>Array.isArray(x)?{fsNestedArray:fsSanitize(x)}:fsSanitize(x));
   if(v&&typeof v==='object'){
     const p=Object.getPrototypeOf(v);
     if(p!==Object.prototype&&p!==null)return v;
     const o={};
-    Object.keys(v).forEach(k=>{o[fsBadKey(k)?'fs'+k:k]=fsSanitize(v[k])});
+    Object.keys(v).forEach(k=>{o[fsBadKey(k)?'fs'+k:k]=Array.isArray(v[k])?fsSanitize(v[k]):fsSanitize(v[k])});
     return o;
   }
   return v;
@@ -1028,6 +1029,7 @@ function fsDesanitize(v){
   if(v&&typeof v==='object'){
     const p=Object.getPrototypeOf(v);
     if(p!==Object.prototype&&p!==null)return v;
+    const ks=Object.keys(v);if(ks.length===1&&ks[0]==='fsNestedArray'&&Array.isArray(v.fsNestedArray))return fsDesanitize(v.fsNestedArray);
     const o={};
     Object.keys(v).forEach(k=>{o[(k.slice(0,2)==='fs'&&fsBadKey(k.slice(2)))?k.slice(2):k]=fsDesanitize(v[k])});
     return o;
