@@ -1387,10 +1387,8 @@ function aplicarCadastroPeca(){
   if(oficial){
     preencherCamposProdutoDireto(oficial);
     // Recupera os clientes históricos associados a este código sem substituir os dados oficiais da peça.
-    const histClients=normalizeClientList((Array.isArray(data)?data:[])
-      .filter(r=>codigoKey(val(r,'codigo'))===codigoKey(cod))
-      .map(r=>canonicalClientName(val(r,'cliente')))
-      .filter(Boolean));
+    // Clientes = cadastro de produtos (inclui os cadastrados/editados pelo usuário) + histórico de lançamentos.
+    const histClients=normalizeClientList(pecasPorCodigo(cod).map(x=>x.cliente).filter(Boolean));
     const select=document.getElementById('cliente');
     if(select){
       const atual=cli;
@@ -1427,10 +1425,8 @@ function autoPreencherClientePorCodigo(){
   if(oficial){
     preencherCamposProdutoDireto(oficial);
     // Clientes conhecidos para o código vêm do histórico, mantendo a peça do cadastro oficial.
-    const clients=normalizeClientList((Array.isArray(data)?data:[])
-      .filter(r=>codigoKey(val(r,'codigo'))===codigoKey(cod))
-      .map(r=>canonicalClientName(val(r,'cliente')))
-      .filter(Boolean));
+    // Clientes = cadastro de produtos (inclui os cadastrados/editados pelo usuário) + histórico de lançamentos.
+    const clients=normalizeClientList(pecasPorCodigo(cod).map(x=>x.cliente).filter(Boolean));
     const select=document.getElementById('cliente');
     if(select){
       const current=canonicalClientName(select.value||'').trim();
