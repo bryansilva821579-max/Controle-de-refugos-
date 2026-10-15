@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Controle de Refugos 2026</title>
-<link rel="stylesheet" href="base.css?v=113">
+<link rel="stylesheet" href="base.css?v=115">
 
 <style id="dashboardPdfStyles">
 @page{size:A4 landscape;margin:8mm 8mm 9mm 8mm}
@@ -181,8 +181,8 @@ html[data-theme="dark"] .firebase-modal{background:#101a2a;color:#f3f4f6}.data-o
 [data-theme="dark"] .help-note{background:#172235;color:#e7edf5;border-left-color:var(--orange);border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
 @media (max-width:760px){.help-intro{grid-template-columns:1fr}.help-badge{justify-self:start}.help-grid{grid-template-columns:1fr}}
 </style>
-<link rel="stylesheet" href="graficos.css?v=113">
-<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=113">
+<link rel="stylesheet" href="graficos.css?v=115">
+<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=115">
 <script>
 /* ===== CONFIGURAÇÃO DO FIREBASE =====
    Preencha uma vez e todos os computadores conectam sozinhos. Deixe "" para não usar. */
@@ -194,7 +194,7 @@ window.EMBEDDED_FIREBASE_CONFIG={
   messagingSenderId:"894679339944",
   appId:"1:894679339944:web:fcf8fc0bf6f45439c7c39d"
 };
-window.APP_VERSION="v113";
+window.APP_VERSION="v115";
 /* Mostra erros de JavaScript na tela em vez de ficar em branco */
 window.addEventListener('error',function(ev){
   try{
@@ -206,6 +206,22 @@ window.addEventListener('error',function(ev){
   }catch(e){}
 });
 </script>
+<style id="prodcal-css">
+.prodcal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 8px}
+.prodcal-head strong{font-size:15px;text-transform:capitalize}
+.prodcal-head .btn{min-width:42px;padding:8px 12px;font-size:18px;line-height:1}
+.prodcal-resumo{margin-bottom:10px;color:var(--muted)}
+.prodcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.prodcal .dow{font-size:10px;font-weight:800;color:var(--muted);text-align:center;padding:2px 0}
+.prodcal .dia{border:1px solid var(--border);background:#fff;border-radius:9px;min-height:54px;padding:4px 3px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;cursor:pointer;color:var(--text);font:inherit}
+.prodcal .dia b{font-size:12px}
+.prodcal .dia span{font-size:9px;line-height:1.15;color:var(--muted);white-space:nowrap}
+.prodcal .dia.tem{background:#fff3ec;border-color:#ffc9ad}
+.prodcal .dia.tem span{color:#b53a00;font-weight:700}
+.prodcal .dia.hoje b{color:var(--orange)}
+.prodcal .dia.sel{outline:2px solid var(--orange);outline-offset:-1px}
+.prodcal .vazio{min-height:54px}
+</style>
 </head>
 <body>
 <div id="siteGate"><div class="gbox"><img id="gateLogo" alt=""><h2>Controle de Perdas, Refugos e Retrabalhos</h2><p>Digite a senha para acessar o sistema.</p><input id="gatePw" type="password" autocomplete="current-password" placeholder="Senha" aria-label="Senha"><button type="button" id="gateBtn">Entrar</button><div class="gerr" id="gateErr"></div></div></div>
@@ -364,13 +380,13 @@ service cloud.firestore {
   <div class="launch-header">
     <div>
       <h2 style="margin:0 0 4px">Lançamentos</h2>
-      <div class="hint" style="margin:0">Registre refugos e informe a produção mensal da Fundição.</div>
+      <div class="hint" style="margin:0">Registre refugos e a produção diária da Fundição.</div>
     </div>
   </div>
 
   <div class="launch-tabs" style="margin-top:16px">
     <button type="button" class="launch-tab active" data-launch-tab="refugo" onclick="switchLaunchTab('refugo')">Lançar refugo</button>
-    <button type="button" class="launch-tab" data-launch-tab="producao" onclick="switchLaunchTab('producao')">Produção mensal da Fundição</button>
+    <button type="button" class="launch-tab" data-launch-tab="producao" onclick="switchLaunchTab('producao')">Produção diária da Fundição</button>
   </div>
 
   <div id="launchTabRefugo" class="launch-tab-panel active">
@@ -504,26 +520,33 @@ service cloud.firestore {
 
   <div id="launchTabProducao" class="launch-tab-panel" style="display:none">
     <div class="panel">
-      <div class="cad-section-head"><div><h3>Produção mensal da Fundição</h3><div class="hint">Cadastre o total produzido em kg da Fundição e o custo do refugo de cada mês (R$ 2,60/kg).</div></div><button id="productionCostAccessBtn" class="btn secondary" type="button" onclick="toggleCostAccess()">🔐 Mostrar custos</button></div>
-      <form id="producaoForm">
+      <div class="cad-section-head"><div><h3>Produção diária da Fundição</h3><div class="hint">Toque em um dia do calendário e informe o que foi fundido, as corridas e os kg fundidos. A soma dos dias forma o total do mês usado no Dashboard.</div></div></div>
+      <div class="prodcal-head">
+        <button type="button" class="btn secondary" onclick="prodCalMover(-1)" aria-label="Mês anterior">‹</button>
+        <strong id="prodCalTitulo"></strong>
+        <button type="button" class="btn secondary" onclick="prodCalMover(1)" aria-label="Próximo mês">›</button>
+      </div>
+      <div id="prodCalResumo" class="small prodcal-resumo"></div>
+      <div id="prodCalGrid" class="prodcal"></div>
+      <form id="producaoForm" style="margin-top:16px">
         <input type="hidden" id="producaoEditIndex">
         <div class="formgrid">
-          <div class="field"><label>Ano</label><input id="producaoAno" type="number" min="2020" max="2100" step="1" required></div>
-          <div class="field"><label>Mês</label><select id="producaoMes" required><option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option><option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option><option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option></select></div>
-          <div class="field"><label>Total produzido na Fundição (kg)</label><input id="producaoKg" type="number" step="0.001" min="0" required placeholder="Ex.: 1993,34"></div>
-          <div id="producaoCostField" class="field cost-sensitive-field"><label>Custo do refugo (R$/kg)</label><input id="producaoCustoKg" type="number" step="0.0001" min="0" placeholder="🔒 Disponível somente com senha"></div>
-          <div class="field full"><label>Observação</label><textarea id="producaoObs" rows="3" placeholder="Observação opcional"></textarea></div>
+          <div class="field"><label>Data</label><input id="producaoData" type="date" required onchange="prodCalSelecionar(this.value)"></div>
+          <div class="field"><label>Corridas (quantidade)</label><input id="producaoCorridas" type="number" step="1" min="0" required placeholder="Ex.: 8"></div>
+          <div class="field"><label>Kg fundidos no dia</label><input id="producaoKg" type="number" step="0.001" min="0" required placeholder="Ex.: 1993,34"></div>
+          <div class="field full"><label>O que fundiu no dia</label><textarea id="producaoFundido" rows="2" placeholder="Ex.: códigos/peças e liga fundidos no dia"></textarea></div>
+          <div class="field full"><label>Observação</label><textarea id="producaoObs" rows="2" placeholder="Observação opcional"></textarea></div>
         </div>
-        <div class="actions"><button type="button" class="btn secondary" onclick="clearProducaoForm()">Limpar</button><button type="submit" class="btn primary">Salvar produção do mês</button></div>
+        <div class="actions"><button type="button" class="btn secondary" onclick="clearProducaoForm()">Limpar</button><button type="submit" class="btn primary">Salvar produção do dia</button></div>
       </form>
     </div>
 
     <div class="panel" style="margin-top:16px">
       <div class="cad-section-head">
-        <div><h3>Produção cadastrada</h3><div class="small">Valores mensais registrados para a Fundição.</div></div>
+        <div><h3>Produção do mês</h3><div class="small">Dias lançados no mês exibido no calendário.</div></div>
         <div id="producaoCount" class="cad-count"></div>
       </div>
-      <div class="tablewrap"><table><thead><tr><th>Ano</th><th>Mês</th><th>Total produzido (kg)</th><th>Custo do refugo (R$/kg)</th><th>Observação</th><th>Ações</th></tr></thead><tbody id="producaoTableBody"></tbody></table></div>
+      <div class="tablewrap"><table><thead><tr><th>Data</th><th>O que fundiu</th><th>Corridas</th><th>Kg fundidos</th><th>Observação</th><th>Ações</th></tr></thead><tbody id="producaoTableBody"></tbody></table></div>
     </div>
   </div>
 </section>
@@ -915,13 +938,13 @@ service cloud.firestore {
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script src="dados-iniciais.js?v=113"></script>
-<script src="analises.js?v=113"></script>
-<script src="filtros.js?v=113"></script>
-<script src="retrabalhos.js?v=113"></script>
-<script src="app.js?v=113"></script>
-<script src="reuniao.js?v=113"></script>
-<script src="auditoria.js?v=113"></script>
-<script src="versao.js?v=113"></script>
+<script src="dados-iniciais.js?v=115"></script>
+<script src="analises.js?v=115"></script>
+<script src="filtros.js?v=115"></script>
+<script src="retrabalhos.js?v=115"></script>
+<script src="app.js?v=115"></script>
+<script src="reuniao.js?v=115"></script>
+<script src="auditoria.js?v=115"></script>
+<script src="versao.js?v=115"></script>
 </body>
 </html>

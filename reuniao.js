@@ -41,6 +41,36 @@ var REU_CORTE='2026-10-08';
 function rdLanc(r){var s=String(r[cols.dataLancamento]||'').trim(),m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);return m?m[3]+'-'+m[2]+'-'+m[1]:(/^\d{4}-\d{2}-\d{2}/.test(s)?s.slice(0,10):'')}
 function rdFiltro(r){var l=rdLanc(r);return(l&&l>=REU_CORTE)?l:rd(r)}
 function rows(a,b,pl){return data.filter(function(r){var d=rdFiltro(r);return d>=a&&d<=b&&(!pl||String(pl).split('|').indexOf(plantNormName(plantaPeloMotivo(r)||r['PLANTA']))>=0)})}
+/* % de refugo da Fundição no período: refugo (kg) ÷ kg fundidos (produção diária lançada) */
+function reuProd(a,b){
+  var kgt=0,dias=0,parcial=false,mesesDia={};
+  var L=(typeof producaoFundicao!=='undefined'&&Array.isArray(producaoFundicao))?producaoFundicao:[];
+  L.forEach(function(p){if(p&&p.data){mesesDia[Number(p.ano)+'-'+Number(p.mes)]=1;if(p.data>=a&&p.data<=b){kgt+=Number(p.kg)||0;dias++}}});
+  L.forEach(function(p){
+    if(!p||p.data)return;var y=Number(p.ano),m=Number(p.mes);if(!y||!m||mesesDia[y+'-'+m])return;
+    var mm=(m<10?'0':'')+m,ini=y+'-'+mm+'-01',fim=y+'-'+mm+'-'+String(new Date(y,m,0).getDate());
+    if(fim<a||ini>b)return;
+    if(ini>=a&&fim<=b)kgt+=Number(p.kg)||0;else parcial=true;
+  });
+  return{kg:kgt,dias:dias,parcial:parcial};
+}
+function reuPf(R,P,a,b,len,pl){
+  if(pl&&String(pl).split('|').indexOf('FUNDICAO')<0)return{off:true};
+  var calc=function(RR,x,y){var ref=RR.reduce(function(s,r){return s+(plantNormName(plantaPeloMotivo(r)||r['PLANTA'])==='FUNDICAO'?kg(r):0)},0),pr=reuProd(x,y);return{ref:ref,prod:pr.kg,dias:pr.dias,parcial:pr.parcial,perc:pr.kg>0?ref/pr.kg*100:null}};
+  var cur=calc(R,a,b),ant=calc(P,S(new Date(D(a)-len*864e5)),S(new Date(D(a)-864e5)));
+  cur.pperc=ant.perc;return cur;
+}
+function pfCard(s){
+  var f=s.pf;if(!f)return '';var v,sub;
+  if(f.off){v='\u2014';sub='inclua a planta Fundição no filtro'}
+  else if(f.prod>0){v=fmt(f.perc)+'%';sub=fmt(f.ref)+' kg refugados de '+fmt(f.prod)+' kg fundidos'+(f.pperc!=null?' \u2022 período anterior: '+fmt(f.pperc)+'%':'')+(f.parcial?' \u2022 parte do período sem produção diária':'')}
+  else{v='\u2014';sub=f.parcial?'período sem produção diária lançada (só há total mensal)':'sem produção lançada no período'}
+  return card('% de refugo (Fundição)',v,sub);
+}
+function pfTxt(s){
+  var f=s&&s.pf;if(!f||f.off||!(f.prod>0))return '';
+  return '% de refugo (Fundição): '+fmt(f.perc)+'% ('+fmt(f.ref)+' kg refugados de '+fmt(f.prod)+' kg fundidos'+(f.pperc!=null?'; período anterior: '+fmt(f.pperc)+'%':'')+')';
+}
 function grp(R,f){var m={};R.forEach(function(r){var k=f(r)||'—',o=m[k]||(m[k]={k:k,kg:0,q:0,d:{}});o.kg+=kg(r);o.q+=qty(r);o.d[rd(r)]=1});return Object.keys(m).map(function(k){return m[k]}).sort(function(a,b){return b.kg-a.kg})}
 var br=function(s){return String(s).split('-').reverse().join('/')},D=function(s){return new Date(s+'T00:00:00Z')},S=function(d){return d.toISOString().slice(0,10)};
 var loc=function(x){return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
@@ -49,7 +79,7 @@ function card(l,v,s){return '<div class="card"><div class="kpi-accent"></div><di
 function dv(a,b){if(!b)return 'sem base anterior';var d=(a-b)/b*100;return '<b style="color:'+(d>0?'#d92d20':'#12a150')+'">'+(d>0?'▲ ':'▼ ')+fmt(Math.abs(d))+'%</b> vs período anterior'}
 function presOf(m){return Array.isArray(m.pres)?m.pres:String(m.part||'').split(',').map(function(x){return x.trim()}).filter(Boolean)}
 function findM(id){return window.reunioes.filter(function(x){return x.id===id})[0]}
-function snapHtml(s,extra){var h='<div class="cards">'+card('Refugo (kg)',fmt(s.k.kg),dv(s.k.kg,s.p.kg))+card('Quantidade',fmt(s.k.q),dv(s.k.q,s.p.q))+card('Lançamentos',fmt(s.k.n),dv(s.k.n,s.p.n))+(extra||'')+'</div>';
+function snapHtml(s,extra){var h='<div class="cards">'+card('Refugo (kg)',fmt(s.k.kg),dv(s.k.kg,s.p.kg))+card('Quantidade',fmt(s.k.q),dv(s.k.q,s.p.q))+card('Lançamentos',fmt(s.k.n),dv(s.k.n,s.p.n))+pfCard(s)+(extra||'')+'</div>';
 h+='<div class="reu-sub">Pareto de motivos</div>'+tb(['Motivo','Kg','Qtd.','% acum.'],s.par.map(function(x){return [esc(x[0]),fmt(x[1]),fmt(x[2]),fmt(x[3])+'%']}));
 h+='<div class="reu-sub">Top 5 itens</div>'+tb(['Item','Kg','Qtd.'],s.it.map(function(x){return [esc(x[0]),fmt(x[1]),fmt(x[2])]}));
 h+='<div class="reu-sub">Top 5 clientes</div>'+tb(['Cliente','Kg','Qtd.'],s.cl.map(function(x){return [esc(x[0]),fmt(x[1]),fmt(x[2])]}));
@@ -70,7 +100,7 @@ rq('reuOut').innerHTML='<div class="hint" style="margin:8px 0">Período '+br(s.a
 window.reuGerar=function(){var a=rq('reuA').value,b=rq('reuB').value,pl=msGet('reuPl').join('|');if(!a||!b||a>b){alert('Informe um período válido.');return}
 var len=Math.round((D(b)-D(a))/864e5)+1,R=rows(a,b,pl),P=rows(S(new Date(D(a)-len*864e5)),S(new Date(D(a)-864e5)),pl);
 var t=function(x){return{kg:x.reduce(function(s,r){return s+kg(r)},0),q:x.reduce(function(s,r){return s+qty(r)},0),n:x.length}},k=t(R),p=t(P),mot=grp(R,function(r){return String(r['DESCRIÇÃO DO MOTIVO']||'').trim()}),acc=0;
-cur={a:a,b:b,pl:pl,k:k,p:p,
+cur={a:a,b:b,pl:pl,k:k,p:p,pf:reuPf(R,P,a,b,len,pl),
 par:mot.slice(0,8).map(function(x){acc+=k.kg?x.kg/k.kg*100:0;return [x.k,x.kg,x.q,acc]}),
 it:grp(R,function(r){return String(r[cols.produto]||'').trim()}).slice(0,5).map(function(x){return [x.k,x.kg,x.q]}),
 cl:grp(R,function(r){return String(r.CLIENTE||'').trim().toUpperCase()}).slice(0,5).map(function(x){return [x.k,x.kg,x.q]}),
@@ -169,7 +199,7 @@ h2('Decisões');doc.setFont('helvetica','normal');doc.setFontSize(10);
 doc.splitTextToSize(pdfTxt(m.ata||'-'),W).forEach(function(l){need(5);doc.text(l,X,y);y+=4.6});y+=3;
 h2('Ações');tbl(['Ação','Responsável','Prazo','Status'],(m.acoes||[]).map(function(x){return [pdfTxt(x.acao),pdfTxt(x.resp),x.prazo?br(x.prazo):'-',pdfTxt(x.status)]}));
 h2('Resumo do período');doc.setFont('helvetica','normal');doc.setFontSize(10);
-[['Refugo (kg)',s.k.kg,s.p.kg],['Quantidade',s.k.q,s.p.q],['Lançamentos',s.k.n,s.p.n]].forEach(function(r){need(5);doc.text(pdfTxt(r[0]+': '+fmt(r[1])+'   (período anterior: '+fmt(r[2])+')'),X,y);y+=5});y+=2;
+[['Refugo (kg)',s.k.kg,s.p.kg],['Quantidade',s.k.q,s.p.q],['Lançamentos',s.k.n,s.p.n]].forEach(function(r){need(5);doc.text(pdfTxt(r[0]+': '+fmt(r[1])+'   (período anterior: '+fmt(r[2])+')'),X,y);y+=5});if(pfTxt(s)){need(5);doc.text(pdfTxt(pfTxt(s)),X,y);y+=5}y+=2;
 h2('Pareto de motivos');tbl(['Motivo','Kg','Qtd.','% acum.'],s.par.map(function(x){return [pdfTxt(x[0]),fmt(x[1]),fmt(x[2]),fmt(x[3])+'%']}),{columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}}});
 h2('Top 5 itens');tbl(['Item','Kg','Qtd.'],s.it.map(function(x){return [pdfTxt(x[0]),fmt(x[1]),fmt(x[2])]}),{columnStyles:R3});
 h2('Top 5 clientes');tbl(['Cliente','Kg','Qtd.'],s.cl.map(function(x){return [pdfTxt(x[0]),fmt(x[1]),fmt(x[2])]}),{columnStyles:R3});
@@ -185,7 +215,7 @@ return doc.output('blob')}
 window.reuMail=async function(id){var m=findM(id);if(!m)return;var pres=presOf(m),mp={};((typeof cadastros!=='undefined'&&cadastros.participantes)||[]).forEach(function(p){if(p.email)mp[p.nome.toUpperCase()]=p.email});
 var to=pres.map(function(n){return mp[n.toUpperCase()]}).filter(Boolean);
 var subj='Ata de reunião de refugos — '+br(m.data);
-var body='ATA DE REUNIÃO DE REFUGOS — '+br(m.data)+'\nPeríodo analisado: '+br(m.snap.a)+' a '+br(m.snap.b)+'\n\nParticipantes: '+pres.join(', ')+'\n\nDecisões:\n'+(m.ata||'—')+'\n\nAções:\n'+((m.acoes||[]).map(function(x){return '- '+x.acao+' | Resp.: '+x.resp+' | Prazo: '+(x.prazo?br(x.prazo):'—')+' | '+x.status}).join('\n')||'—')+'\n\nO PDF da ata (FQ095) com os itens tratados segue em anexo.';
+var body='ATA DE REUNIÃO DE REFUGOS — '+br(m.data)+'\nPeríodo analisado: '+br(m.snap.a)+' a '+br(m.snap.b)+(pfTxt(m.snap)?'\n'+pfTxt(m.snap):'')+'\n\nParticipantes: '+pres.join(', ')+'\n\nDecisões:\n'+(m.ata||'—')+'\n\nAções:\n'+((m.acoes||[]).map(function(x){return '- '+x.acao+' | Resp.: '+x.resp+' | Prazo: '+(x.prazo?br(x.prazo):'—')+' | '+x.status}).join('\n')||'—')+'\n\nO PDF da ata (FQ095) com os itens tratados segue em anexo.';
 var fname='Ata_FQ095_'+(m.num?String(m.num).replace(/[\/\\]/g,'-')+'_':'')+m.data+'.pdf',blob;
 try{await window.__loadPdfLibs();blob=buildAtaPdf(m)}catch(e){console.error(e);alert('Não foi possível gerar o PDF ('+(e&&e.message||e)+'). Verifique a internet e tente novamente.');return}
 var file=new File([blob],fname,{type:'application/pdf'});

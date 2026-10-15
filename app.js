@@ -614,19 +614,28 @@ function saveMeta(){if(!cadastroAccessAllowed()){alert('A meta só pode ser alte
 function productionYear(p){const y=Number(p?.ano);return Number.isFinite(y)?y:null}
 function productionMonth(p){const m=Number(p?.mes);return Number.isFinite(m)&&m>=1&&m<=12?m:null}
 function productionValue(p){return n(p?.kg)}
+function isProdDia(p){return !!(p&&p.data)}
+// Total por mês: se o mês tem dias lançados, vale a soma dos dias; senão vale o total mensal antigo.
+function prodMonthTotals(){
+  const dias=new Map(),leg=new Map();
+  producaoFundicao.forEach(p=>{const y=productionYear(p),m=productionMonth(p);if(!y||!m)return;const k=y+'-'+m;const alvo=isProdDia(p)?dias:leg;alvo.set(k,(alvo.get(k)||0)+productionValue(p))});
+  const out=new Map(leg);dias.forEach((v,k)=>out.set(k,v));return out;
+}
 function productionTotalForFilters(){
   const y=String(document.getElementById('filterYear')?.value||'');
   const PL=plSel('filterPlant');
   const m=String(document.getElementById('filterMonth')?.value||'');
   if(PL.length&&PL.indexOf('FUNDICAO')<0) return 0;
-  return producaoFundicao.reduce((sum,r)=>{const ry=productionYear(r),rm=productionMonth(r);return sum+((!y||String(ry)===y)&&(!m||String(rm)===m)?productionValue(r):0)},0);
+  let tot=0;
+  prodMonthTotals().forEach((v,k)=>{const p=k.split('-');if((!y||p[0]===y)&&(!m||p[1]===m))tot+=v});
+  return tot;
 }
 function productionMonthsForDashboard(){
   const fy=String(document.getElementById('filterYear')?.value||'');
   const PL=plSel('filterPlant');
   const arr=Array(12).fill(0);
   if(PL.length&&PL.indexOf('FUNDICAO')<0) return arr;
-  producaoFundicao.forEach(r=>{const y=productionYear(r),m=productionMonth(r);if(m&&(!fy||String(y)===fy))arr[m-1]+=productionValue(r)});
+  prodMonthTotals().forEach((v,k)=>{const p=k.split('-');if(!fy||p[0]===fy)arr[Number(p[1])-1]+=v});
   return arr;
 }
 function produced(r){return 0}
@@ -1705,25 +1714,104 @@ function normalizarCustoRefugoHistorico(){
 }
 normalizarCustoRefugoHistorico();
 function saveProducao(){localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));salvarHistoricoFonte();dashboardDirty=true;}
-function clearProducaoForm(resetAno=true){
+const DIAS_SEMANA_CAL=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+let prodCalAno=new Date().getFullYear(),prodCalMes=new Date().getMonth()+1;
+function prodHojeISO(){const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10)}
+function prodISO(y,m,d){return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0')}
+function prodIdxDia(iso){return producaoFundicao.findIndex(p=>isProdDia(p)&&p.data===iso)}
+function prodCalMover(delta){
+  let m=prodCalMes+delta,y=prodCalAno;
+  if(m<1){m=12;y--}else if(m>12){m=1;y++}
+  prodCalAno=y;prodCalMes=m;renderProducao();
+}
+function prodCalSelecionar(iso){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(iso||'')))return;
+  const y=Number(iso.slice(0,4)),m=Number(iso.slice(5,7));
+  prodCalAno=y;prodCalMes=m;
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v};
+  const i=prodIdxDia(iso),r=i>=0?producaoFundicao[i]:null;
+  set('producaoData',iso);
+  set('producaoEditIndex',i>=0?String(i):'');
+  set('producaoCorridas',r?r.corridas??'':'');
+  set('producaoKg',r?r.kg??'':'');
+  set('producaoFundido',r?r.fundido||'':'');
+  set('producaoObs',r?r.observacao||'':'');
+  renderProducao();
+}
+function clearProducaoForm(){
+  prodCalSelecionar(document.getElementById('producaoData')?.value||prodHojeISO());
+  ['producaoCorridas','producaoKg','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const idx=document.getElementById('producaoEditIndex');if(idx)idx.value='';
-  if(resetAno){const a=document.getElementById('producaoAno');if(a)a.value=new Date().getFullYear();}
-  const m=document.getElementById('producaoMes');if(m)m.value=String(new Date().getMonth()+1);
-  ['producaoKg','producaoCustoKg','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   updateSecurityUI();
 }
 function renderProducao(){
-  const body=document.getElementById('producaoTableBody');if(!body)return;
-  const list=[...producaoFundicao].sort((a,b)=>productionYear(b)-productionYear(a)||productionMonth(b)-productionMonth(a));
-  const count=document.getElementById('producaoCount');if(count)count.textContent=`${list.length} ${list.length===1?'mês cadastrado':'meses cadastrados'}`;
-  const costCell=r=>costAccessAllowed()?`R$ ${fmt(r.custoKg||0)}`:'🔒 Restrito';
-  body.innerHTML=list.length?list.map(r=>{const idx=producaoFundicao.indexOf(r);return `<tr><td>${esc(r.ano)}</td><td>${esc(MESES_PRODUCAO[(productionMonth(r)||1)-1]||'')}</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>${costCell(r)}</td><td>${esc(r.observacao||'')}</td><td><button class="btn secondary" onclick="editProducao(${idx})">Editar</button> <button class="btn danger" onclick="removeProducao(${idx})">Excluir</button></td></tr>`}).join(''):'<tr><td colspan="6" style="text-align:center" class="small">Nenhum valor mensal cadastrado.</td></tr>';
+  const body=document.getElementById('producaoTableBody'),grid=document.getElementById('prodCalGrid');
+  if(!body||!grid)return;
+  const dataEl=document.getElementById('producaoData');
+  if(dataEl&&!dataEl.value)dataEl.value=prodHojeISO();
+  const selecionada=dataEl?.value||'';
+  const y=prodCalAno,m=prodCalMes;
+  const doMes=producaoFundicao.map((r,i)=>({r,i})).filter(x=>productionYear(x.r)===y&&productionMonth(x.r)===m);
+  const dias=doMes.filter(x=>isProdDia(x.r)),legado=doMes.filter(x=>!isProdDia(x.r));
+  const porDia={};dias.forEach(x=>{porDia[Number(x.r.dia)||Number(String(x.r.data).slice(8,10))]=x.r});
+  const titulo=document.getElementById('prodCalTitulo');if(titulo)titulo.textContent=`${MESES_PRODUCAO[m-1]} de ${y}`;
+  // calendário
+  const hoje=prodHojeISO(),primeiro=new Date(y,m-1,1).getDay(),total=new Date(y,m,0).getDate();
+  let html=DIAS_SEMANA_CAL.map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let k=0;k<primeiro;k++)html+='<div class="vazio"></div>';
+  for(let d=1;d<=total;d++){
+    const iso=prodISO(y,m,d),r=porDia[d];
+    html+=`<button type="button" class="dia${r?' tem':''}${iso===hoje?' hoje':''}${iso===selecionada?' sel':''}" onclick="prodCalSelecionar('${iso}')"><b>${d}</b>${r?`<span>${fmt(Math.round(productionValue(r)))} kg</span><span>${esc(r.corridas??0)} corr.</span>`:''}</button>`;
+  }
+  grid.innerHTML=html;
+  // resumo do mês
+  const kgMes=dias.reduce((a,x)=>a+productionValue(x.r),0),corrMes=dias.reduce((a,x)=>a+n(x.r.corridas),0);
+  const resumo=document.getElementById('prodCalResumo');
+  if(resumo){
+    if(dias.length)resumo.innerHTML=`<b>Total do mês:</b> ${fmt(kgMes)} kg &nbsp;|&nbsp; <b>Corridas:</b> ${fmt(corrMes)} &nbsp;|&nbsp; <b>Dias lançados:</b> ${dias.length}`;
+    else if(legado.length)resumo.innerHTML=`<b>Total mensal cadastrado:</b> ${fmt(legado.reduce((a,x)=>a+productionValue(x.r),0))} kg. Ao lançar o primeiro dia, o total do mês passa a ser a soma dos dias.`;
+    else resumo.textContent='Nenhum dia lançado neste mês.';
+  }
+  // tabela
+  const count=document.getElementById('producaoCount');
+  if(count)count.textContent=dias.length?`${dias.length} ${dias.length===1?'dia lançado':'dias lançados'}`:(legado.length?'total mensal antigo':'sem lançamentos');
+  const ordenados=[...dias].sort((a,b)=>String(b.r.data).localeCompare(String(a.r.data)));
+  const linhasDia=ordenados.map(({r,i})=>`<tr><td>${esc(String(r.data).split('-').reverse().join('/'))}</td><td style="white-space:normal;min-width:140px">${esc(r.fundido||'—')}</td><td>${esc(r.corridas??0)}</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>${esc(r.observacao||'')}</td><td><button class="btn secondary" onclick="editProducao(${i})">Editar</button> <button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
+  const linhasLeg=dias.length?[]:legado.map(({r,i})=>`<tr><td>${String(m).padStart(2,'0')}/${y} (total mensal)</td><td>—</td><td>—</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>${esc(r.observacao||'')}</td><td><button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
+  const linhas=[...linhasDia,...linhasLeg];
+  body.innerHTML=linhas.length?linhas.join(''):'<tr><td colspan="6" style="text-align:center" class="small">Nenhum dia lançado neste mês.</td></tr>';
   updateSecurityUI();
 }
-function editProducao(i){const r=producaoFundicao[i];if(!r)return;if(!costAccessAllowed()){openSecurityModal('cost',()=>editProducao(i));return;}document.getElementById('producaoEditIndex').value=String(i);document.getElementById('producaoAno').value=r.ano;document.getElementById('producaoMes').value=r.mes;document.getElementById('producaoKg').value=r.kg;document.getElementById('producaoCustoKg').value=r.custoKg??'';document.getElementById('producaoObs').value=r.observacao||'';navigate('lancamentos');switchLaunchTab('producao');}
-function removeProducao(i){if(confirm('Excluir o total produzido deste mês?')){producaoFundicao.splice(i,1);saveProducao();renderProducao();dashboardDirty=true;dashboard();}}
+function editProducao(i){const r=producaoFundicao[i];if(!r||!isProdDia(r))return;navigate('lancamentos');switchLaunchTab('producao');prodCalSelecionar(r.data);document.getElementById('producaoKg')?.focus();}
+function removeProducao(i){
+  const r=producaoFundicao[i];if(!r)return;
+  const msg=isProdDia(r)?`Excluir a produção do dia ${String(r.data).split('-').reverse().join('/')}?`:'Excluir o total produzido deste mês?';
+  if(confirm(msg)){producaoFundicao.splice(i,1);saveProducao();clearProducaoForm();renderProducao();dashboardDirty=true;dashboard();}
+}
 const producaoForm=document.getElementById('producaoForm');
-producaoForm?.addEventListener('submit',e=>{e.preventDefault();const ano=Number(document.getElementById('producaoAno').value),mes=Number(document.getElementById('producaoMes').value),kgVal=Number(String(document.getElementById('producaoKg').value).replace(',','.')),custoTxt=String(document.getElementById('producaoCustoKg').value||'').trim(),custoVal=costAccessAllowed()?(custoTxt===''?2.6:Number(custoTxt.replace(',','.'))):2.6,obs=document.getElementById('producaoObs').value.trim();if(!Number.isInteger(ano)||ano<2020||ano>2100)return alert('Informe um ano válido.');if(!Number.isInteger(mes)||mes<1||mes>12)return alert('Informe um mês válido.');if(!Number.isFinite(kgVal)||kgVal<0)return alert('Informe um total produzido válido.');if(!Number.isFinite(custoVal)||custoVal<0)return alert('Informe um custo de refugo válido ou deixe em branco.');const editIdx=document.getElementById('producaoEditIndex').value;const dup=producaoFundicao.findIndex(x=>Number(x.ano)===ano&&Number(x.mes)===mes);const existente=editIdx!==''?producaoFundicao[Number(editIdx)]:dup>=0?producaoFundicao[dup]:null;const obj={ano,mes,kg:kgVal,custoKg:costAccessAllowed()?custoVal:(existente?.custoKg!==undefined&&existente?.custoKg!==''?existente.custoKg:2.6),observacao:obs};if(editIdx!=='')producaoFundicao[Number(editIdx)]=obj;else if(dup>=0)producaoFundicao[dup]=obj;else producaoFundicao.push(obj);saveProducao();clearProducaoForm();renderProducao();dashboardDirty=true;dashboard();alert(`Produção da Fundição de ${MESES_PRODUCAO[mes-1]}/${ano} salva: ${fmt(kgVal)} kg.`);});
+producaoForm?.addEventListener('submit',e=>{
+  e.preventDefault();
+  const iso=String(document.getElementById('producaoData').value||'');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return alert('Informe a data.');
+  const ano=Number(iso.slice(0,4)),mes=Number(iso.slice(5,7)),dia=Number(iso.slice(8,10));
+  if(ano<2020||ano>2100)return alert('Informe uma data válida.');
+  const corridas=Number(String(document.getElementById('producaoCorridas').value).replace(',','.'));
+  const kgVal=Number(String(document.getElementById('producaoKg').value).replace(',','.'));
+  if(!Number.isInteger(corridas)||corridas<0)return alert('Informe a quantidade de corridas (número inteiro).');
+  if(!Number.isFinite(kgVal)||kgVal<0)return alert('Informe os kg fundidos válidos.');
+  const fundido=document.getElementById('producaoFundido').value.trim(),obs=document.getElementById('producaoObs').value.trim();
+  const editIdx=document.getElementById('producaoEditIndex').value;
+  const dup=prodIdxDia(iso);
+  if(dup>=0&&String(dup)!==editIdx&&!confirm('Já existe produção lançada neste dia. Substituir?'))return;
+  const obj={data:iso,ano,mes,dia,fundido,corridas,kg:kgVal,custoKg:2.6,observacao:obs};
+  if(dup>=0)producaoFundicao[dup]=obj;else producaoFundicao.push(obj);
+  saveProducao();
+  prodCalAno=ano;prodCalMes=mes;
+  ['producaoCorridas','producaoKg','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('producaoEditIndex').value='';
+  renderProducao();dashboardDirty=true;dashboard();
+  alert(`Produção de ${String(iso).split('-').reverse().join('/')} salva: ${fmt(kgVal)} kg em ${corridas} ${corridas===1?'corrida':'corridas'}.`);
+});
 
 const codigoInput=document.getElementById('codigo');
 if(codigoInput){
@@ -1767,8 +1855,17 @@ function analysisFiltered(){
 }
 function analysisProductionTotal(filters){
   if(filters.plant && filters.plant!=='FUNDICAO') return 0;
+  const mesesComDia=new Set();
+  producaoFundicao.forEach(p=>{if(isProdDia(p)){const y=productionYear(p),m=productionMonth(p);if(y&&m)mesesComDia.add(y+'-'+m)}});
   return producaoFundicao.reduce((sum,p)=>{
     const y=productionYear(p),m=productionMonth(p);if(!y||!m)return sum;
+    if(isProdDia(p)){
+      const d=new Date(y,m-1,Number(p.dia)||1);
+      if(filters.start && d<filters.start)return sum;
+      if(filters.end && d>filters.end)return sum;
+      return sum+productionValue(p);
+    }
+    if(mesesComDia.has(y+'-'+m))return sum;
     const pStart=new Date(y,m-1,1),pEnd=new Date(y,m,0,23,59,59,999);
     if(filters.start && pEnd<filters.start)return sum;
     if(filters.end && pStart>filters.end)return sum;
