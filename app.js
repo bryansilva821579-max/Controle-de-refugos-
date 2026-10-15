@@ -91,7 +91,7 @@ function fsStable(v){
   if(typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+fsStable(v[k])).join(',')+'}';
   return JSON.stringify(v);
 }
-function stopFirebaseListener(){try{rtUnlisten()}catch(e){}firebaseUnsub.forEach(u=>{try{u()}catch(e){}});firebaseUnsub=[];clearTimeout(firebasePullTimer)}
+function stopFirebaseListener(){try{rtUnlisten()}catch(e){}try{devUnlisten()}catch(e){}firebaseUnsub.forEach(u=>{try{u()}catch(e){}});firebaseUnsub=[];clearTimeout(firebasePullTimer)}
 function startFirebaseListener(){
   stopFirebaseListener();
   if(localStorage.getItem(FIREBASE_SYNC_KEY)==='false'||!firebaseDbOnline)return;
@@ -102,7 +102,7 @@ function startFirebaseListener(){
     firebasePullTimer=setTimeout(pullRemoteQuiet,700);
   };
   const onErr=e=>{console.error('Escuta Firebase:',e);setFirebaseStatus('Erro na atualização em tempo real: '+(e?.message||e),'err')};
-  firebaseUnsub.push(root.collection('lancamentos').onSnapshot(onChange,onErr));try{rtListen()}catch(e){console.error(e)}
+  firebaseUnsub.push(root.collection('lancamentos').onSnapshot(onChange,onErr));try{rtListen()}catch(e){console.error(e)}try{devListen()}catch(e){console.error(e)}
   firebaseUnsub.push(root.collection('config').doc('estado').onSnapshot(onChange,onErr));
 }
 async function pullRemoteQuiet(){
@@ -2180,7 +2180,7 @@ function loadingLabel(page){
   })[page]||'Carregando informações...';
 }
 
-function navigate(page){if(page==='auditoria')setTimeout(function(){window.audInit&&window.audInit()},0);if(page==='retrabalho')setTimeout(function(){window.rtInit&&window.rtInit()},0);if(page==='reuniao')setTimeout(function(){window.reuniaoInit&&window.reuniaoInit()},0);
+function navigate(page){if(page==='devolucoes')setTimeout(function(){window.devInit&&window.devInit()},0);if(page==='auditoria')setTimeout(function(){window.audInit&&window.audInit()},0);if(page==='retrabalho')setTimeout(function(){window.rtInit&&window.rtInit()},0);if(page==='reuniao')setTimeout(function(){window.reuniaoInit&&window.reuniaoInit()},0);
  if(page==='cadastro' && !cadastroAccessAllowed()){openSecurityModal('cadastro',()=>navigate('cadastro'));closeMobileMenu();return;}
  const btns=document.querySelectorAll('.tab');
  btns.forEach(x=>x.classList.toggle('active',x.dataset.page===page));
