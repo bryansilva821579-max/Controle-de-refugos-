@@ -390,7 +390,7 @@ function renderCadastro(){
  // Não reinsere a lista-base ao renderizar: isso permite excluir motivos de forma permanente.
  if(!cadastros || typeof cadastros!=='object') cadastros={motivos:[],pecas:[],clientes:[],responsaveis:[]};
  const mv=document.getElementById('motivosListView'),pv=document.getElementById('pecasListView'),cv=document.getElementById('clientesListView'),rv=document.getElementById('responsaveisListView');
- if(mv)mv.innerHTML=cadastros.motivos.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.codigo||'—')} — ${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Planta: ${esc(x.planta||'—')}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editMotivo(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeMotivo(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum motivo cadastrado.</div>';
+ if(mv)mv.innerHTML=cadastros.motivos.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.codigo||'—')} — ${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Planta: ${esc(x.planta||'—')} • Causa: <select onchange="setMotivoCausa(${i},this.value)" style="padding:3px 6px;border-radius:8px;font-weight:700"><option value="">— selecionar —</option>${CAUSAS_MOTIVO.map(c=>`<option value="${c}"${x.causa===c?' selected':''}>${c}</option>`).join('')}</select></div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editMotivo(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeMotivo(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum motivo cadastrado.</div>';
  if(pv)pv.innerHTML=cadastros.pecas.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Cliente: ${esc(x.cliente||'—')} • Código: ${esc(x.codigo||'—')} • Planta: ${esc(x.planta||'—')}</div><div class="product-card-weight">Peso principal / bruto fracionado: ${x.pesoPrincipal!==''&&x.pesoPrincipal!=null?fmt(x.pesoPrincipal)+' kg':'Não informado'}</div><div class="product-card-other"><b>Pesos:</b> Árvore ${x.pesoArvore!==''&&x.pesoArvore!=null?fmt(x.pesoArvore)+' kg':'—'} • Líquido Fund./Bruto Usin. ${x.pesoFundUsin!==''&&x.pesoFundUsin!=null?fmt(x.pesoFundUsin)+' kg':'—'} • Usinado ${x.pesoUsinado!==''&&x.pesoUsinado!=null?fmt(x.pesoUsinado)+' kg':'—'}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editPeca(${i})">Editar</button><button class="btn danger cad-delete" onclick="removePeca(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhuma peça cadastrada.</div>';
  if(cv)cv.innerHTML=cadastros.clientes.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x)}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editCliente(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeCliente(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum cliente cadastrado.</div>';
  if(rv)rv.innerHTML=cadastros.responsaveis.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x)}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editResponsavel(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeResponsavel(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum responsável cadastrado.</div>';
@@ -514,7 +514,9 @@ function editMotivo(i){
  if(!code&&!desc)return alert('Informe o código ou a descrição do motivo.');
  const duplicate=cadastros.motivos.some((x,idx)=>idx!==i&&motivoCodeKey(x.codigo)===motivoCodeKey(code)&&String(x.descricao??'').trim().toUpperCase()===desc.toUpperCase());
  if(duplicate)return alert('Esse motivo já está cadastrado.');
- cadastros.motivos[i]={...item,codigo:code,descricao:desc}; saveCad(); renderCadastro();
+ const cs=prompt('Causa do motivo:\n1 = Metalúrgica\n2 = Erro humano\n3 = Falha de maquinário\n(deixe em branco para manter)',''); if(cs===null)return;
+ const causa=({'1':CAUSAS_MOTIVO[0],'2':CAUSAS_MOTIVO[1],'3':CAUSAS_MOTIVO[2]})[cs.trim()]||item.causa||'';
+ cadastros.motivos[i]={...item,codigo:code,descricao:desc}; if(causa)cadastros.motivos[i].causa=causa; __causaVer++; saveCad(); renderCadastro();
 }
 function editPeca(i){
  const item=cadastros.pecas[i];
@@ -559,7 +561,7 @@ function editCliente(i){
  cadastros.clientes[i]=novo; cadastros.clientes.sort((a,b)=>a.localeCompare(b,'pt-BR')); saveCad(); renderCadastro();
 }
 
-function addMotivo(){const c=document.getElementById('cadMotivoCode').value.trim(),d=document.getElementById('cadMotivoDesc').value.trim();if(!c&&!d)return alert('Informe o código ou a descrição do motivo.');if(cadastros.motivos.some(x=>String(x.codigo)===c&&String(x.descricao).toUpperCase()===d.toUpperCase()))return alert('Esse motivo já está cadastrado.');cadastros.motivos.push({codigo:c,descricao:d});saveCad();document.getElementById('cadMotivoCode').value='';document.getElementById('cadMotivoDesc').value='';renderCadastro();}
+function addMotivo(){const c=document.getElementById('cadMotivoCode').value.trim(),d=document.getElementById('cadMotivoDesc').value.trim();if(!c&&!d)return alert('Informe o código ou a descrição do motivo.');if(cadastros.motivos.some(x=>String(x.codigo)===c&&String(x.descricao).toUpperCase()===d.toUpperCase()))return alert('Esse motivo já está cadastrado.');const pl=(document.getElementById('cadMotivoPlanta')?.value||'').trim(),ca=(document.getElementById('cadMotivoCausa')?.value||'').trim();if(!ca)return alert('Selecione a causa do motivo (Metalúrgica, Erro humano ou Falha de maquinário).');const novo={codigo:c,descricao:d};if(pl)novo.planta=pl;novo.causa=ca;cadastros.motivos.push(novo);__causaVer++;saveCad();document.getElementById('cadMotivoCode').value='';document.getElementById('cadMotivoDesc').value='';['cadMotivoPlanta','cadMotivoCausa'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});renderCadastro();}
 function addPeca(){
  const editRaw=document.getElementById('cadPecaEditIndex')?.value??'';
  const editIndex=editRaw!==''?Number(editRaw):null;
@@ -657,7 +659,10 @@ function directRefugoCostRate(r){
   }
   return null;
 }
-function cost(r){const direct=directRefugoCostRate(r);return kg(r)*(direct!==null?direct:monthlyRefugoCost(r))}
+/* Valor do kg de refugo por planta (R$/kg) */
+const CUSTO_KG_PLANTA={'FUNDICAO':14.26,'FUNDICAO NA USINAGEM':31.85,'USINAGEM':31.85};
+function custoKgPlanta(r){const v=CUSTO_KG_PLANTA[recordPlant(r)];return v===undefined?null:v}
+function cost(r){const pl=custoKgPlanta(r);if(pl!==null)return kg(r)*pl;const direct=directRefugoCostRate(r);return kg(r)*(direct!==null?direct:monthlyRefugoCost(r))}
 function n(v){return Number(v)||0}
 const DATA_OLD_HEADER='DATA DO REFUGO/ DATA DA APROVAÇÃO';/* Planta do refugo = planta do MOTIVO (cadastro de motivos), não a planta da peça. Ex.: motivo 209 => USINAGEM.
    Só vale para FUNDICAO, FUNDICAO NA USINAGEM e USINAGEM; motivos GERAL/SISTEMA ou sem cadastro mantêm a planta gravada. */
@@ -671,6 +676,26 @@ function __motPlantaMaps(){
   arr.forEach(x=>{const pl=okPl[norm(x.planta)];if(!pl)return;const c=String(x.codigo??'').trim().replace(/^0+(?=\d)/,'');if(c)byCode.set(c,pl);const d=norm(x.descricao);if(d&&!byDesc.has(d))byDesc.set(d,pl)});
   __motPlantaCache={byCode,byDesc,norm};__motPlantaRef=arr;__motPlantaLen=arr.length;return __motPlantaCache;
 }
+const CAUSAS_MOTIVO=['Metalúrgica','Erro humano','Falha de maquinário'];
+let __causaCache=null,__causaRef=null,__causaLen=-1,__causaVer=0;
+function causaMaps(){
+  const arr=(typeof cadastros!=='undefined'&&cadastros&&Array.isArray(cadastros.motivos))?cadastros.motivos:[];
+  if(__causaCache&&__causaRef===arr&&__causaLen===arr.length&&__causaCache.ver===__causaVer)return __causaCache;
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase().replace(/\s+/g,' ');
+  const byCode=new Map(),byDesc=new Map();
+  arr.forEach(x=>{if(!x.causa)return;const c=String(x.codigo??'').trim().replace(/^0+(?=\d)/,'');if(c)byCode.set(c,x.causa);const d=norm(x.descricao);if(d&&!byDesc.has(d))byDesc.set(d,x.causa)});
+  __causaCache={byCode,byDesc,norm,ver:__causaVer};__causaRef=arr;__causaLen=arr.length;return __causaCache;
+}
+function causaPeloMotivo(r){
+  if(!r||typeof r!=='object')return 'Não classificado';
+  const m=causaMaps();
+  const mc=String(r['MOTIVO DO REFUGO']??r.motivo??'').trim().match(/^\d+/);
+  if(mc){const c=m.byCode.get(mc[0].replace(/^0+(?=\d)/,''));if(c)return c}
+  const d=m.norm(r['DESCRIÇÃO DO MOTIVO']??r.descricaoMotivo??'');
+  if(d){const c=m.byDesc.get(d);if(c)return c}
+  return 'Não classificado';
+}
+function setMotivoCausa(i,v){const it=cadastros.motivos[i];if(!it)return;if(v)it.causa=v;else delete it.causa;__causaVer++;saveCad();try{dashboardDirty=true}catch(e){}renderCadastro()}
 function plantaPeloMotivo(r){
   if(!r||typeof r!=='object')return '';
   const m=__motPlantaMaps();
@@ -1755,8 +1780,8 @@ function renderProducao(){
   const dias=doMes.filter(x=>isProdDia(x.r)),legado=doMes.filter(x=>!isProdDia(x.r));
   const porDia={};dias.forEach(x=>{porDia[Number(x.r.dia)||Number(String(x.r.data).slice(8,10))]=x.r});
   // refugo da Fundição por dia (data do refugo) no mês exibido
-  const refDia={};let refMes=0;
-  (Array.isArray(data)?data:[]).forEach(r=>{if(recordPlant(r)!=='FUNDICAO')return;const dd=date(r);if(!dd||dd.getFullYear()!==y||dd.getMonth()+1!==m)return;const v=kg(r);refDia[dd.getDate()]=(refDia[dd.getDate()]||0)+v;refMes+=v});
+  const refDia={},refCusto={};let refMes=0,refMesCusto=0;
+  (Array.isArray(data)?data:[]).forEach(r=>{if(recordPlant(r)!=='FUNDICAO')return;const dd=date(r);if(!dd||dd.getFullYear()!==y||dd.getMonth()+1!==m)return;const v=kg(r);refDia[dd.getDate()]=(refDia[dd.getDate()]||0)+v;refCusto[dd.getDate()]=(refCusto[dd.getDate()]||0)+cost(r);refMes+=v;refMesCusto+=cost(r)});
   const titulo=document.getElementById('prodCalTitulo');if(titulo)titulo.textContent=`${MESES_PRODUCAO[m-1]} de ${y}`;
   // calendário
   const hoje=prodHojeISO(),primeiro=new Date(y,m-1,1).getDay(),total=new Date(y,m,0).getDate();
@@ -1764,14 +1789,14 @@ function renderProducao(){
   for(let k=0;k<primeiro;k++)html+='<div class="vazio"></div>';
   for(let d=1;d<=total;d++){
     const iso=prodISO(y,m,d),r=porDia[d];
-    html+=`<button type="button" class="dia${r?' tem':''}${iso===hoje?' hoje':''}${iso===selecionada?' sel':''}" onclick="prodCalSelecionar('${iso}')"><b>${d}</b>${r?`<span>${fmt(Math.round(productionValue(r)))} kg</span><span>${esc(r.corridas??0)} corr.</span>`:''}${refDia[d]?`<span class="ref">ref. ${fmt(Math.round(refDia[d]*10)/10)}</span>`:''}</button>`;
+    html+=`<button type="button" class="dia${r?' tem':''}${iso===hoje?' hoje':''}${iso===selecionada?' sel':''}" onclick="prodCalSelecionar('${iso}')"><b>${d}</b>${r?`<span>${fmt(Math.round(productionValue(r)))} kg</span><span>${esc(r.corridas??0)} corr.</span>`:''}${refDia[d]?`<span class="ref" style="color:#d32f2f;font-weight:800">ref. ${fmt(Math.round(refDia[d]*10)/10)} kg</span>${costAccessAllowed()?`<span class="ref" style="color:#d32f2f">R$ ${fmt(refCusto[d])}</span>`:''}`:''}</button>`;
   }
   grid.innerHTML=html;
   // resumo do mês
   const kgMes=dias.reduce((a,x)=>a+productionValue(x.r),0),corrMes=dias.reduce((a,x)=>a+n(x.r.corridas),0);
   const resumo=document.getElementById('prodCalResumo');
   if(resumo){
-    if(dias.length)resumo.innerHTML=`<b>Total do mês:</b> ${fmt(kgMes)} kg &nbsp;|&nbsp; <b>Corridas:</b> ${fmt(corrMes)} &nbsp;|&nbsp; <b>Dias lançados:</b> ${dias.length}${refMes?` &nbsp;|&nbsp; <b>Refugo Fundição:</b> ${fmt(refMes)} kg (${fmt(refMes/kgMes*100)}%)`:''}`;
+    if(dias.length)resumo.innerHTML=`<b>Total do mês:</b> ${fmt(kgMes)} kg &nbsp;|&nbsp; <b>Corridas:</b> ${fmt(corrMes)} &nbsp;|&nbsp; <b>Dias lançados:</b> ${dias.length}${refMes?` &nbsp;|&nbsp; <b>Refugo Fundição:</b> ${fmt(refMes)} kg (${fmt(refMes/kgMes*100)}%)${costAccessAllowed()?' • R$ '+fmt(refMesCusto):''}`:''}`;
     else if(legado.length)resumo.innerHTML=`<b>Total mensal cadastrado:</b> ${fmt(legado.reduce((a,x)=>a+productionValue(x.r),0))} kg. Ao lançar o primeiro dia, o total do mês passa a ser a soma dos dias.`;
     else resumo.innerHTML=refMes?`Nenhum dia lançado neste mês. <b>Refugo Fundição:</b> ${fmt(refMes)} kg`:'Nenhum dia lançado neste mês.';
   }
@@ -1923,6 +1948,12 @@ function analysis(){
   const partBody=document.getElementById('partAnalysis');
   if(partBody)partBody.innerHTML=partEntries.length?partEntries.map(([name,v])=>`<tr><td>${esc(name)}</td><td>${fmt(v.kg)}</td><td>${fmt(v.q)}</td><td>${totalKg?fmt(v.kg/totalKg*100)+'%':'—'}</td><td>${costAccessAllowed()?'R$ '+fmt(v.cost):'🔒 Restrito'}</td></tr>`).join(''):`<tr><td colspan="5" class="small" style="text-align:center">Nenhum registro para os filtros informados.</td></tr>`;
   totalFoot('partAnalysisTotal',totalKg,totalQty,totalCost);
+
+  const cam=groupAnalysis(rows,r=>causaPeloMotivo(r));
+  const causaEntries=Object.entries(cam).sort((a,b)=>b[1].kg-a[1].kg);
+  const causaBody=document.getElementById('causaAnalysis');
+  if(causaBody)causaBody.innerHTML=causaEntries.length?causaEntries.map(([name,v])=>`<tr><td>${esc(name)}</td><td>${fmt(v.kg)}</td><td>${fmt(v.q)}</td><td>${totalKg?fmt(v.kg/totalKg*100)+'%':'—'}</td><td>${costAccessAllowed()?'R$ '+fmt(v.cost):'🔒 Restrito'}</td></tr>`).join(''):'<tr><td colspan="5" class="small" style="text-align:center">Sem dados.</td></tr>';
+  totalFoot('causaAnalysisTotal',totalKg,totalQty,totalCost);
 
   const om=groupAnalysis(rows,r=>String(val(r,'of')||'Não informado').trim()||'Não informado');
   const ofEntries=Object.entries(om).sort((a,b)=>b[1].kg-a[1].kg);
