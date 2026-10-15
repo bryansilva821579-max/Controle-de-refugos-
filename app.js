@@ -1754,6 +1754,9 @@ function renderProducao(){
   const doMes=producaoFundicao.map((r,i)=>({r,i})).filter(x=>productionYear(x.r)===y&&productionMonth(x.r)===m);
   const dias=doMes.filter(x=>isProdDia(x.r)),legado=doMes.filter(x=>!isProdDia(x.r));
   const porDia={};dias.forEach(x=>{porDia[Number(x.r.dia)||Number(String(x.r.data).slice(8,10))]=x.r});
+  // refugo da Fundição por dia (data do refugo) no mês exibido
+  const refDia={};let refMes=0;
+  (Array.isArray(data)?data:[]).forEach(r=>{if(recordPlant(r)!=='FUNDICAO')return;const dd=date(r);if(!dd||dd.getFullYear()!==y||dd.getMonth()+1!==m)return;const v=kg(r);refDia[dd.getDate()]=(refDia[dd.getDate()]||0)+v;refMes+=v});
   const titulo=document.getElementById('prodCalTitulo');if(titulo)titulo.textContent=`${MESES_PRODUCAO[m-1]} de ${y}`;
   // calendário
   const hoje=prodHojeISO(),primeiro=new Date(y,m-1,1).getDay(),total=new Date(y,m,0).getDate();
@@ -1761,16 +1764,16 @@ function renderProducao(){
   for(let k=0;k<primeiro;k++)html+='<div class="vazio"></div>';
   for(let d=1;d<=total;d++){
     const iso=prodISO(y,m,d),r=porDia[d];
-    html+=`<button type="button" class="dia${r?' tem':''}${iso===hoje?' hoje':''}${iso===selecionada?' sel':''}" onclick="prodCalSelecionar('${iso}')"><b>${d}</b>${r?`<span>${fmt(Math.round(productionValue(r)))} kg</span><span>${esc(r.corridas??0)} corr.</span>`:''}</button>`;
+    html+=`<button type="button" class="dia${r?' tem':''}${iso===hoje?' hoje':''}${iso===selecionada?' sel':''}" onclick="prodCalSelecionar('${iso}')"><b>${d}</b>${r?`<span>${fmt(Math.round(productionValue(r)))} kg</span><span>${esc(r.corridas??0)} corr.</span>`:''}${refDia[d]?`<span class="ref">ref. ${fmt(Math.round(refDia[d]*10)/10)}</span>`:''}</button>`;
   }
   grid.innerHTML=html;
   // resumo do mês
   const kgMes=dias.reduce((a,x)=>a+productionValue(x.r),0),corrMes=dias.reduce((a,x)=>a+n(x.r.corridas),0);
   const resumo=document.getElementById('prodCalResumo');
   if(resumo){
-    if(dias.length)resumo.innerHTML=`<b>Total do mês:</b> ${fmt(kgMes)} kg &nbsp;|&nbsp; <b>Corridas:</b> ${fmt(corrMes)} &nbsp;|&nbsp; <b>Dias lançados:</b> ${dias.length}`;
+    if(dias.length)resumo.innerHTML=`<b>Total do mês:</b> ${fmt(kgMes)} kg &nbsp;|&nbsp; <b>Corridas:</b> ${fmt(corrMes)} &nbsp;|&nbsp; <b>Dias lançados:</b> ${dias.length}${refMes?` &nbsp;|&nbsp; <b>Refugo Fundição:</b> ${fmt(refMes)} kg (${fmt(refMes/kgMes*100)}%)`:''}`;
     else if(legado.length)resumo.innerHTML=`<b>Total mensal cadastrado:</b> ${fmt(legado.reduce((a,x)=>a+productionValue(x.r),0))} kg. Ao lançar o primeiro dia, o total do mês passa a ser a soma dos dias.`;
-    else resumo.textContent='Nenhum dia lançado neste mês.';
+    else resumo.innerHTML=refMes?`Nenhum dia lançado neste mês. <b>Refugo Fundição:</b> ${fmt(refMes)} kg`:'Nenhum dia lançado neste mês.';
   }
   // tabela
   const count=document.getElementById('producaoCount');

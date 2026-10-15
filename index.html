@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Controle de Refugos 2026</title>
-<link rel="stylesheet" href="base.css?v=116">
+<link rel="stylesheet" href="base.css?v=118">
 
 <style id="dashboardPdfStyles">
 @page{size:A4 landscape;margin:8mm 8mm 9mm 8mm}
@@ -181,8 +181,8 @@ html[data-theme="dark"] .firebase-modal{background:#101a2a;color:#f3f4f6}.data-o
 [data-theme="dark"] .help-note{background:#172235;color:#e7edf5;border-left-color:var(--orange);border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
 @media (max-width:760px){.help-intro{grid-template-columns:1fr}.help-badge{justify-self:start}.help-grid{grid-template-columns:1fr}}
 </style>
-<link rel="stylesheet" href="graficos.css?v=116">
-<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=116">
+<link rel="stylesheet" href="graficos.css?v=118">
+<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=118">
 <script>
 /* ===== CONFIGURAÇÃO DO FIREBASE =====
    Preencha uma vez e todos os computadores conectam sozinhos. Deixe "" para não usar. */
@@ -194,7 +194,7 @@ window.EMBEDDED_FIREBASE_CONFIG={
   messagingSenderId:"894679339944",
   appId:"1:894679339944:web:fcf8fc0bf6f45439c7c39d"
 };
-window.APP_VERSION="v116";
+window.APP_VERSION="v118";
 /* Mostra erros de JavaScript na tela em vez de ficar em branco */
 window.addEventListener('error',function(ev){
   try{
@@ -213,14 +213,17 @@ window.addEventListener('error',function(ev){
 .prodcal-resumo{margin-bottom:10px;color:var(--muted)}
 .prodcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
 .prodcal .dow{font-size:10px;font-weight:800;color:var(--muted);text-align:center;padding:2px 0}
-.prodcal .dia{border:1px solid var(--border);background:var(--card);border-radius:9px;min-height:54px;padding:4px 3px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;cursor:pointer;color:var(--text);font:inherit}
+.prodcal .dia{border:1px solid var(--border);background:var(--card);border-radius:9px;min-height:66px;padding:4px 3px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;cursor:pointer;color:var(--text);font:inherit}
 .prodcal .dia b{font-size:12px}
 .prodcal .dia span{font-size:9px;line-height:1.15;color:var(--muted);white-space:nowrap}
 .prodcal .dia.tem{background:rgba(255,90,24,.14);border-color:rgba(255,90,24,.55)}
 .prodcal .dia.tem span{color:var(--text);font-weight:700}
 .prodcal .dia.hoje b{color:var(--orange)}
+.prodcal .dia span.ref,.prodcal .dia.tem span.ref{color:#d92d20;font-weight:800}
+html[data-theme="dark"] .prodcal .dia span.ref,html[data-theme="dark"] .prodcal .dia.tem span.ref{color:#ff8a80}
 .prodcal .dia.sel{outline:2px solid var(--orange);outline-offset:-1px}
-.prodcal .vazio{min-height:54px}
+.prodcal .vazio{min-height:66px}
+html[data-theme="dark"] .sidebar{background:linear-gradient(180deg,#1a2c47,#142238);border-right:1px solid var(--border)}
 </style>
 </head>
 <body>
@@ -520,7 +523,7 @@ service cloud.firestore {
 
   <div id="launchTabProducao" class="launch-tab-panel" style="display:none">
     <div class="panel">
-      <div class="cad-section-head"><div><h3>Produção diária da Fundição</h3><div class="hint">Toque em um dia do calendário e informe o que foi fundido, as corridas e os kg fundidos. A soma dos dias forma o total do mês usado no Dashboard.</div></div></div>
+      <div class="cad-section-head"><div><h3>Produção diária da Fundição</h3><div class="hint">Toque em um dia do calendário e informe o que foi fundido, as corridas e os kg fundidos. A soma dos dias forma o total do mês usado no Dashboard. Em vermelho, o refugo da Fundição de cada dia.</div></div></div>
       <div class="prodcal-head">
         <button type="button" class="btn secondary" onclick="prodCalMover(-1)" aria-label="Mês anterior">‹</button>
         <strong id="prodCalTitulo"></strong>
@@ -938,13 +941,13 @@ service cloud.firestore {
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script src="dados-iniciais.js?v=116"></script>
-<script src="analises.js?v=116"></script>
-<script src="filtros.js?v=116"></script>
-<script src="retrabalhos.js?v=116"></script>
-<script src="app.js?v=116"></script>
-<script src="reuniao.js?v=116"></script>
-<script src="auditoria.js?v=116"></script>
-<script src="versao.js?v=116"></script>
+<script src="dados-iniciais.js?v=118"></script>
+<script src="analises.js?v=118"></script>
+<script src="filtros.js?v=118"></script>
+<script src="retrabalhos.js?v=118"></script>
+<script src="app.js?v=118"></script>
+<script src="reuniao.js?v=118"></script>
+<script src="auditoria.js?v=118"></script>
+<script src="versao.js?v=118"></script>
 </body>
 </html>
