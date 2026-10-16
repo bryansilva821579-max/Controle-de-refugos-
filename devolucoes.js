@@ -16,6 +16,8 @@ let unsub=null,built=false,aba='lancar';
 const $=id=>document.getElementById(id);
 const num=v=>{const x=Number(String(v??'').replace(',','.'));return Number.isFinite(x)?x:0};
 const totalKg=r=>num(r.qtd)*num(r.pesoUn);
+const okCusto=()=>{try{return costAccessAllowed()}catch(e){return false}};
+const valorR=r=>{try{return totalKg(r)*window.custoDevKg(tipoDe(r),r.data)}catch(e){return 0}};
 const tipoPl=pl=>normalizeText(pl||'').indexOf('USINAGEM')===0?'Usinagem':'Fundição';
 const tipoDe=r=>r.tipo||tipoPl(r.planta);
 const hoje=()=>{const n=new Date();return new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,10)};
@@ -24,7 +26,7 @@ const brDate=iso=>String(iso||'').split('-').reverse().join('/');
 /* ---------- estilo ---------- */
 (function(){
   const st=document.createElement('style');
-  st.textContent='#dvBalao{position:fixed;z-index:9999;background:var(--card,#fff);color:var(--text,#222);border:1px solid var(--border,#ddd);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:12px 14px;max-height:60vh;overflow:auto;font-size:12px}#dvBalao .dvt{font-weight:800;font-size:14px;padding-right:22px}#dvBalao .dvs{color:var(--muted,#667);margin:2px 0 8px}#dvBalao table{width:100%;border-collapse:collapse}#dvBalao th,#dvBalao td{text-align:left;padding:4px 6px;border-top:1px solid var(--border,#ddd);white-space:normal}#dvBalao th:nth-child(n+3),#dvBalao td:nth-child(n+3){text-align:right;white-space:nowrap}#dvBalao .dvx{position:absolute;top:6px;right:8px;border:0;background:none;font-size:20px;line-height:1;cursor:pointer;color:var(--muted,#667)}.dev-sec{margin:22px 0 10px;font-size:18px;padding-left:10px;border-left:5px solid var(--orange)}.dvbox{position:relative;height:320px}.dvbox canvas{width:100%;height:100%;display:block}.dev-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.dev-tab{border:1px solid var(--border);background:var(--card);color:var(--text);padding:9px 14px;border-radius:10px;font-weight:800;cursor:pointer;font-size:13px}.dev-tab.on{background:var(--orange);color:#fff;border-color:var(--orange)}.dev-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}.dev-filters label{font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px}.dev-info{font-size:12px;color:var(--muted);margin:2px 0 10px}.dev-disp{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(255,90,24,.12);color:var(--orange);white-space:nowrap}.dev-disp.ok{background:#eaf7f1;color:#157348}.dev-disp.no{background:#eef2f6;color:#536273}';
+  st.textContent='#dvBalao{position:fixed;z-index:9999;background:var(--card,#fff);color:var(--text,#222);border:1px solid var(--border,#ddd);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:12px 14px;max-height:60vh;overflow:auto;font-size:12px}#dvBalao .dvt{font-weight:800;font-size:14px;padding-right:22px}#dvBalao .dvs{color:var(--muted,#667);margin:2px 0 8px}#dvBalao table{width:100%;border-collapse:collapse}#dvBalao th,#dvBalao td{text-align:left;padding:4px 6px;border-top:1px solid var(--border,#ddd);white-space:normal}#dvBalao th:nth-child(n+3),#dvBalao td:nth-child(n+3){text-align:right;white-space:nowrap}#dvBalao .dvx{position:absolute;top:6px;right:8px;border:0;background:none;font-size:20px;line-height:1;cursor:pointer;color:var(--muted,#667)}.dev-h{margin:18px 0 8px;font-size:15px}.dv-item{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px;background:var(--card)}.dv-ih{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.dev-sec{margin:22px 0 10px;font-size:18px;padding-left:10px;border-left:5px solid var(--orange)}.dvbox{position:relative;height:320px}.dvbox canvas{width:100%;height:100%;display:block}.dev-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.dev-tab{border:1px solid var(--border);background:var(--card);color:var(--text);padding:9px 14px;border-radius:10px;font-weight:800;cursor:pointer;font-size:13px}.dev-tab.on{background:var(--orange);color:#fff;border-color:var(--orange)}.dev-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}.dev-filters label{font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px}.dev-info{font-size:12px;color:var(--muted);margin:2px 0 10px}.dev-disp{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(255,90,24,.12);color:var(--orange);white-space:nowrap}.dev-disp.ok{background:#eaf7f1;color:#157348}.dev-disp.no{background:#eef2f6;color:#536273}';
   document.head.appendChild(st);
 })();
 
@@ -85,33 +87,23 @@ function build(){
   </div>
 
   <div id="dvLancar" class="panel">
-    <div class="cad-section-head"><div><h3 id="dvTitulo">Nova devolução</h3><div class="small">Formulário FQ051. Selecione a planta e informe o código interno: cliente, descrição e peso vêm do cadastro de produtos. Cada item do formulário é um lançamento (use o mesmo nº do registro).</div></div></div>
-    <div id="dvInfo" class="dev-info">Digite o código interno para localizar cliente, peça e peso.</div>
+    <div class="cad-section-head"><div><h3 id="dvTitulo">Novo registro de devolução</h3><div class="small">Formulário FQ051. Preencha os dados da etiqueta/FQ051 e adicione quantos itens foram devolvidos nela. Em cada item, o código puxa cliente, descrição e peso do cadastro.</div></div></div>
     <form id="dvForm">
       <input type="hidden" id="dvId">
       <div class="formgrid">
         <div class="field"><label>Planta *</label><select id="dvTipo" required><option value="">Selecione a planta</option><option value="Fundição">Fundição (Metalúrgica)</option><option value="Usinagem">Usinagem (Metal)</option></select></div>
-        <div class="field"><label>Nº do registro (FQ051)</label><input id="dvNum" placeholder="Ex.: 12/26"></div>
+        <div class="field"><label>Nº do registro (FQ051) *</label><input id="dvNum" required placeholder="Ex.: 02/26"></div>
         <div class="field"><label>Data da devolução *</label><input id="dvData" type="date" required></div>
         <div class="field"><label>Recebido por</label><input id="dvRecb" placeholder="Quem recebeu (opcional)"></div>
         <div class="field"><label>Origem</label><select id="dvOrig"><option>Cliente</option><option>Fornecedor</option></select></div>
-        <div class="field"><label>Código interno *</label><input id="dvCod" autocomplete="off" placeholder="Digite o código da peça" required></div>
-        <div class="field"><label>Cliente *</label><select id="dvCli" required><option value="">Digite o código primeiro</option></select></div>
-        <div class="field"><label>Descrição da peça</label><input id="dvProd" readonly placeholder="Preenchida pelo cadastro"></div>
         <div class="field"><label>Nota fiscal de devolução</label><input id="dvNf" placeholder="Nº da NF (opcional)"></div>
-        <div class="field"><label>OF</label><input id="dvOf" placeholder="Ex.: 440/26 (opcional)"></div>
-        <div class="field"><label>Quantidade devolvida *</label><input id="dvQtd" type="number" step="1" min="0" required placeholder="Peças"></div>
-        <div class="field"><label>Peso unitário (kg)</label><input id="dvPeso" type="number" step="0.001" min="0" placeholder="Cadastro da peça (editável)"></div>
-        <div class="field"><label>Peso total (kg)</label><input id="dvTot" readonly placeholder="Quantidade × peso unitário"></div>
-        <div class="field"><label>Motivo da devolução</label><input id="dvMot" list="dvMotList" placeholder="Ex.: porosidade, dimensional…"><datalist id="dvMotList"></datalist></div>
-        <div class="field"><label>Procede?</label><select id="dvProc"><option value="">—</option><option>Sim</option><option>Não</option></select></div>
         <div class="field"><label>S.A. nº</label><input id="dvSA" placeholder="Ex.: 05/26 (opcional)"></div>
         <div class="field"><label>Inspetor</label><input id="dvInsp"></div>
         <div class="field"><label>Vendas</label><input id="dvVend"></div>
-        <div class="field"><label>Destino / disposição</label><select id="dvDisp">${DISP.map(d=>`<option>${d}</option>`).join('')}</select></div>
-        <div class="field full"><label>Observação</label><textarea id="dvObs" rows="3" placeholder="Detalhes da reclamação, tratativa, etc."></textarea></div>
       </div>
-      <div class="actions"><button type="button" class="btn secondary" onclick="devLimpar()">Limpar</button><button type="submit" class="btn primary">Salvar devolução</button></div>
+      <h4 class="dev-h">Itens devolvidos neste registro</h4>
+      <div id="dvItens"></div>
+      <div class="actions"><button type="button" class="btn secondary" onclick="devAddItem()">➕ Adicionar item</button><button type="button" class="btn secondary" onclick="devLimpar()">Limpar</button><button type="submit" class="btn primary">Salvar registro</button></div>
     </form>
   </div>
 
@@ -127,9 +119,10 @@ function build(){
     ${TIPOS.map((t,i)=>`
     <h2 class="dev-sec">${t.n}</h2>
     <div class="cards">
-      <div class="card"><div class="kpi-accent"></div><div class="label">Devoluções</div><div class="value" id="dvK${i}Reg">0</div><div class="sub">lançamentos</div></div>
+      <div class="card"><div class="kpi-accent"></div><div class="label">Registros (etiquetas)</div><div class="value" id="dvK${i}Reg">0</div><div class="sub">nº de FQ051 distintos</div></div>
       <div class="card"><div class="kpi-accent"></div><div class="label">Peças devolvidas</div><div class="value" id="dvK${i}Qtd">0</div><div class="sub">quantidade total</div></div>
       <div class="card"><div class="kpi-accent"></div><div class="label">Peso devolvido</div><div class="value" id="dvK${i}Kg">0 kg</div><div class="sub">quantidade × peso unitário</div></div>
+      <div class="card"><div class="kpi-accent"></div><div class="label">Valor devolvido</div><div class="value" id="dvK${i}Rs">—</div><div class="sub" id="dvK${i}RsS">kg × R$/kg da planta</div></div>
       <div class="card"><div class="kpi-accent"></div><div class="label">Aguardando análise</div><div class="value" id="dvK${i}Ab">0</div><div class="sub">sem destino definido</div></div>
     </div>
     <div class="grid">
@@ -147,12 +140,10 @@ function build(){
   </div>`;
 
   $('dvForm').addEventListener('submit',salvar);
-  $('dvCod').addEventListener('input',buscarPeca);
-  $('dvCod').addEventListener('change',buscarPeca);
-  $('dvCod').addEventListener('blur',buscarPeca);
-  $('dvTipo').addEventListener('change',buscarPeca);
-  $('dvQtd').addEventListener('input',calcTot);
-  $('dvPeso').addEventListener('input',calcTot);
+  $('dvTipo').addEventListener('change',()=>document.querySelectorAll('#dvItens .dv-item').forEach(buscarRow));
+  const it=$('dvItens');
+  it.addEventListener('input',ev=>{const f=ev.target.dataset&&ev.target.dataset.f,row=ev.target.closest('.dv-item');if(!row)return;if(f==='cod')buscarRow(row);else if(f==='qtd'||f==='peso')calcRow(row)});
+  it.addEventListener('focusout',ev=>{if(ev.target.dataset&&ev.target.dataset.f==='cod')buscarRow(ev.target.closest('.dv-item'))});
   ['dvFa','dvFm','dvFc'].forEach(id=>$(id).addEventListener('change',painel));
   $('dvBusca').addEventListener('input',tabela);
   $('dvData').value=hoje();
@@ -165,26 +156,47 @@ function pesoDe(p,tipo){
   if(tipo==='Usinagem')return pos(p.pesoUsinado)||pos(p.pesoFundUsin)||pos(p.pesoPrincipal)||0;
   return pos(p.pesoFundUsin)||pos(p.pesoPrincipal)||pos(p.pesoUsinado)||0;
 }
-function setP(p){
-  $('dvProd').value=p?(p.descricao||''):'';
-  $('dvPeso').value=p?(pesoDe(p,$('dvTipo').value)||''):'';
-  calcTot();
+const Q=(row,f)=>row.querySelector('[data-f="'+f+'"]');
+const INFO0='Digite o código interno para localizar cliente, peça e peso.';
+function itemHtml(){
+  return `<div class="dv-item">
+    <div class="dv-ih"><b class="dv-n">Item</b><button type="button" class="btn danger" onclick="devDelItem(this)">Remover item</button></div>
+    <div class="dev-info" data-f="info">${INFO0}</div>
+    <div class="formgrid">
+      <div class="field"><label>Código interno *</label><input data-f="cod" autocomplete="off" placeholder="Digite o código da peça"></div>
+      <div class="field"><label>Cliente *</label><select data-f="cli"><option value="">Digite o código primeiro</option></select></div>
+      <div class="field"><label>Descrição da peça</label><input data-f="prod" readonly placeholder="Preenchida pelo cadastro"></div>
+      <div class="field"><label>OF</label><input data-f="of" placeholder="Ex.: 440/26 (opcional)"></div>
+      <div class="field"><label>Quantidade devolvida *</label><input data-f="qtd" type="number" step="1" min="0" placeholder="Peças"></div>
+      <div class="field"><label>Peso unitário (kg)</label><input data-f="peso" type="number" step="0.001" min="0" placeholder="Cadastro (editável)"></div>
+      <div class="field"><label>Peso total (kg)</label><input data-f="tot" readonly placeholder="Quantidade × peso unitário"></div>
+      <div class="field"><label>Problema informado / motivo</label><input data-f="mot" list="dvMotList" placeholder="Ex.: porosidade, dimensional…"></div>
+      <div class="field"><label>Procede?</label><select data-f="proc"><option value="">—</option><option>Sim</option><option>Não</option></select></div>
+      <div class="field"><label>Destino / disposição</label><select data-f="disp">${DISP.map(d=>`<option>${d}</option>`).join('')}</select></div>
+      <div class="field full"><label>Observação</label><textarea data-f="obs" rows="2" placeholder="Detalhes, tratativa, etc."></textarea></div>
+    </div>
+  </div>`;
 }
-function calcTot(){const t=num($('dvQtd').value)*num($('dvPeso').value);$('dvTot').value=t?t.toFixed(3):''}
-function buscarPeca(){
-  const cod=$('dvCod').value.trim(),sel=$('dvCli'),info=$('dvInfo'),atual=sel.value;
-  if(!cod){
-    sel.innerHTML=clienteOptionsHtml(cadastros.clientes,'Selecione o cliente');
-    setP(null);info.textContent='Digite o código interno para localizar cliente, peça e peso.';return;
-  }
+function renum(){const rs=document.querySelectorAll('#dvItens .dv-item');rs.forEach((r,i)=>{r.querySelector('.dv-n').textContent='Item '+(i+1);r.querySelector('.btn.danger').style.display=rs.length>1?'':'none'})}
+function addItem(){const d=document.createElement('div');d.innerHTML=itemHtml();const row=d.firstElementChild;$('dvItens').appendChild(row);resetCli(row);renum();return row}
+window.devAddItem=function(){const row=addItem();const c=Q(row,'cod');if(c)c.focus()};
+window.devDelItem=function(btn){const rs=document.querySelectorAll('#dvItens .dv-item');if(rs.length<=1)return;btn.closest('.dv-item').remove();renum()};
+function resetCli(row){Q(row,'cli').innerHTML=clienteOptionsHtml(cadastros.clientes,'Selecione o cliente')}
+function setP(row,p){
+  Q(row,'prod').value=p?(p.descricao||''):'';
+  Q(row,'peso').value=p?(pesoDe(p,$('dvTipo').value)||''):'';
+  calcRow(row);
+}
+function calcRow(row){const t=num(Q(row,'qtd').value)*num(Q(row,'peso').value);Q(row,'tot').value=t?t.toFixed(3):''}
+function buscarRow(row){
+  if(!row)return;
+  const cod=Q(row,'cod').value.trim(),sel=Q(row,'cli'),info=Q(row,'info'),atual=sel.value;
+  if(!cod){resetCli(row);setP(row,null);info.textContent=INFO0;return}
   let ms=[];try{ms=pecasPorCodigo(cod)}catch(e){console.warn(e)}
   const tp=$('dvTipo').value;
   const base=ms.find(x=>tp&&tipoPl(x.planta)===tp&&String(x.descricao||'').trim())||ms.find(x=>String(x.descricao||'').trim())||ms[0]||null;
-  if(!base){
-    sel.innerHTML=clienteOptionsHtml(cadastros.clientes,'Selecione o cliente');
-    setP(null);info.textContent='Código não encontrado no cadastro de produtos. Cadastre o produto ou confira o código.';return;
-  }
-  setP(base);
+  if(!base){resetCli(row);setP(row,null);info.textContent='Código não encontrado no cadastro de produtos. Cadastre o produto ou confira o código.';return}
+  setP(row,base);
   const clientes=normalizeClientList(ms.map(x=>x.cliente).filter(Boolean));
   sel.innerHTML=clienteOptionsHtml(clientes.length?clientes:normalizeClientList(cadastros.clientes),'Selecione o cliente');
   if(atual&&[...sel.options].some(o=>o.value===atual))sel.value=atual;
@@ -192,53 +204,80 @@ function buscarPeca(){
   const pu=pesoDe(base,tp);
   info.textContent='Código '+cod+' localizado'+(clientes.length>1?' para '+clientes.length+' clientes — selecione o cliente.':'.')+(pu?'':' Produto sem peso cadastrado: informe o peso unitário.');
 }
+function cab(){const g=id=>$(id).value.trim();return{tipo:g('dvTipo'),numFq:g('dvNum'),data:g('dvData'),recebPor:g('dvRecb'),origem:g('dvOrig'),nf:g('dvNf'),sa:g('dvSA'),inspetor:g('dvInsp'),vendas:g('dvVend')}}
 function salvar(ev){
   ev.preventDefault();
-  const g=id=>$(id).value.trim();
-  const codigo=g('dvCod'),cliente=canonicalClientName(g('dvCli')),qtd=num(g('dvQtd')),data=g('dvData');
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(data))return alert('Informe a data da devolução.');
-  if(!g('dvTipo'))return alert('Selecione a planta (Fundição ou Usinagem).');
-  if(!codigo)return alert('Informe o código interno da peça.');
-  if(!cliente)return alert('Selecione o cliente.');
-  if(!(qtd>0))return alert('Informe a quantidade devolvida.');
-  const id=g('dvId')||('d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
-  const old=lista.find(x=>x.id===id);
-  const r={id,tipo:g('dvTipo'),numFq:g('dvNum'),recebPor:g('dvRecb'),origem:g('dvOrig'),procede:g('dvProc'),sa:g('dvSA'),inspetor:g('dvInsp'),vendas:g('dvVend'),data,codigo,cliente,produto:g('dvProd'),planta:g('dvTipo'),nf:g('dvNf'),of:g('dvOf'),qtd,pesoUn:num(g('dvPeso')),motivo:g('dvMot'),disp:g('dvDisp')||DISP[0],obs:g('dvObs'),criado:old?old.criado:new Date().toISOString(),ts:Date.now()};
-  if(old)lista[lista.indexOf(old)]=r;else lista.push(r);
-  persist();pushOne(r);
-  const edit=!!old;
+  const c=cab();
+  if(!c.tipo)return alert('Selecione a planta (Fundição ou Usinagem).');
+  if(!c.numFq)return alert('Informe o nº do registro (FQ051), ex.: 02/26.');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(c.data))return alert('Informe a data da devolução.');
+  const rows=[...document.querySelectorAll('#dvItens .dv-item')];
+  const itens=[];
+  for(let i=0;i<rows.length;i++){
+    const row=rows[i],g=f=>Q(row,f).value.trim();
+    const codigo=g('cod'),qtd=num(g('qtd'));
+    if(!codigo&&!qtd&&rows.length>1)continue;
+    if(!codigo)return alert('Item '+(i+1)+': informe o código interno da peça.');
+    const cliente=canonicalClientName(g('cli'));
+    if(!cliente)return alert('Item '+(i+1)+': selecione o cliente.');
+    if(!(qtd>0))return alert('Item '+(i+1)+': informe a quantidade devolvida.');
+    itens.push({i,codigo,cliente,qtd,produto:g('prod'),of:g('of'),pesoUn:num(g('peso')),motivo:g('mot'),procede:g('proc'),disp:g('disp')||DISP[0],obs:g('obs')});
+  }
+  if(!itens.length)return alert('Adicione ao menos um item.');
+  const editId=$('dvId').value,agora=Date.now();
+  itens.forEach((it,k)=>{
+    const id=(editId&&it.i===0)?editId:('d'+agora.toString(36)+Math.random().toString(36).slice(2,6)+k);
+    const old=lista.find(x=>x.id===id);
+    const r={id,tipo:c.tipo,numFq:c.numFq,recebPor:c.recebPor,origem:c.origem,procede:it.procede,sa:c.sa,inspetor:c.inspetor,vendas:c.vendas,data:c.data,codigo:it.codigo,cliente:it.cliente,produto:it.produto,planta:c.tipo,nf:c.nf,of:it.of,qtd:it.qtd,pesoUn:it.pesoUn,motivo:it.motivo,disp:it.disp,obs:it.obs,criado:old?old.criado:new Date().toISOString(),ts:agora+k};
+    if(old)lista[lista.indexOf(old)]=r;else lista.push(r);
+    pushOne(r);
+  });
+  persist();
+  const edit=!!editId;
   limpar();
-  try{showToast(edit?'Devolução atualizada.':'Devolução salva com sucesso.')}catch(e){}
+  try{showToast(edit?'Registro atualizado.':('Registro salvo com '+itens.length+(itens.length===1?' item.':' itens.')))}catch(e){}
 }
 function limpar(){
-  $('dvForm').reset();$('dvId').value='';$('dvTitulo').textContent='Nova devolução';
+  $('dvForm').reset();$('dvId').value='';$('dvTitulo').textContent='Novo registro de devolução';
   $('dvData').value=hoje();
-  $('dvCli').innerHTML=clienteOptionsHtml(cadastros.clientes,'Selecione o cliente');
-  setP(null);$('dvInfo').textContent='Digite o código interno para localizar cliente, peça e peso.';
+  $('dvItens').innerHTML='';addItem();
   listaMotivos();
 }
 function listaMotivos(){
   const s=new Set();
   lista.forEach(r=>{if(r.motivo)s.add(r.motivo)});
   ['Falha no dimensional','Porosidade','Rechupe','Inclusão de areia','Falha de usinagem','Falha de acabamento','Peça trincada','Dureza fora do especificado'].forEach(x=>s.add(x));
-  const dl=$('dvMotList');if(dl)dl.innerHTML=[...s].sort((a,b)=>a.localeCompare(b,'pt-BR')).map(x=>`<option value="${esc(x)}">`).join('');
+  if(!$('dvMotList')){const d=document.createElement('datalist');d.id='dvMotList';document.body.appendChild(d)}
+  $('dvMotList').innerHTML=[...s].sort((a,b)=>a.localeCompare(b,'pt-BR')).map(x=>`<option value="${esc(x)}">`).join('');
 }
 window.devLimpar=limpar;
+function fillCab(r){
+  $('dvTipo').value=tipoDe(r);$('dvNum').value=r.numFq||'';$('dvData').value=r.data||hoje();$('dvRecb').value=r.recebPor||'';
+  $('dvOrig').value=r.origem||'Cliente';$('dvNf').value=r.nf||'';$('dvSA').value=r.sa||'';$('dvInsp').value=r.inspetor||'';$('dvVend').value=r.vendas||'';
+}
 window.devEdit=function(id){
   const r=lista.find(x=>x.id===id);if(!r)return;
   devAba('lancar');
-  $('dvForm').reset();
-  $('dvId').value=r.id;$('dvTitulo').textContent='Editar devolução';
-  $('dvData').value=r.data||hoje();$('dvCod').value=r.codigo||'';
-  $('dvTipo').value=tipoDe(r);
-  buscarPeca();$('dvNum').value=r.numFq||'';$('dvRecb').value=r.recebPor||'';$('dvOrig').value=r.origem||'Cliente';$('dvProc').value=r.procede||'';$('dvSA').value=r.sa||'';$('dvInsp').value=r.inspetor||'';$('dvVend').value=r.vendas||'';
-  const sel=$('dvCli');
+  $('dvForm').reset();$('dvItens').innerHTML='';
+  $('dvId').value=r.id;$('dvTitulo').textContent='Editar item do registro '+(r.numFq||'');
+  fillCab(r);
+  const row=addItem();
+  Q(row,'cod').value=r.codigo||'';buscarRow(row);
+  const sel=Q(row,'cli');
   if(![...sel.options].some(o=>o.value===r.cliente)){const o=document.createElement('option');o.value=r.cliente;o.textContent=r.cliente;sel.appendChild(o)}
   sel.value=r.cliente;
-  $('dvProd').value=r.produto||'';
-  $('dvNf').value=r.nf||'';$('dvOf').value=r.of||'';$('dvQtd').value=r.qtd??'';
-  $('dvPeso').value=r.pesoUn||'';$('dvMot').value=r.motivo||'';$('dvDisp').value=r.disp||DISP[0];$('dvObs').value=r.obs||'';
-  calcTot();window.scrollTo({top:0,behavior:'smooth'});
+  Q(row,'prod').value=r.produto||'';Q(row,'of').value=r.of||'';Q(row,'qtd').value=r.qtd??'';
+  Q(row,'peso').value=r.pesoUn||'';Q(row,'mot').value=r.motivo||'';Q(row,'proc').value=r.procede||'';Q(row,'disp').value=r.disp||DISP[0];Q(row,'obs').value=r.obs||'';
+  calcRow(row);window.scrollTo({top:0,behavior:'smooth'});
+};
+window.devMaisItem=function(id){
+  const r=lista.find(x=>x.id===id);if(!r)return;
+  devAba('lancar');
+  $('dvForm').reset();$('dvItens').innerHTML='';
+  $('dvId').value='';$('dvTitulo').textContent='Novo item no registro '+(r.numFq||'(sem nº)');
+  fillCab(r);
+  const row=addItem();Q(row,'cod').focus();
+  window.scrollTo({top:0,behavior:'smooth'});
 };
 window.devDel=function(id){
   const r=lista.find(x=>x.id===id);if(!r)return;
@@ -252,10 +291,10 @@ window.devDel=function(id){
 function dispCls(d){return d==='Reclamação não procede'?'no':(d==='Aguardando análise'?'':'ok')}
 function tabela(){
   const q=String($('dvBusca')?.value||'').toLowerCase();
-  const rows=lista.filter(r=>!q||JSON.stringify(r).toLowerCase().includes(q)).sort((a,b)=>String(b.data).localeCompare(String(a.data))||(b.ts||0)-(a.ts||0));
-  $('dvCount').textContent=rows.length.toLocaleString('pt-BR')+' de '+lista.length.toLocaleString('pt-BR')+' devoluções';
+  const rows=lista.filter(r=>!q||JSON.stringify(r).toLowerCase().includes(q)).sort((a,b)=>String(b.data).localeCompare(String(a.data))||String(b.numFq||'').localeCompare(String(a.numFq||''))||(a.ts||0)-(b.ts||0));
+  $('dvCount').textContent=rows.length.toLocaleString('pt-BR')+' de '+lista.length.toLocaleString('pt-BR')+' itens devolvidos';
   const mostra=rows.slice(0,300);
-  $('dvTbody').innerHTML=mostra.map(r=>`<tr><td>${esc(tipoDe(r))}</td><td>${esc(r.numFq||'')}</td><td>${esc(brDate(r.data))}</td><td>${esc(r.cliente)}</td><td>${esc(r.codigo)}</td><td style="white-space:normal;min-width:160px">${esc(r.produto)}</td><td>${esc(r.nf||'')}</td><td>${fmt(r.qtd)}</td><td>${fmt(totalKg(r))}</td><td style="white-space:normal;min-width:120px">${esc(r.motivo||'')}</td><td>${esc(r.procede||'')}</td><td><span class="dev-disp ${dispCls(r.disp)}">${esc(r.disp||'')}</span></td><td><button class="btn secondary" type="button" onclick="devEdit('${r.id}')">Editar</button> <button class="btn danger" type="button" onclick="devDel('${r.id}')">Excluir</button></td></tr>`).join('')
+  $('dvTbody').innerHTML=mostra.map(r=>`<tr><td>${esc(tipoDe(r))}</td><td>${esc(r.numFq||'')}</td><td>${esc(brDate(r.data))}</td><td>${esc(r.cliente)}</td><td>${esc(r.codigo)}</td><td style="white-space:normal;min-width:160px">${esc(r.produto)}</td><td>${esc(r.nf||'')}</td><td>${fmt(r.qtd)}</td><td>${fmt(totalKg(r))}</td><td style="white-space:normal;min-width:120px">${esc(r.motivo||'')}</td><td>${esc(r.procede||'')}</td><td><span class="dev-disp ${dispCls(r.disp)}">${esc(r.disp||'')}</span></td><td><button class="btn secondary" type="button" onclick="devEdit('${r.id}')">Editar</button> <button class="btn secondary" type="button" onclick="devMaisItem('${r.id}')" title="Adicionar outro item a este registro">+ Item</button> <button class="btn danger" type="button" onclick="devDel('${r.id}')">Excluir</button></td></tr>`).join('')
     ||'<tr><td colspan="12" class="small" style="text-align:center">Nenhuma devolução lançada.</td></tr>';
   if(rows.length>mostra.length)$('dvTbody').innerHTML+=`<tr><td colspan="12" class="small" style="text-align:center">Exibindo as 300 mais recentes. Use a busca para localizar as demais.</td></tr>`;
 }
@@ -364,7 +403,8 @@ function painel(){
   TIPOS.forEach((t,i)=>{
     const rows=todas.filter(r=>tipoDe(r)===t.k);
     const tq=rows.reduce((a,r)=>a+num(r.qtd),0),tk=rows.reduce((a,r)=>a+totalKg(r),0);
-    $('dvK'+i+'Reg').textContent=fmt(rows.length);$('dvK'+i+'Qtd').textContent=fmt(tq);$('dvK'+i+'Kg').textContent=fmt(tk)+' kg';
+    $('dvK'+i+'Reg').textContent=fmt(new Set(rows.map(r=>r.numFq?(r.data+'|'+r.numFq+'|'+r.cliente):r.id)).size);$('dvK'+i+'Qtd').textContent=fmt(tq);$('dvK'+i+'Kg').textContent=fmt(tk)+' kg';
+    $('dvK'+i+'Rs').textContent=okCusto()?'R$ '+fmt(rows.reduce((a,r)=>a+valorR(r),0)):'🔒 Restrito';
     $('dvK'+i+'Ab').textContent=fmt(rows.filter(r=>(r.disp||DISP[0])===DISP[0]).length);
     const mq=Array(12).fill(0),mk=Array(12).fill(0);
     rows.forEach(r=>{const m=Number(String(r.data||'').slice(5,7));if(m>=1&&m<=12){mq[m-1]+=num(r.qtd);mk[m-1]+=totalKg(r)}});
@@ -378,6 +418,7 @@ function painel(){
     por('dvC'+i+'Cli',r=>r.cliente);por('dvC'+i+'Mot',r=>r.motivo);por('dvC'+i+'Pec',r=>r.produto||r.codigo);
   });
 }
+window.devRefresh=function(){if(built&&aba==='painel'&&$('devolucoes')?.classList.contains('active'))painel()};
 window.devLimparFiltros=function(){['dvFa','dvFm','dvFc'].forEach(id=>$(id).value='');painel()};
 
 /* ---------- abas ---------- */

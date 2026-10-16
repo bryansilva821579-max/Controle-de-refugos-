@@ -390,6 +390,7 @@ function renderCadastro(){
  // Não reinsere a lista-base ao renderizar: isso permite excluir motivos de forma permanente.
  if(!cadastros || typeof cadastros!=='object') cadastros={motivos:[],pecas:[],clientes:[],responsaveis:[]};
  const mv=document.getElementById('motivosListView'),pv=document.getElementById('pecasListView'),cv=document.getElementById('clientesListView'),rv=document.getElementById('responsaveisListView');
+ try{renderCustosPlanta()}catch(e){}
  if(mv)mv.innerHTML=cadastros.motivos.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.codigo||'—')} — ${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Planta: ${esc(x.planta||'—')} • Causa: <select onchange="setMotivoCausa(${i},this.value)" style="padding:3px 6px;border-radius:8px;font-weight:700"><option value="">— selecionar —</option>${CAUSAS_MOTIVO.map(c=>`<option value="${c}"${x.causa===c?' selected':''}>${c}</option>`).join('')}</select></div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editMotivo(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeMotivo(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum motivo cadastrado.</div>';
  if(pv)pv.innerHTML=cadastros.pecas.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Cliente: ${esc(x.cliente||'—')} • Código: ${esc(x.codigo||'—')} • Planta: ${esc(x.planta||'—')}</div><div class="product-card-weight">Peso principal / bruto fracionado: ${x.pesoPrincipal!==''&&x.pesoPrincipal!=null?fmt(x.pesoPrincipal)+' kg':'Não informado'}</div><div class="product-card-other"><b>Pesos:</b> Árvore ${x.pesoArvore!==''&&x.pesoArvore!=null?fmt(x.pesoArvore)+' kg':'—'} • Líquido Fund./Bruto Usin. ${x.pesoFundUsin!==''&&x.pesoFundUsin!=null?fmt(x.pesoFundUsin)+' kg':'—'} • Usinado ${x.pesoUsinado!==''&&x.pesoUsinado!=null?fmt(x.pesoUsinado)+' kg':'—'}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editPeca(${i})">Editar</button><button class="btn danger cad-delete" onclick="removePeca(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhuma peça cadastrada.</div>';
  if(cv)cv.innerHTML=cadastros.clientes.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x)}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editCliente(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeCliente(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum cliente cadastrado.</div>';
@@ -505,6 +506,7 @@ function switchCadTab(tab){
  document.getElementById('cadTabParticipantes')?.classList.toggle('active',tab==='participantes');
  document.getElementById('cadTabMetas')?.classList.toggle('active',tab==='metas');
  document.getElementById('cadTabMateriais')?.classList.toggle('active',tab==='materiais');if(tab==='materiais')cadMatLoad();
+ document.getElementById('cadTabValores')?.classList.toggle('active',tab==='valores');if(tab==='valores'){try{renderCustosPlanta()}catch(e){}}
 }
 function editMotivo(i){
  const item=cadastros.motivos[i]; if(!item)return;
@@ -660,8 +662,73 @@ function directRefugoCostRate(r){
   return null;
 }
 /* Valor do kg de refugo por planta (R$/kg) */
-const CUSTO_KG_PLANTA={'FUNDICAO':14.26,'FUNDICAO NA USINAGEM':31.85,'USINAGEM':31.85};
-function custoKgPlanta(r){const v=CUSTO_KG_PLANTA[recordPlant(r)];return v===undefined?null:v}
+const CUSTO_KG_PADRAO={'FUNDICAO':14.26,'FUNDICAO NA USINAGEM':31.85,'USINAGEM':31.85};
+function isoLocal(d){return d instanceof Date&&!isNaN(d.getTime())?d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'):''}
+const CUSTO_DEV_PADRAO={'Fundição':14.26,'Usinagem':31.85};
+const CUSTO_CFG={
+  r:{el:'cadCustosPlanta',base:'custosPlanta',hist:'custosHist',padrao:CUSTO_KG_PADRAO,pre:'cadCusto_',desde:'cadCustoDesde',titulo:'💰 Valor do kg do refugo por planta (R$/kg)',plantas:[['FUNDICAO','Fundição'],['FUNDICAO NA USINAGEM','Fundição na Usinagem'],['USINAGEM','Usinagem']],ref:'refugo'},
+  d:{el:'cadCustosDev',base:'custosDev',hist:'custosDevHist',padrao:CUSTO_DEV_PADRAO,pre:'cadCustoDev_',desde:'cadCustoDevDesde',titulo:'↩ Valor do kg das devoluções por planta (R$/kg)',plantas:[['Fundição','Fundição (Metalúrgica)'],['Usinagem','Usinagem (Metal)']],ref:'devolução'}
+};
+function isoLocal(d){return d instanceof Date&&!isNaN(d.getTime())?d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'):''}
+function custoHistC(c){const h=(typeof cadastros!=='undefined'&&cadastros&&Array.isArray(cadastros[c.hist]))?cadastros[c.hist]:[];return h.filter(x=>x&&/^\d{4}-\d{2}-\d{2}$/.test(String(x.desde||'')))}
+function mesclaC(c,o){const r={};Object.keys(c.padrao).forEach(k=>{const v=Number(o&&o[k]);r[k]=Number.isFinite(v)&&o[k]!==''&&o[k]!==null&&o[k]!==undefined?v:c.padrao[k]});return r}
+/* tabela de R$/kg vigente numa data (ISO). Sem data => valor atual (mais recente). */
+function custoTabelaC(c,iso){
+  const base=mesclaC(c,(typeof cadastros!=='undefined'&&cadastros&&cadastros[c.base])||{});
+  const h=custoHistC(c);if(!h.length)return base;
+  const ord=[...h].sort((a,b)=>String(a.desde).localeCompare(String(b.desde)));
+  let cur=base;
+  for(const e of ord){if(!iso||String(e.desde)<=iso)cur=mesclaC(c,e.valores);else break}
+  return cur;
+}
+function custoKgTabela(iso){return custoTabelaC(CUSTO_CFG.r,iso)}
+function custoKgPlanta(r){const v=custoKgTabela(isoLocal(date(r)))[recordPlant(r)];return v===undefined?null:v}
+/* R$/kg de devolução: tipo = 'Fundição' | 'Usinagem', iso = data da devolução */
+window.custoDevKg=function(tipo,iso){const v=custoTabelaC(CUSTO_CFG.d,iso)[tipo];return v===undefined?0:v};
+function renderCustosBloco(tag){
+  const c=CUSTO_CFG[tag],el=document.getElementById(c.el);if(!el)return;
+  if(!costAccessAllowed()){el.innerHTML='<b>'+c.titulo+'</b> — protegido por senha. <button type="button" class="btn secondary" onclick="toggleCostAccess()">🔐 Mostrar custos</button>';return}
+  const t=custoTabelaC(c,''),f=v=>String(v).replace('.',','),br=d=>String(d).split('-').reverse().join('/');
+  const h=[...custoHistC(c)].sort((a,b)=>String(b.desde).localeCompare(String(a.desde)));
+  const base=mesclaC(c,cadastros[c.base]||{});
+  const linhas=h.map(e=>{const v=mesclaC(c,e.valores);return `<tr><td>a partir de ${br(e.desde)}</td>${c.plantas.map(([k])=>`<td>R$ ${f(v[k])}</td>`).join('')}<td><button type="button" class="btn danger" onclick="removerCustoPeriodo('${tag}','${e.desde}')">Excluir</button></td></tr>`}).join('');
+  el.innerHTML='<b>'+c.titulo+'</b><div class="small" style="margin:4px 0 8px">Cada '+c.ref+' usa o valor vigente na <b>data</b> dela. Para mudar daqui para frente, informe os novos valores e a data de início: lançamentos anteriores continuam com o valor antigo.</div><div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end">'+
+   c.plantas.map(([k,n],i)=>`<label style="font-size:12px;font-weight:700">${n}<br><input id="${c.pre}${i}" value="${f(t[k])}" style="width:110px" inputmode="decimal"></label>`).join('')+
+   `<label style="font-size:12px;font-weight:700">Vigente a partir de<br><input id="${c.desde}" type="date" value="${isoLocal(new Date())}"></label><button type="button" class="btn primary" onclick="salvarCustos('${tag}')">Salvar novos valores</button></div>`+
+   `<div class="small" style="margin-top:10px"><b>Histórico de valores</b></div><div class="tablewrap"><table><thead><tr><th>Período</th>${c.plantas.map(([,n])=>`<th>${n}</th>`).join('')}<th></th></tr></thead><tbody>${linhas}<tr><td>${h.length?'até a primeira mudança acima':'todos os períodos (valor inicial)'}</td>${c.plantas.map(([k])=>`<td>R$ ${f(base[k])}</td>`).join('')}<td><button type="button" class="btn secondary" onclick="editarCustoInicial('${tag}')">Corrigir valor inicial</button></td></tr></tbody></table></div>`;
+}
+function renderCustosPlanta(){renderCustosBloco('r');renderCustosBloco('d')}
+function lerCustosForm(c){
+  const o={};
+  for(let i=0;i<c.plantas.length;i++){
+    const v=Number(String(document.getElementById(c.pre+i).value).replace(',','.'));
+    if(!Number.isFinite(v)||v<0){alert('Informe valores válidos (R$/kg).');return null}
+    o[c.plantas[i][0]]=v;
+  }
+  return o;
+}
+function posCusto(){try{dashboardDirty=true;dashboard()}catch(e){}try{analysis()}catch(e){}try{window.devRefresh&&window.devRefresh()}catch(e){}renderCustosPlanta()}
+function salvarCustos(tag){
+  const c=CUSTO_CFG[tag],o=lerCustosForm(c);if(!o)return;
+  const desde=String(document.getElementById(c.desde)?.value||'');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(desde))return alert('Informe a data de início (vigência) dos novos valores.');
+  if(!Array.isArray(cadastros[c.hist]))cadastros[c.hist]=[];
+  cadastros[c.hist]=cadastros[c.hist].filter(x=>x.desde!==desde);
+  cadastros[c.hist].push({desde,valores:o});
+  saveCad();posCusto();
+  alert('Novos valores salvos, valendo a partir de '+desde.split('-').reverse().join('/')+'. Registros anteriores mantêm o valor antigo.');
+}
+function editarCustoInicial(tag){
+  const c=CUSTO_CFG[tag];
+  if(!confirm('Corrigir o valor INICIAL (anterior a todas as mudanças do histórico) com os valores digitados nos campos acima?'))return;
+  const o=lerCustosForm(c);if(!o)return;
+  cadastros[c.base]=o;saveCad();posCusto();
+}
+function removerCustoPeriodo(tag,desde){
+  const c=CUSTO_CFG[tag];
+  if(!confirm('Excluir a mudança de valores com vigência a partir de '+desde.split('-').reverse().join('/')+'?'))return;
+  cadastros[c.hist]=(cadastros[c.hist]||[]).filter(x=>x.desde!==desde);saveCad();posCusto();
+}
 function cost(r){const pl=custoKgPlanta(r);if(pl!==null)return kg(r)*pl;const direct=directRefugoCostRate(r);return kg(r)*(direct!==null?direct:monthlyRefugoCost(r))}
 function n(v){return Number(v)||0}
 const DATA_OLD_HEADER='DATA DO REFUGO/ DATA DA APROVAÇÃO';/* Planta do refugo = planta do MOTIVO (cadastro de motivos), não a planta da peça. Ex.: motivo 209 => USINAGEM.
@@ -949,9 +1016,9 @@ function showChartDetail(id,index,seriesIndex,x,y){
  const rows=cfg.rows||[]; const fmtItem=(name,val,unit)=>`<li><span class="q-motivo-qty">${fmt(val)} ${unit||''}</span><span class="q-motivo-item">${esc(name)}</span></li>`;
  if(cfg.kind==='reasonKg'){const motivo=cfg.labels[index];items=groupTop(rows,r=>val(r,'produto')||val(r,'codigo'),r=>kg(r),8);items=rows.filter(r=>motivoDescricao(r)===motivo).length?groupTop(rows.filter(r=>motivoDescricao(r)===motivo),r=>val(r,'produto')||val(r,'codigo'),r=>kg(r),8):[];const total=rows.filter(r=>motivoDescricao(r)===motivo).reduce((a,r)=>a+kg(r),0);sub='Principais itens refugados por este motivo, em peso.';totalText=fmt(total)+' kg';}
  else if(cfg.kind==='clientKg'){const client=cfg.labels[index],rr=rows.filter(r=>String(val(r,'cliente')).trim()===client);items=groupTop(rr,r=>motivoDescricao(r),r=>kg(r),8);sub='Principais motivos de refugo deste cliente.';totalText=fmt(rr.reduce((a,r)=>a+kg(r),0))+' kg';}
- else if(cfg.kind==='plantKg'){const plant=cfg.labels[index],rr=rows.filter(r=>plantNormName(val(r,'planta'))===plantNormName(plant));items=groupTop(rr,r=>motivoDescricao(r),r=>kg(r),8);sub='Principais motivos de refugo desta planta.';totalText=fmt(rr.reduce((a,r)=>a+kg(r),0))+' kg';}
- else if(cfg.kind==='monthKg'){const m=index+1,rr=rows.filter(r=>recordMonth(r)===m);items=groupTop(rr,r=>motivoDescricao(r),r=>kg(r),8);sub='Principais motivos de refugo no mês.';totalText=fmt(rr.reduce((a,r)=>a+kg(r),0))+' kg';}
- else if(cfg.kind==='rate'){const m=index+1,rr=rows.filter(r=>recordMonth(r)===m);const ref=rr.reduce((a,r)=>a+kg(r),0),prod=cfg.prod?.[index]||0;items=[[months[index]||String(m),ref]];items.push(['Produção',prod]);sub='Refugo e produção do mês selecionado.';totalText=fmt(ref)+' kg refugo';}
+ else if(cfg.kind==='plantKg'){const plant=cfg.labels[index],rr=rows.filter(r=>plantNormName(val(r,'planta'))===plantNormName(plant));items=groupTop(rr,r=>motivoDescricao(r),r=>kg(r),8);sub='Principais motivos de refugo desta planta.';totalText=fmt(rr.reduce((a,r)=>a+kg(r),0))+' kg'+(costAccessAllowed()?' • R$ '+fmt(rr.reduce((a,r)=>a+cost(r),0)):'');}
+ else if(cfg.kind==='monthKg'){const m=index+1,rr=rows.filter(r=>recordMonth(r)===m);items=groupTop(rr,r=>motivoDescricao(r),r=>kg(r),8);sub='Principais motivos de refugo no mês.';totalText=fmt(rr.reduce((a,r)=>a+kg(r),0))+' kg'+(costAccessAllowed()?' • R$ '+fmt(rr.reduce((a,r)=>a+cost(r),0)):'');}
+ else if(cfg.kind==='rate'){const m=index+1,rr=rows.filter(r=>recordMonth(r)===m);const ref=rr.reduce((a,r)=>a+kg(r),0),prod=cfg.prod?.[index]||0,vr=rr.reduce((a,r)=>a+cost(r),0);items=[[months[index]||String(m),ref]];items.push(['Produção',prod]);sub='Refugo e produção do mês selecionado.';totalText=fmt(ref)+' kg refugo'+(prod?' • '+fmt(ref/prod*100)+'%':'')+(costAccessAllowed()?' • R$ '+fmt(vr):' • 🔒 valor restrito');}
  else if(cfg.kind==='itemKg'){const item=cfg.labels[index],rr=rows.filter(r=>String(val(r,'produto')||val(r,'codigo')).trim()===item);items=groupTop(rr,r=>String(val(r,'cliente')).trim()||'Não informado',r=>kg(r),8);sub='Principais clientes para este item.';totalText=fmt(rr.reduce((a,r)=>a+kg(r),0))+' kg';}
  else if(cfg.kind==='monthPlantQty'){const m=index, vals=cfg.series.map(s=>Number(s.values[index]||0));items=cfg.series.map((s,i)=>[s.name,vals[i]]).filter(x=>x[1]>0);sub='Quantidade de refugo por planta no mês selecionado.';totalText=fmt(vals.reduce((a,b)=>a+b,0))+' un.';}
  else if(cfg.kind==='reasonQty'){const motivo=cfg.labels[index],rr=rows.filter(r=>motivoDescricao(r)===motivo);items=groupTop(rr,r=>val(r,'produto')||val(r,'codigo'),r=>qty(r),8);sub='Principais itens refugados por este motivo.';totalText=fmt(rr.reduce((a,r)=>a+qty(r),0))+' un.';}
@@ -1179,11 +1246,12 @@ metaPerc.value=meta.perc;metaKg.value=meta.kg;
  let mo=Array(12).fill(0);rows.forEach(r=>{let m=recordMonth(r);if(m)mo[m-1]+=kg(r)});
  const monthSeries=[{values:mo,unit:'kg'},{values:months.map(()=>meta.kg||0),unit:'kg'}]; drawLine('chartMonth',months,monthSeries); setChartDetailConfig('chartMonth',{labels:months,rows,kind:'monthKg',unit:'kg',labelPrefix:'Mês'});
 let prodMo=productionMonthsForDashboard();
+{const cm=Array(12).fill(0);rows.forEach(r=>{let m=recordMonth(r);if(m)cm[m-1]+=cost(r)});const ok=costAccessAllowed(),tb=document.getElementById('monthSummaryBody');if(tb){let tp=0,tk=0,tc=0;const lin=months.map((nm,i)=>{if(!prodMo[i]&&!mo[i])return '';tp+=prodMo[i]||0;tk+=mo[i];tc+=cm[i];return `<tr><td>${nm}</td><td>${fmt(prodMo[i]||0)}</td><td>${fmt(mo[i])}</td><td>${prodMo[i]?fmt(mo[i]/prodMo[i]*100)+'%':'—'}</td><td>${ok?'R$ '+fmt(cm[i]):'🔒 Restrito'}</td></tr>`}).join('');tb.innerHTML=lin+`<tr style="font-weight:800"><td>TOTAL</td><td>${fmt(tp)}</td><td>${fmt(tk)}</td><td>${tp?fmt(tk/tp*100)+'%':'—'}</td><td>${ok?'R$ '+fmt(tc):'🔒 Restrito'}</td></tr>`}}
 const rateSeries=[{values:prodMo.map((v,i)=>v?mo[i]/v*100:0),unit:'%'}]; drawLine('chartRate',months,rateSeries); setChartDetailConfig('chartRate',{labels:months,rows,prod:prodMo,kind:'rate',unit:'',labelPrefix:'Mês'});
 
  let plantMap={};rows.forEach(r=>{let raw=String(val(r,'planta')||'Não informado').trim()||'Não informado';let s=raw.toUpperCase();let k=s.includes('FUNDICAO NA USINAGEM')?'FUNDICAO NA USINAGEM':(s==='USINAGEM'?'USINAGEM':(s==='FUNDICAO'?'FUNDICAO':raw));plantMap[k]=(plantMap[k]||0)+kg(r)});
  let plants=Object.entries(plantMap).sort((a,b)=>b[1]-a[1]);draw('chartPlant',plants.map(x=>x[0]),plants.map(x=>x[1]),true,'kg'); setChartDetailConfig('chartPlant',{labels:plants.map(x=>x[0]),rows,kind:'plantKg',unit:'kg',labelPrefix:'Planta'}); drawDonutQty('chartPlantPie',plants.map(x=>x[0]),plants.map(x=>x[1]),'kg'); setChartDetailConfig('chartPlantPie',{labels:plants.map(x=>x[0]),rows,kind:'plantKg',unit:'kg',labelPrefix:'Planta'});
- let kgTotal=plants.reduce((a,x)=>a+x[1],0);let kgTable=document.getElementById('kgPlantTable');if(kgTable){kgTable.innerHTML=plants.map(x=>`<tr><td>${esc(x[0])}</td><td>${fmt(x[1])} kg</td><td>${kgTotal?fmt(x[1]/kgTotal*100):'0'}%</td></tr>`).join('');}
+ let kgTotal=plants.reduce((a,x)=>a+x[1],0);let kgTable=document.getElementById('kgPlantTable');if(kgTable){kgTable.innerHTML=plants.map(x=>{const vp=rows.filter(r=>plantNormName(val(r,'planta'))===plantNormName(x[0])).reduce((a,r)=>a+cost(r),0);return `<tr><td>${esc(x[0])}</td><td>${fmt(x[1])} kg</td><td>${kgTotal?fmt(x[1]/kgTotal*100):'0'}%</td><td>${costAccessAllowed()?'R$ '+fmt(vp):'🔒 Restrito'}</td></tr>`}).join('');}
 let pareto=reasons.slice(0,10);draw('chartPareto',pareto.map(x=>x[0]),pareto.map(x=>x[1]),true,'kg'); setChartDetailConfig('chartPareto',{labels:pareto.map(x=>x[0]),rows,kind:'reasonKg',unit:'kg',labelPrefix:'Motivo'});
  clients=clients.slice(0,8);draw('chartClient',clients.map(x=>x[0]),clients.map(x=>x[1]),true,'kg'); setChartDetailConfig('chartClient',{labels:clients.map(x=>x[0]),rows,kind:'clientKg',unit:'kg',labelPrefix:'Cliente'});
  summary.innerHTML=`<div class="kpis"><span class="pill">Kg: ${fmt(totalKg)}</span><span class="pill">Quantidade: ${fmt(totalQ)}</span><span class="pill">Registros: ${rows.length}</span></div><p class="small">Os gráficos são recalculados automaticamente conforme os lançamentos e filtros.</p>`;
@@ -2177,6 +2245,7 @@ function refreshSensitiveViews(){
 }
 function updateSecurityUI(){
   const cost=costAccessAllowed();
+  try{renderCustosPlanta()}catch(e){}
   const buttons=['dashboardCostAccessBtn','analysisCostAccessBtn','productionCostAccessBtn'];
   buttons.forEach(id=>{const b=document.getElementById(id);if(b)b.textContent=cost?'🔓 Ocultar custos':'🔐 Mostrar custos';});
   const field=document.getElementById('producaoCostField'),input=document.getElementById('producaoCustoKg');
