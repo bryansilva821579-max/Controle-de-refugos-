@@ -28,7 +28,7 @@ function refAll(){
     out.push({k:mkKey(y,m),kg:kg(r),rs:cost(r),qtd:qty(r),pl:recordPlant(r),
       cli:canonicalClientName(val(r,'cliente'))||'Não informado',
       mot:motivoDescricao(r)||'Não informado',causa:causaPeloMotivo(r),
-      cod:String(val(r,'codigo')||'').trim(),pec:String(val(r,'produto')||'').trim()});
+      cod:String(val(r,'codigo')||'').trim(),pec:String(val(r,'produto')||'').trim(),of:String(val(r,'of')||'').trim()});
   });
   return out;
 }
@@ -49,8 +49,8 @@ function agrupar(rows,key,fields){
 function metricasMes(k,R,D){
   R=R||refAll();D=D||devAll();
   const rr=R.filter(r=>r.k===k),dd=D.filter(r=>r.k===k);
-  const prod=prodDe(k),kgR=somar(rr,r=>r.kg);
-  return {k,prod,kg:kgR,rs:somar(rr,r=>r.rs),perc:prod?kgR/prod*100:null,
+  const prod=prodDe(k),kgR=somar(rr,r=>r.kg),kgF=somar(rr.filter(r=>r.pl==='FUNDICAO'),r=>r.kg);
+  return {k,prod,kg:kgR,kgF,rs:somar(rr,r=>r.rs),perc:prod?kgF/prod*100:null,
     dN:new Set(dd.map(r=>r.fq?r.data+'|'+r.fq+'|'+r.cli:r.raw.id)).size,dItens:dd.length,dQtd:somar(dd,r=>r.qtd),dKg:somar(dd,r=>r.kg),dRs:somar(dd,r=>r.rs)};
 }
 /* fator para projetar o mês corrente (parcial) */
@@ -70,9 +70,9 @@ function calcAlertas(k){
   /* meta % e meta kg */
   try{
     if(meta&&meta.perc>0&&mm.prod>0){
-      const p=kgProj/mm.prod*100,r=p/meta.perc;
-      if(r>1)add('crit','% de refugo acima da meta','Refugo '+(proj?'projetado ':'')+'de '+fmt(p)+'% contra meta de '+fmt(meta.perc)+'% ('+fmt(p-meta.perc)+' p.p. acima).');
-      else if(r>=0.9)add('warn','% de refugo perto da meta','Refugo '+(proj?'projetado ':'')+'de '+fmt(p)+'% — meta de '+fmt(meta.perc)+'% (folga de '+fmt(100-r*100)+'%).');
+      const p=mm.kgF*fpj/mm.prod*100,r=p/meta.perc;
+      if(r>1)add('crit','% de refugo da Fundição acima da meta','Refugo da Fundição '+(proj?'projetado ':'')+'de '+fmt(p)+'% contra meta de '+fmt(meta.perc)+'% ('+fmt(p-meta.perc)+' p.p. acima).');
+      else if(r>=0.9)add('warn','% de refugo da Fundição perto da meta','Refugo da Fundição '+(proj?'projetado ':'')+'de '+fmt(p)+'% — meta de '+fmt(meta.perc)+'% (folga de '+fmt(100-r*100)+'%).');
     }else if(meta&&meta.perc>0&&!mm.prod){add('info','Sem produção lançada','Não há produção da Fundição lançada em '+lblM(k)+', então o % de refugo não pode ser calculado.')}
     if(meta&&meta.kg>0){
       const r=kgProj/meta.kg;
@@ -153,7 +153,7 @@ function relatorio(k){
   const R=refAll(),D=devAll(),ok=okCusto(),mm=metricasMes(k,R,D),ant=metricasMes(addM(k,-1),R,D);
   const rr=R.filter(r=>r.k===k),dd=D.filter(r=>r.k===k);
   const totKg=mm.kg||0,sec=[];
-  const kpis=[['Período',lblM(k)],['Produção da Fundição (kg)',fmt(mm.prod)],['Refugo total (kg)',fmt(mm.kg)],['% de refugo (refugo ÷ produção)',mm.perc===null?'—':fmt(mm.perc)+'%']];
+  const kpis=[['Período',lblM(k)],['Produção da Fundição (kg)',fmt(mm.prod)],['Refugo total (kg)',fmt(mm.kg)],['Refugo da Fundição (kg)',fmt(mm.kgF)],['% de refugo da Fundição (refugo Fundição ÷ produção)',mm.perc===null?'—':fmt(mm.perc)+'%']];
   try{if(meta&&meta.perc)kpis.push(['Meta de % de refugo',fmt(meta.perc)+'%'])}catch(e){}
   try{if(meta&&meta.kg)kpis.push(['Meta de kg/mês',fmt(meta.kg)+' kg'])}catch(e){}
   kpis.push(['Valor do refugo (R$)',ok?RS(mm.rs):'restrito (senha)']);
@@ -251,6 +251,198 @@ function gerarXlsx(k){
   baixar(xlsxBlob(relSheets(rel)),'relatorio-'+k+'.xlsx');
 }
 
+/* ---------- relatório mensal no formato do relatório do PDF (gráficos + análise) ---------- */
+const MES_EXT=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const mesExt=k=>MES_EXT[+k.slice(5,7)-1];
+const isU=r=>r.pl==='USINAGEM',isM=r=>r.pl==='FUNDICAO'||r.pl==='FUNDICAO NA USINAGEM',isF=r=>r.pl==='FUNDICAO';
+const COR='#ED7D31',COR2='#1f5f99',COR3='#a5a5a5';
+function topo(rows,key,lim,med){
+  const m=new Map();
+  rows.forEach(r=>{const k=String(key(r)||'').trim()||'Não informado';let e=m.get(k);if(!e){e={nome:k,qtd:0,kg:0,rs:0};m.set(k,e)}e.qtd+=r.qtd;e.kg+=r.kg;e.rs+=r.rs});
+  const f=med||'qtd';
+  return [...m.values()].filter(e=>e[f]>0).sort((a,b)=>b[f]-a[f]).slice(0,lim||999);
+}
+const cut=(t,n)=>{t=String(t);return t.length>n?t.slice(0,n-1)+'…':t};
+function novoCanvas(H){const S=2,W=1000,cv=document.createElement('canvas');cv.width=W*S;cv.height=H*S;const c=cv.getContext('2d');c.scale(S,S);c.fillStyle='#fff';c.fillRect(0,0,W,H);c.font='12px Arial, sans-serif';return {cv,c,W,H}}
+function eixoY(c,x0,x1,y0,y1,mx,fmtf,cor){
+  c.lineWidth=1;c.font='12px Arial, sans-serif';
+  for(let i=0;i<=5;i++){const y=y1-(y1-y0)*i/5;c.strokeStyle='#d9d9d9';c.beginPath();c.moveTo(x0,y);c.lineTo(x1,y);c.stroke();c.fillStyle=cor||'#595959';c.textAlign='right';c.fillText(fmtf(mx*i/5),x0-8,y+4)}
+  c.strokeStyle='#bfbfbf';c.beginPath();c.moveTo(x0,y1);c.lineTo(x1,y1);c.stroke();
+}
+function escala(m){if(m<=0)return 1;const e=Math.pow(10,Math.floor(Math.log10(m))),f=m/e;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*e}
+function legenda(c,W,itens){let x=W-20;c.font='12px Arial, sans-serif';itens.slice().reverse().forEach(([nome,cor,tipo])=>{const w=c.measureText(nome).width;x-=w;c.fillStyle='#595959';c.textAlign='left';c.fillText(nome,x,18);x-=14;c.fillStyle=cor;if(tipo==='linha'){c.fillRect(x-4,13,18,3);}else c.fillRect(x,10,10,10);x-=22})}
+function rotulos(c,labels,x0,gw,y1,rot){
+  c.fillStyle='#404040';c.font='12px Arial, sans-serif';
+  labels.forEach((l,i)=>{const cx=x0+gw*(i+.5);if(rot){c.save();c.translate(cx+4,y1+10);c.rotate(-Math.PI/4);c.textAlign='right';c.fillText(cut(l,28),0,0);c.restore()}else{c.textAlign='center';c.fillText(cut(l,14),cx,y1+18)}});
+}
+/* barras verticais simples (laranja, como no relatório em PDF) */
+function imgBar(labels,vals,o){
+  o=o||{};const rot=labels.length>6||labels.some(l=>String(l).length>12);
+  const {cv,c,W,H}=novoCanvas(o.h||430),x0=58,x1=W-18,y0=34,y1=H-(rot?150:50),gw=(x1-x0)/Math.max(1,labels.length);
+  const mx=escala(Math.max(...vals,0)*1.08),f=o.f||(v=>String(Math.round(v*100)/100).replace('.',','));
+  eixoY(c,x0,x1,y0,y1,mx,v=>f(v));legenda(c,W,[[o.leg||'Total',COR]]);
+  const bw=Math.min(54,gw*.6);
+  vals.forEach((v,i)=>{const cx=x0+gw*(i+.5),h=(y1-y0)*v/mx;c.fillStyle=COR;c.fillRect(cx-bw/2,y1-h,bw,h);c.fillStyle='#262626';c.font='12px Arial, sans-serif';c.textAlign='center';c.fillText(f(v),cx,y1-h-6)});
+  rotulos(c,labels,x0,gw,y1,rot);
+  return cv.toDataURL('image/png');
+}
+/* barras empilhadas por mês (quantidade por planta) */
+function imgStack(labels,series,o){
+  o=o||{};const {cv,c,W,H}=novoCanvas(o.h||430),x0=58,x1=W-18,y0=34,y1=H-46,gw=(x1-x0)/Math.max(1,labels.length);
+  const tot=labels.map((_,i)=>series.reduce((a,s)=>a+s.values[i],0)),mx=escala(Math.max(...tot,0)*1.08);
+  eixoY(c,x0,x1,y0,y1,mx,v=>String(Math.round(v)).replace('.',','));legenda(c,W,series.map(s=>[s.name,s.cor]));
+  const bw=Math.min(70,gw*.6);
+  labels.forEach((l,i)=>{const cx=x0+gw*(i+.5);let y=y1;series.forEach(s=>{const h=(y1-y0)*s.values[i]/mx;if(h>0){c.fillStyle=s.cor;c.fillRect(cx-bw/2,y-h,bw,h);if(h>16){c.fillStyle='#fff';c.font='11px Arial, sans-serif';c.textAlign='center';c.fillText(String(Math.round(s.values[i])),cx,y-h/2+4)}y-=h}});c.fillStyle='#262626';c.font='bold 12px Arial, sans-serif';c.textAlign='center';c.fillText(String(Math.round(tot[i])),cx,y-6)});
+  rotulos(c,labels,x0,gw,y1,false);
+  return cv.toDataURL('image/png');
+}
+/* barras (%) com linha de meta */
+function imgBarMeta(labels,vals,metaV,o){
+  o=o||{};const {cv,c,W,H}=novoCanvas(o.h||400),x0=58,x1=W-18,y0=34,y1=H-46,gw=(x1-x0)/Math.max(1,labels.length);
+  const mx=escala(Math.max(...vals,metaV||0,0.5)*1.15),f=v=>(Math.round(v*100)/100).toString().replace('.',',')+'%';
+  eixoY(c,x0,x1,y0,y1,mx,f);legenda(c,W,[['% de refugo (Fundição)',COR],...(metaV?[['Meta',COR2,'linha']]:[])]);
+  const bw=Math.min(54,gw*.6);
+  vals.forEach((v,i)=>{const cx=x0+gw*(i+.5),h=(y1-y0)*v/mx;c.fillStyle=COR;c.fillRect(cx-bw/2,y1-h,bw,h);if(v>0){c.fillStyle='#262626';c.textAlign='center';c.fillText(f(v),cx,y1-h-6)}});
+  if(metaV){const y=y1-(y1-y0)*metaV/mx;c.strokeStyle=COR2;c.lineWidth=2.5;c.beginPath();c.moveTo(x0,y);c.lineTo(x1,y);c.stroke()}
+  rotulos(c,labels,x0,gw,y1,false);
+  return cv.toDataURL('image/png');
+}
+const pc1=v=>fmt(v)+'%';
+function lista(L,n,un){return L.slice(0,n).map(e=>fmt(un==='kg'?e.kg:e.qtd)+(un==='kg'?' kg':'')+' '+(un==='kg'?'':'por ')+esc(e.nome)).join('; ')}
+function tMotivo(k,rowsG,prevG,nomeG){
+  const tot=somar(rowsG,r=>r.qtd),L=topo(rowsG,r=>r.mot);
+  if(!tot)return 'Sem refugo registrado neste mês para '+nomeG+'.';
+  const t=L[0];let s=`<p>Em ${mesExt(k)} o motivo que mais refugamos em ${nomeG} foi <b>${esc(t.nome)}</b>, com ${fmt(t.qtd)} peças (${pc1(t.qtd/tot*100)} das ${fmt(tot)} peças do mês).`;
+  const pv=somar(prevG.filter(r=>r.mot===t.nome),r=>r.qtd),pk=addM(k,-1);
+  if(pv>0){const v=pct(t.qtd,pv);s+=` Em relação a ${mesExt(pk)}, esse motivo teve ${v<0?'queda':'aumento'} de ${pc1(Math.abs(v))} (${fmt(pv)} → ${fmt(t.qtd)} peças).`}
+  else if(prevG.length)s+=` Esse motivo não aparecia em ${mesExt(pk)}.`;
+  if(L.length>1)s+=` Na sequência: ${L.slice(1,3).map(e=>esc(e.nome)+' ('+fmt(e.qtd)+')').join(' e ')}.`;
+  if(L.length>=3)s+=` Os 3 principais motivos concentram ${pc1(somar(L.slice(0,3),e=>e.qtd)/tot*100)} do refugo.`;
+  s+='</p>';
+  const ofs=topo(rowsG.filter(r=>r.mot===t.nome&&r.of),r=>r.of+'||'+(r.cod||r.pec),4);
+  if(ofs.length)s+='<p>Principais OFs desse motivo:</p><ul>'+ofs.map(e=>{const [of,it]=e.nome.split('||');return `<li>${fmt(e.qtd)} peças da OF ${esc(of)} do item ${esc(it)}</li>`}).join('')+'</ul>';
+  return s;
+}
+function tCliente(k,rowsG,nomeG){
+  const tot=somar(rowsG,r=>r.qtd),L=topo(rowsG,r=>r.cli);
+  if(!tot)return 'Sem refugo registrado neste mês para '+nomeG+'.';
+  const t=L[0];let s=`<p>O cliente com mais peças refugadas em ${nomeG} foi <b>${esc(t.nome)}</b>, com ${fmt(t.qtd)} peças (${pc1(t.qtd/tot*100)} do total)`;
+  if(L.length>1)s+=`, seguido de ${L.slice(1,3).map(e=>esc(e.nome)+' ('+fmt(e.qtd)+')').join(' e ')}`;
+  s+='.';if(t.qtd/tot>0.3)s+=' Esse cliente concentra grande parte do refugo do mês.';s+='</p>';
+  const mot=topo(rowsG.filter(r=>r.cli===t.nome),r=>r.mot,4);
+  s+=`<p><b>${esc(t.nome)}</b> — principais motivos:</p><ul>`+mot.map(e=>`<li>${fmt(e.qtd)} peças por ${esc(e.nome)}</li>`).join('')+'</ul>';
+  return s;
+}
+function tItem(k,rowsG,nomeG){
+  const tot=somar(rowsG,r=>r.qtd),L=topo(rowsG,r=>(r.cod||r.pec));
+  if(!tot)return 'Sem refugo registrado neste mês para '+nomeG+'.';
+  const t=L[0],desc=(rowsG.find(r=>(r.cod||r.pec)===t.nome)||{}).pec||'';
+  let s=`<p>O item mais refugado em ${nomeG} foi <b>${esc(t.nome)}</b>${desc&&desc!==t.nome?' ('+esc(cut(desc,50))+')':''}, com ${fmt(t.qtd)} peças (${pc1(t.qtd/tot*100)} do total)`;
+  const cl=topo(rowsG.filter(r=>(r.cod||r.pec)===t.nome),r=>r.cli,1)[0];if(cl)s+=`, do cliente ${esc(cl.nome)}`;
+  s+='.';if(L.length>=3)s+=` Os 3 itens mais refugados somam ${pc1(somar(L.slice(0,3),e=>e.qtd)/tot*100)} das peças.`;s+='</p>';
+  const mot=topo(rowsG.filter(r=>(r.cod||r.pec)===t.nome),r=>r.mot,4);
+  s+=`<p>${esc(t.nome)} — por motivo:</p><ul>`+mot.map(e=>`<li>${fmt(e.qtd)} peças por ${esc(e.nome)}</li>`).join('')+'</ul>';
+  return s;
+}
+function relCompleto(k,numTxt){
+  const R=refAll(),D=devAll(),ok=okCusto(),ano=k.slice(0,4),pk=addM(k,-1);
+  const rows=R.filter(r=>r.k===k),prev=R.filter(r=>r.k===pk);
+  const rU=rows.filter(isU),rM=rows.filter(isM),pU=prev.filter(isU),pM=prev.filter(isM);
+  const secs=[];let n=0;
+  const sec=(titulo,img,txt)=>{n++;secs.push(`<div class="sec"><h2>${n}. ${esc(titulo)}</h2>${img?`<img src="${img}" alt="">`:''}<div class="txt">${txt}</div></div>`)};
+  const vazio=(rs)=>!somar(rs,r=>r.qtd);
+  /* 1-3 Usinagem */
+  const gm=(rs,key,lim)=>topo(rs,key,lim);
+  const barQ=(rs,key,lim,rotulo)=>{const L=gm(rs,key,lim||12);return L.length?imgBar(L.map(e=>rotulo?rotulo(e):e.nome),L.map(e=>e.qtd),{f:v=>String(Math.round(v))}):null};
+  sec('Total de peças por Motivo Metal (Usinagem).',barQ(rU,r=>r.mot),tMotivo(k,rU,pU,'usinagem'));
+  sec('Total de peças por cliente Metal (Usinagem).',barQ(rU,r=>r.cli),tCliente(k,rU,'usinagem'));
+  sec('Total de peças por item Metal (Usinagem).',barQ(rU,r=>(r.cod||r.pec),20),tItem(k,rU,'usinagem'));
+  /* 4-6 Metalúrgica */
+  sec('Total de peças por Motivo Metalúrgica (Fundição e Fundição na Usinagem).',barQ(rM,r=>r.mot,25),tMotivo(k,rM,pM,'fundição / fundição na usinagem'));
+  sec('Total de peças por cliente Metalúrgica (Fundição e Fundição na Usinagem).',barQ(rM,r=>r.cli,25),tCliente(k,rM,'fundição / fundição na usinagem'));
+  sec('Total de peças por item Metalúrgica (Fundição e Fundição na Usinagem).',barQ(rM,r=>(r.cod||r.pec),20),tItem(k,rM,'fundição / fundição na usinagem'));
+  /* 7 peso por item (fundição) */
+  const rF=rows.filter(isF),kgF=somar(rF,r=>r.kg),prod=prodDe(k),Lk=topo(rF,r=>(r.cod||r.pec),15,'kg'),rsF=somar(rF,r=>r.rs);
+  let t7='';
+  if(!kgF)t7='<p>Sem refugo de peso registrado na fundição neste mês.</p>';
+  else{
+    t7=`<p>Em ${mesExt(k)} fechamos com <b>${fmt(kgF)} kg</b> de refugo somente na fundição.`;
+    if(prod){const p=kgF/prod*100;t7+=` Pelos indicadores do sistema, fundimos ${fmt(prod)} kg; o refugo representa <b>${pc1(p)}</b> do total fundido, considerando apenas a fundição.`;try{if(meta&&meta.perc)t7+=p<=meta.perc?` Isso está dentro da meta de ${pc1(meta.perc)}.`:` Isso está ${fmt(p-meta.perc)} p.p. acima da meta de ${pc1(meta.perc)}.`}catch(e){}}
+    else t7+=' Não há produção da fundição lançada neste mês, então o percentual não pôde ser calculado.';
+    const pkF=somar(prev.filter(isF),r=>r.kg);if(pkF>0){const v=pct(kgF,pkF);t7+=` Em relação a ${mesExt(pk)} (${fmt(pkF)} kg) houve ${v<0?'redução':'aumento'} de ${pc1(Math.abs(v))}.`}
+    t7+=` O item de maior peso refugado foi ${esc(Lk[0].nome)} (${fmt(Lk[0].kg)} kg). No gráfico estão os ${Lk.length} primeiros da lista.`;
+    if(ok)t7+=` Valor estimado do refugo da fundição: ${RS(rsF)}.`;
+    t7+='</p>';
+  }
+  sec('Total de peso (Kg) por item — Fundição.',Lk.length?imgBar(Lk.map(e=>e.nome),Lk.map(e=>e.kg),{f:v=>String(Math.round(v*100)/100).replace('.',','),leg:'Kg'}):null,t7);
+  /* 8 tabela e gráfico por mês */
+  const mkeys=[];for(let m=1;m<=+k.slice(5,7);m++)mkeys.push(mkKey(ano,m));
+  const plantas=[['FUNDICAO','FUNDICAO',COR],['FUNDICAO NA USINAGEM','FUNDICAO NA USINAGEM',COR3],['USINAGEM','USINAGEM','#ffc000']];
+  const qtdMes=mkeys.map(mk=>plantas.map(([p])=>somar(R.filter(r=>r.k===mk&&r.pl===p),r=>r.qtd)));
+  const totCol=plantas.map((_,j)=>qtdMes.reduce((a,l)=>a+l[j],0));
+  const tab=`<table class="tb"><thead><tr><th>Mês</th>${plantas.map(p=>`<th>${p[0]}</th>`).join('')}<th>Total geral</th></tr></thead><tbody>${mkeys.map((mk,i)=>`<tr><td>${+mk.slice(5,7)}</td>${qtdMes[i].map(v=>`<td class="n">${fmt(v)}</td>`).join('')}<td class="n">${fmt(qtdMes[i].reduce((a,b)=>a+b,0))}</td></tr>`).join('')}<tr class="tt"><td>Total geral</td>${totCol.map(v=>`<td class="n">${fmt(v)}</td>`).join('')}<td class="n">${fmt(totCol.reduce((a,b)=>a+b,0))}</td></tr></tbody></table>`;
+  const totM=qtdMes.map(l=>l.reduce((a,b)=>a+b,0)),i=mkeys.length-1;
+  let t8=`<p>Em ${mesExt(k)} foram ${fmt(totM[i])} peças refugadas no total`;
+  if(i>0){const v=pct(totM[i],totM[i-1]);t8+=`, ${v===null?'':(v<0?'uma queda':'um aumento')+' de '+pc1(Math.abs(v||0))+' em relação a '+mesExt(pk)+' ('+fmt(totM[i-1])+' peças)'}`}
+  t8+='.';const mp=qtdMes[i].indexOf(Math.max(...qtdMes[i]));if(totM[i])t8+=` A planta com maior volume foi ${plantas[mp][0]} (${fmt(qtdMes[i][mp])} peças).`;
+  const mpior=totM.indexOf(Math.max(...totM));t8+=` No acumulado do ano (jan a ${MN[+k.slice(5,7)-1].toLowerCase()}) são ${fmt(totM.reduce((a,b)=>a+b,0))} peças; o mês de maior refugo até aqui foi ${mesExt(mkeys[mpior])} (${fmt(totM[mpior])} peças).</p>`;
+  sec('Tabela e gráfico de total por mês em quantidade.',imgStack(mkeys.map(mk=>MN[+mk.slice(5,7)-1]),plantas.map((p,j)=>({name:p[0],cor:p[2],values:qtdMes.map(l=>l[j])}))),tab+t8);
+  /* 9 % por mês x meta */
+  const percs=mkeys.map(mk=>{const p=prodDe(mk);return p?somar(R.filter(r=>r.k===mk&&isF(r)),r=>r.kg)/p*100:0});
+  let metaP=0;try{metaP=(meta&&meta.perc)||0}catch(e){}
+  const comProd=percs.map((p,j)=>({p,j})).filter(x=>x.p>0);
+  let t9='';
+  if(!comProd.length)t9='<p>Não há produção da fundição lançada nos meses do ano para calcular o percentual.</p>';
+  else{
+    const cur=percs[i],ult=percs.slice(Math.max(0,i-2),i+1).filter(v=>v>0),med=ult.reduce((a,b)=>a+b,0)/(ult.length||1),mel=comProd.reduce((a,x)=>x.p<a.p?x:a,comProd[0]),pio=comProd.reduce((a,x)=>x.p>a.p?x:a,comProd[0]);
+    t9=`<p>O refugo da fundição em ${mesExt(k)} foi de <b>${pc1(cur)}</b> sobre a produção${metaP?(cur<=metaP?`, dentro da meta de ${pc1(metaP)}`:`, ${fmt(cur-metaP)} p.p. acima da meta de ${pc1(metaP)}`):''}. A média dos últimos ${ult.length} mês(es) com produção é de ${pc1(med)}. Melhor mês do ano: ${mesExt(mkeys[mel.j])} (${pc1(mel.p)}); pior: ${mesExt(mkeys[pio.j])} (${pc1(pio.p)}).</p>`;
+  }
+  sec('Percentual de refugo da Fundição por mês (refugo ÷ produção).',comProd.length?imgBarMeta(mkeys.map(mk=>MN[+mk.slice(5,7)-1]),percs,metaP):null,t9);
+  /* 10 causa */
+  const Lc=topo(rows,r=>r.causa,8),totQ=somar(rows,r=>r.qtd);
+  let t10='';
+  if(!totQ)t10='<p>Sem refugo registrado neste mês.</p>';
+  else{
+    t10=`<p>Por causa do motivo, em ${mesExt(k)}: ${Lc.map(e=>`<b>${esc(e.nome)}</b> ${fmt(e.qtd)} peças (${pc1(e.qtd/totQ*100)})`).join('; ')}.`;
+    const nc=Lc.find(e=>e.nome==='Não classificado');if(nc&&nc.qtd/totQ>0.2)t10+=' Há muitos motivos ainda sem causa definida: classifique-os em Cadastro → Motivos para melhorar esta análise.';
+    t10+='</p>';
+  }
+  sec('Total de peças por causa do motivo (Metalúrgica, Erro humano, Falha de maquinário).',Lc.length?imgBar(Lc.map(e=>e.nome),Lc.map(e=>e.qtd),{f:v=>String(Math.round(v))}):null,t10);
+  /* 11 devoluções */
+  const dd=D.filter(r=>r.k===k),dq=somar(dd,r=>r.qtd),dkg=somar(dd,r=>r.kg),dN=new Set(dd.map(r=>r.fq?r.data+'|'+r.fq+'|'+r.cli:r.raw.id)).size;
+  let t11='';const Ld=topo(dd,r=>r.cli,10);
+  if(!dd.length)t11='<p>Nenhuma devolução registrada neste mês.</p>';
+  else{
+    const pdv=D.filter(r=>r.k===pk),pq=somar(pdv,r=>r.qtd);
+    t11=`<p>Em ${mesExt(k)} foram ${fmt(dN)} registro(s) de devolução, com ${fmt(dd.length)} item(ns), ${fmt(dq)} peças e ${fmt(dkg)} kg${ok?' (valor estimado '+RS(somar(dd,r=>r.rs))+')':''}.`;
+    if(pq>0){const v=pct(dq,pq);t11+=` Em relação a ${mesExt(pk)} (${fmt(pq)} peças) houve ${v<0?'queda':'aumento'} de ${pc1(Math.abs(v))}.`}
+    t11+=` O cliente com mais peças devolvidas foi ${esc(Ld[0].nome)} (${fmt(Ld[0].qtd)}).`;
+    const mo=topo(dd,r=>r.mot,1)[0];if(mo&&mo.nome!=='Não informado')t11+=` Principal problema informado: ${esc(mo.nome)} (${fmt(mo.qtd)} peças).`;
+    const pend=dd.filter(r=>r.disp==='Aguardando análise').length;if(pend)t11+=` ${pend} item(ns) ainda aguardam análise/destino.`;
+    t11+='</p>';
+  }
+  sec('Devoluções do mês — peças por cliente.',Ld.length?imgBar(Ld.map(e=>e.nome),Ld.map(e=>e.qtd),{f:v=>String(Math.round(v))}):null,t11);
+  /* 12 valor */
+  if(ok){
+    const Lp=plantas.map(([p])=>({nome:p,rs:somar(rows.filter(r=>r.pl===p),r=>r.rs),kg:somar(rows.filter(r=>r.pl===p),r=>r.kg)})).filter(e=>e.rs>0);
+    const tr=somar(rows,r=>r.rs);
+    let t12=!tr?'<p>Sem valor de refugo no mês.</p>':`<p>O valor estimado do refugo de ${mesExt(k)} é de <b>${RS(tr)}</b> (${fmt(somar(rows,r=>r.kg))} kg). ${Lp.map(e=>esc(e.nome)+': '+RS(e.rs)+' ('+pc1(e.rs/tr*100)+')').join('; ')}.`+(()=>{const a=somar(prev,r=>r.rs);if(a>0){const v=pct(tr,a);return ' Em relação a '+mesExt(pk)+' ('+RS(a)+') houve '+(v<0?'redução':'aumento')+' de '+pc1(Math.abs(v))+'.'}return ''})()+'</p>';
+    sec('Valor estimado do refugo por planta (R$).',Lp.length?imgBar(Lp.map(e=>e.nome),Lp.map(e=>e.rs),{f:v=>String(Math.round(v)),leg:'R$'}):null,t12);
+  }
+  const logo=(document.querySelector('.sidebar .brand img')||{}).src||'';
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  const cab=`<div class="cab"><div class="cl">${logo?`<img src="${logo}" alt="logo">`:''}</div><div class="cm">Relatório mensal refugos: ${mesExt(k)} de ${ano}</div><div class="cr"><b>N° ${esc(numTxt||'—')}</b><span>${hoje}</span></div></div>`;
+  return `<table class="rp"><thead><tr><td>${cab}</td></tr></thead><tbody><tr><td>${secs.join('')}</td></tr></tbody></table>`;
+}
+const REPCSS='.rp{width:100%;border-collapse:collapse;font-family:"Times New Roman",Times,serif;color:#000;font-size:13px}.rp>thead>tr>td,.rp>tbody>tr>td{padding:0;border:0}.cab{display:flex;align-items:flex-start;justify-content:space-between;padding:0 0 8px}.cab .cl img{height:54px}.cab .cm{flex:1;font-weight:bold;font-size:15px;padding:12px 16px 0}.cab .cr{text-align:right}.cab .cr b{display:block;font-size:13px}.cab .cr span{display:inline-block;margin-top:14px;font-weight:bold;border-bottom:1px solid #000}.sec{page-break-inside:avoid;margin:0 0 18px}.sec h2{font-size:13.5px;margin:10px 0 6px;padding-left:4px}.sec img{width:100%;display:block;border:1px solid #d9d9d9}.sec .txt{margin-top:8px;line-height:1.45;text-align:justify}.sec .txt p{margin:0 0 6px}.sec .txt ul{margin:2px 0 6px 20px;padding:0}.tb{border-collapse:collapse;width:100%;margin:4px 0 8px;font-size:12px}.tb th,.tb td{border:1px solid #999;padding:3px 6px}.tb th{background:#ED7D31;color:#fff}.tb td.n{text-align:right}.tb tr.tt td{font-weight:bold;background:#f2f2f2}';
+function gerarPdfRel(k){
+  const html=relCompleto(k,($('gRelNum')||{}).value);
+  const f=document.createElement('iframe');f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';document.body.appendChild(f);
+  const d=f.contentWindow.document;d.open();d.write('<!doctype html><html><head><meta charset="utf-8"><title>Relatório mensal refugos '+k+'</title><style>@page{size:A4;margin:12mm}body{margin:0}'+REPCSS+'</style></head><body>'+html+'</body></html>');d.close();
+  const imgs=[...d.images];
+  Promise.all(imgs.map(im=>im.complete?Promise.resolve():new Promise(r=>{im.onload=im.onerror=r}))).then(()=>setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.print()}catch(e){alert('Não foi possível abrir a impressão.')}setTimeout(()=>f.remove(),60000)},300));
+}
+
 /* ---------- interface ---------- */
 let aba='alertas',built=false,cmpDim='planta';
 function css(){
@@ -266,6 +458,8 @@ function build(){
     <button type="button" class="g-tab" data-g="comp" onclick="gestAba('comp')">⚖ Comparativo</button>
     <button type="button" class="g-tab" data-g="cruz" onclick="gestAba('cruz')">🔗 Refugo × Devolução</button>
     <button type="button" class="g-tab" data-g="rel" onclick="gestAba('rel')">📑 Relatório mensal</button>
+    <button type="button" class="g-tab" data-g="analise" onclick="gestAba('analise')">⌕ Análises</button>
+    <button type="button" class="g-tab" data-g="relOld" onclick="gestAba('relOld')">▤ Relatórios</button>
   </div>
   <div id="gAlertas">
     <div class="panel"><div class="g-bar"><strong>Mês analisado</strong><input type="month" id="gAlMes"><button class="btn secondary" type="button" onclick="gestAlMesAtual()">Mês atual</button></div>
@@ -294,9 +488,13 @@ function build(){
   </div>
   <div id="gRel" style="display:none">
     <div class="panel"><div class="g-bar"><strong>Mês do relatório</strong><input type="month" id="gRelMes">
-      <button class="btn primary" type="button" onclick="gestPdf()">📄 Gerar PDF</button><button class="btn primary" type="button" onclick="gestXlsx()">📊 Baixar Excel (.xlsx)</button></div>
-      <div class="hint">O PDF abre a janela de impressão (escolha “Salvar como PDF”). Os valores em R$ só entram com os custos liberados pela senha.</div>
+      <label>Nº do relatório <input id="gRelNum" placeholder="Ex.: 13/26" style="width:90px"></label>
+      <button class="btn primary" type="button" onclick="gestPdf()">📄 Gerar PDF</button><button class="btn secondary" type="button" onclick="gestXlsx()">📊 Dados em Excel (.xlsx)</button></div>
+      <div class="hint">Relatório no formato mensal da qualidade: gráficos de peças por motivo, cliente e item (Usinagem e Metalúrgica), peso, evolução mensal, causa e devoluções, cada um com uma análise do período. O PDF abre a janela de impressão (escolha “Salvar como PDF”). Valores em R$ só entram com os custos liberados.</div>
       <div id="gRelPrev" class="g-prev"></div></div>
+  </div>
+  <div id="gAnalise" style="display:none"><div id="gAnalisePane"></div></div>
+  <div id="gRelOld" style="display:none"><div id="gRelOldPane"></div></div>
   </div>`;
   const mAtual=hojeK();
   ['gAlMes','gCmpA','gCrB','gRelMes'].forEach(id=>$(id).value=mAtual);
@@ -306,6 +504,10 @@ function build(){
   ['gCmpA','gCmpB','gCmpDim'].forEach(id=>$(id).addEventListener('change',compUi));
   ['gCrA','gCrB','gCrSo'].forEach(id=>$(id).addEventListener('change',cruzUi));
   $('gRelMes').addEventListener('change',relUi);
+  const mover=(id,pane)=>{const s=document.getElementById(id),p=$(pane);if(s&&p){s.classList.remove('page','active');p.appendChild(s)}};
+  mover('analise','gAnalisePane');mover('relatorio','gRelOldPane');
+  try{const n=localStorage.getItem('controle_refugos_2026_gestao_relnum');if(n)$('gRelNum').value=n}catch(e){}
+  $('gRelNum').addEventListener('change',()=>{try{localStorage.setItem('controle_refugos_2026_gestao_relnum',$('gRelNum').value)}catch(e){}relUi()});
   built=true;
 }
 function alertasUi(){
@@ -326,7 +528,7 @@ function compUi(){
   const a=$('gCmpA').value,b=$('gCmpB').value;if(!a||!b)return;
   const R=refAll(),D=devAll(),ma=metricasMes(a,R,D),mb=metricasMes(b,R,D),ok=okCusto();
   $('gCmpTA').textContent=lblM(a);$('gCmpTB').textContent=lblM(b);
-  const linhas=[['Produção da Fundição (kg)','prod',false],['Refugo (kg)','kg',true],['% de refugo','perc',true]];
+  const linhas=[['Produção da Fundição (kg)','prod',false],['Refugo total (kg)','kg',true],['Refugo da Fundição (kg)','kgF',true],['% de refugo da Fundição','perc',true]];
   if(ok)linhas.push(['Valor do refugo (R$)','rs',true]);
   linhas.push(['Devoluções — registros','dN',true],['Devoluções — peças','dQtd',true],['Devoluções — kg','dKg',true]);
   if(ok)linhas.push(['Devoluções — valor (R$)','dRs',true]);
@@ -358,23 +560,23 @@ function cruzUi(){
   $('gCrHead').innerHTML='<tr><th>Código</th><th>Peça</th><th>Cliente</th><th>Refugo (kg)</th><th>Devol. (peças)</th><th>Devol. (kg)</th>'+(ok?'<th>Refugo (R$)</th><th>Devol. (R$)</th><th>Custo total (R$)</th>':'')+'</tr>';
   $('gCrBody').innerHTML=L.length?L.slice(0,200).map(x=>`<tr><td>${esc(x.cod)}</td><td style="white-space:normal;min-width:160px">${esc(x.pec)}</td><td>${esc(x.cli)}</td><td>${fmt(x.rKg)}</td><td>${fmt(x.dQtd)}</td><td>${fmt(x.dKg)}</td>${ok?`<td>${RS(x.rRs)}</td><td>${RS(x.dRs)}</td><td><b>${RS(x.rRs+x.dRs)}</b></td>`:''}</tr>`).join(''):`<tr><td colspan="9" class="small" style="text-align:center">Nenhuma peça encontrada no período.</td></tr>`;
 }
-function relUi(){const k=$('gRelMes').value||hojeK();$('gRelPrev').innerHTML=relHtml(relatorio(k))}
-window.gestPdf=function(){gerarPdf($('gRelMes').value||hojeK())};
+function relUi(){const k=$('gRelMes').value||hojeK();try{$('gRelPrev').innerHTML='<style>'+REPCSS+'</style>'+relCompleto(k,$('gRelNum').value)}catch(e){console.error(e);$('gRelPrev').textContent='Erro ao montar o relatório: '+e.message}}
+window.gestPdf=function(){try{localStorage.setItem('controle_refugos_2026_gestao_relnum',$('gRelNum').value)}catch(e){}gerarPdfRel($('gRelMes').value||hojeK())};
 window.gestXlsx=function(){gerarXlsx($('gRelMes').value||hojeK())};
 function render(){
-  if(aba==='alertas')alertasUi();else if(aba==='comp')compUi();else if(aba==='cruz')cruzUi();else relUi();
+  if(aba==='alertas')alertasUi();else if(aba==='comp')compUi();else if(aba==='cruz')cruzUi();else if(aba==='rel')relUi();else{try{analysis()}catch(e){console.error(e)}}
 }
 window.gestAba=function(a){
   if(!built)return;aba=a;
   document.querySelectorAll('#gestRoot .g-tab').forEach(b=>b.classList.toggle('on',b.dataset.g===a));
   $('gAlertas').style.display=a==='alertas'?'':'none';$('gComp').style.display=a==='comp'?'':'none';
-  $('gCruz').style.display=a==='cruz'?'':'none';$('gRel').style.display=a==='rel'?'':'none';
+  $('gCruz').style.display=a==='cruz'?'':'none';$('gRel').style.display=a==='rel'?'':'none';$('gAnalise').style.display=a==='analise'?'':'none';$('gRelOld').style.display=a==='relOld'?'':'none';
   render();
 };
 window.gestInit=function(){if(!built)build();gestAba(aba);badge()};
 window.gestRefresh=function(){badge();const s=$('gestao');if(built&&s&&s.classList.contains('active'))render()};
 /* para testes */
-window.__gestao={calcAlertas,relatorio,cruzar,xlsxBlob,relSheets,metricasMes,crc32};
+window.__gestao={relCompleto,REPCSS,calcAlertas,relatorio,cruzar,xlsxBlob,relSheets,metricasMes,crc32};
 css();
 setTimeout(badge,3000);
 window.addEventListener('resize',()=>{if(built&&(aba==='comp')&&$('gestao')?.classList.contains('active'))compUi()});
