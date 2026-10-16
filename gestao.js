@@ -344,12 +344,28 @@ function tItem(k,rowsG,nomeG){
   s+=`<p>${esc(t.nome)} — por motivo:</p><ul>`+mot.map(e=>`<li>${fmt(e.qtd)} peças por ${esc(e.nome)}</li>`).join('')+'</ul>';
   return s;
 }
-function relCompleto(k,numTxt){
+const EDK='controle_refugos_2026_gestao_reltxt';
+function lerEdits(){try{const o=JSON.parse(localStorage.getItem(EDK)||'{}');return o&&typeof o==='object'?o:{}}catch(e){return {}}}
+function gravarEdit(k,n,html){const o=lerEdits();o[k]=o[k]||{};if(html===null)delete o[k][n];else o[k][n]=html;try{localStorage.setItem(EDK,JSON.stringify(o))}catch(e){}}
+function limparHtml(h){
+  try{
+    const d=new DOMParser().parseFromString('<body>'+h+'</body>','text/html');
+    d.body.querySelectorAll('script,style,iframe,object,embed,link,meta,form,input,button').forEach(x=>x.remove());
+    d.body.querySelectorAll('*').forEach(x=>{[...x.attributes].forEach(a=>{if(/^on/i.test(a.name)||/^\s*javascript:/i.test(a.value)||a.name==='style'||a.name==='contenteditable')x.removeAttribute(a.name)})});
+    return d.body.innerHTML;
+  }catch(e){return ''}
+}
+function relCompleto(k,numTxt,opt){
+  opt=opt||{};const EDIT=!!opt.edit,EDS=lerEdits()[k]||{};
   const R=refAll(),D=devAll(),ok=okCusto(),ano=k.slice(0,4),pk=addM(k,-1);
   const rows=R.filter(r=>r.k===k),prev=R.filter(r=>r.k===pk);
   const rU=rows.filter(isU),rM=rows.filter(isM),pU=prev.filter(isU),pM=prev.filter(isM);
   const secs=[];let n=0;
-  const sec=(titulo,img,txt)=>{n++;secs.push(`<div class="sec"><h2>${n}. ${esc(titulo)}</h2>${img?`<img src="${img}" alt="">`:''}<div class="txt">${txt}</div></div>`)};
+  const sec=(titulo,img,txt,pre)=>{
+    n++;const ed=EDS[n]!==undefined?limparHtml(EDS[n]):undefined,body=ed!==undefined?ed:txt;
+    const barra=EDIT?`<div class="ed-bar no-print">${ed!==undefined?'✎ texto editado por você — ':'✎ clique no texto para editar — '}${ed!==undefined?`<a href="#" data-restore="${n}">↺ restaurar texto automático</a>`:'a análise acima foi gerada automaticamente'}</div>`:'';
+    secs.push(`<div class="sec"><h2>${n}. ${esc(titulo)}</h2>${img?`<img src="${img}" alt="">`:''}${pre||''}<div class="txt"${EDIT?` contenteditable="true" spellcheck="true" data-sec="${n}"`:''}>${body}</div>${barra}</div>`);
+  };
   const vazio=(rs)=>!somar(rs,r=>r.qtd);
   /* 1-3 Usinagem */
   const gm=(rs,key,lim)=>topo(rs,key,lim);
@@ -386,7 +402,7 @@ function relCompleto(k,numTxt){
   if(i>0){const v=pct(totM[i],totM[i-1]);t8+=`, ${v===null?'':(v<0?'uma queda':'um aumento')+' de '+pc1(Math.abs(v||0))+' em relação a '+mesExt(pk)+' ('+fmt(totM[i-1])+' peças)'}`}
   t8+='.';const mp=qtdMes[i].indexOf(Math.max(...qtdMes[i]));if(totM[i])t8+=` A planta com maior volume foi ${plantas[mp][0]} (${fmt(qtdMes[i][mp])} peças).`;
   const mpior=totM.indexOf(Math.max(...totM));t8+=` No acumulado do ano (jan a ${MN[+k.slice(5,7)-1].toLowerCase()}) são ${fmt(totM.reduce((a,b)=>a+b,0))} peças; o mês de maior refugo até aqui foi ${mesExt(mkeys[mpior])} (${fmt(totM[mpior])} peças).</p>`;
-  sec('Tabela e gráfico de total por mês em quantidade.',imgStack(mkeys.map(mk=>MN[+mk.slice(5,7)-1]),plantas.map((p,j)=>({name:p[0],cor:p[2],values:qtdMes.map(l=>l[j])}))),tab+t8);
+  sec('Tabela e gráfico de total por mês em quantidade.',imgStack(mkeys.map(mk=>MN[+mk.slice(5,7)-1]),plantas.map((p,j)=>({name:p[0],cor:p[2],values:qtdMes.map(l=>l[j])}))),t8,tab);
   /* 9 % por mês x meta */
   const percs=mkeys.map(mk=>{const p=prodDe(mk);return p?somar(R.filter(r=>r.k===mk&&isF(r)),r=>r.kg)/p*100:0});
   let metaP=0;try{metaP=(meta&&meta.perc)||0}catch(e){}
@@ -434,9 +450,9 @@ function relCompleto(k,numTxt){
   const cab=`<div class="cab"><div class="cl">${logo?`<img src="${logo}" alt="logo">`:''}</div><div class="cm">Relatório mensal refugos: ${mesExt(k)} de ${ano}</div><div class="cr"><b>N° ${esc(numTxt||'—')}</b><span>${hoje}</span></div></div>`;
   return `<table class="rp"><thead><tr><td>${cab}</td></tr></thead><tbody><tr><td>${secs.join('')}</td></tr></tbody></table>`;
 }
-const REPCSS='.rp{width:100%;border-collapse:collapse;font-family:"Times New Roman",Times,serif;color:#000;font-size:13px}.rp>thead>tr>td,.rp>tbody>tr>td{padding:0;border:0}.cab{display:flex;align-items:flex-start;justify-content:space-between;padding:0 0 8px}.cab .cl img{height:54px}.cab .cm{flex:1;font-weight:bold;font-size:15px;padding:12px 16px 0}.cab .cr{text-align:right}.cab .cr b{display:block;font-size:13px}.cab .cr span{display:inline-block;margin-top:14px;font-weight:bold;border-bottom:1px solid #000}.sec{page-break-inside:avoid;margin:0 0 18px}.sec h2{font-size:13.5px;margin:10px 0 6px;padding-left:4px}.sec img{width:100%;display:block;border:1px solid #d9d9d9}.sec .txt{margin-top:8px;line-height:1.45;text-align:justify}.sec .txt p{margin:0 0 6px}.sec .txt ul{margin:2px 0 6px 20px;padding:0}.tb{border-collapse:collapse;width:100%;margin:4px 0 8px;font-size:12px}.tb th,.tb td{border:1px solid #999;padding:3px 6px}.tb th{background:#ED7D31;color:#fff}.tb td.n{text-align:right}.tb tr.tt td{font-weight:bold;background:#f2f2f2}';
+const REPCSS='.sec .txt[contenteditable]{outline:1px dashed #c9d1d9;border-radius:6px;padding:4px;min-height:24px}.sec .txt[contenteditable]:focus{outline:2px solid #ED7D31;background:#fffaf5}.ed-bar{font:11px Arial,sans-serif;color:#667;margin-top:4px}.ed-bar a{color:#1f5f99;cursor:pointer}@media print{.no-print{display:none!important}}.rp{width:100%;border-collapse:collapse;font-family:"Times New Roman",Times,serif;color:#000;font-size:13px}.rp>thead>tr>td,.rp>tbody>tr>td{padding:0;border:0}.cab{display:flex;align-items:flex-start;justify-content:space-between;padding:0 0 8px}.cab .cl img{height:54px}.cab .cm{flex:1;font-weight:bold;font-size:15px;padding:12px 16px 0}.cab .cr{text-align:right}.cab .cr b{display:block;font-size:13px}.cab .cr span{display:inline-block;margin-top:14px;font-weight:bold;border-bottom:1px solid #000}.sec{page-break-inside:avoid;margin:0 0 18px}.sec h2{font-size:13.5px;margin:10px 0 6px;padding-left:4px}.sec img{width:100%;display:block;border:1px solid #d9d9d9}.sec .txt{margin-top:8px;line-height:1.45;text-align:justify}.sec .txt p{margin:0 0 6px}.sec .txt ul{margin:2px 0 6px 20px;padding:0}.tb{border-collapse:collapse;width:100%;margin:4px 0 8px;font-size:12px}.tb th,.tb td{border:1px solid #999;padding:3px 6px}.tb th{background:#ED7D31;color:#fff}.tb td.n{text-align:right}.tb tr.tt td{font-weight:bold;background:#f2f2f2}';
 function gerarPdfRel(k){
-  const html=relCompleto(k,($('gRelNum')||{}).value);
+  const html=relCompleto(k,($('gRelNum')||{}).value,{edit:false});
   const f=document.createElement('iframe');f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';document.body.appendChild(f);
   const d=f.contentWindow.document;d.open();d.write('<!doctype html><html><head><meta charset="utf-8"><title>Relatório mensal refugos '+k+'</title><style>@page{size:A4;margin:12mm}body{margin:0}'+REPCSS+'</style></head><body>'+html+'</body></html>');d.close();
   const imgs=[...d.images];
@@ -490,7 +506,7 @@ function build(){
     <div class="panel"><div class="g-bar"><strong>Mês do relatório</strong><input type="month" id="gRelMes">
       <label>Nº do relatório <input id="gRelNum" placeholder="Ex.: 13/26" style="width:90px"></label>
       <button class="btn primary" type="button" onclick="gestPdf()">📄 Gerar PDF</button><button class="btn secondary" type="button" onclick="gestXlsx()">📊 Dados em Excel (.xlsx)</button></div>
-      <div class="hint">Relatório no formato mensal da qualidade: gráficos de peças por motivo, cliente e item (Usinagem e Metalúrgica), peso, evolução mensal, causa e devoluções, cada um com uma análise do período. O PDF abre a janela de impressão (escolha “Salvar como PDF”). Valores em R$ só entram com os custos liberados.</div>
+      <div class="hint"><b>Os textos de análise podem ser editados:</b> clique em qualquer texto abaixo, ajuste ou acrescente o seu contexto (fica salvo por mês e entra no PDF). Relatório no formato mensal da qualidade: gráficos de peças por motivo, cliente e item (Usinagem e Metalúrgica), peso, evolução mensal, causa e devoluções, cada um com uma análise do período. O PDF abre a janela de impressão (escolha “Salvar como PDF”). Valores em R$ só entram com os custos liberados.</div>
       <div id="gRelPrev" class="g-prev"></div></div>
   </div>
   <div id="gAnalise" style="display:none"><div id="gAnalisePane"></div></div>
@@ -560,7 +576,25 @@ function cruzUi(){
   $('gCrHead').innerHTML='<tr><th>Código</th><th>Peça</th><th>Cliente</th><th>Refugo (kg)</th><th>Devol. (peças)</th><th>Devol. (kg)</th>'+(ok?'<th>Refugo (R$)</th><th>Devol. (R$)</th><th>Custo total (R$)</th>':'')+'</tr>';
   $('gCrBody').innerHTML=L.length?L.slice(0,200).map(x=>`<tr><td>${esc(x.cod)}</td><td style="white-space:normal;min-width:160px">${esc(x.pec)}</td><td>${esc(x.cli)}</td><td>${fmt(x.rKg)}</td><td>${fmt(x.dQtd)}</td><td>${fmt(x.dKg)}</td>${ok?`<td>${RS(x.rRs)}</td><td>${RS(x.dRs)}</td><td><b>${RS(x.rRs+x.dRs)}</b></td>`:''}</tr>`).join(''):`<tr><td colspan="9" class="small" style="text-align:center">Nenhuma peça encontrada no período.</td></tr>`;
 }
-function relUi(){const k=$('gRelMes').value||hojeK();try{$('gRelPrev').innerHTML='<style>'+REPCSS+'</style>'+relCompleto(k,$('gRelNum').value)}catch(e){console.error(e);$('gRelPrev').textContent='Erro ao montar o relatório: '+e.message}}
+function relUi(){
+  const k=$('gRelMes').value||hojeK(),box=$('gRelPrev');
+  try{box.innerHTML='<style>'+REPCSS+'</style>'+relCompleto(k,$('gRelNum').value,{edit:true})}catch(e){console.error(e);box.textContent='Erro ao montar o relatório: '+e.message;return}
+  box.querySelectorAll('.txt[data-sec]').forEach(t=>{
+    t.addEventListener('input',()=>{t._d=1});
+    t.addEventListener('blur',()=>{if(!t._d)return;t._d=0;const h=limparHtml(t.innerHTML);gravarEdit(k,t.dataset.sec,h);relUiSuave(k)});
+  });
+  box.querySelectorAll('[data-restore]').forEach(a=>a.addEventListener('click',ev=>{ev.preventDefault();if(!confirm('Voltar ao texto automático desta seção? Sua edição será descartada.'))return;gravarEdit(k,a.dataset.restore,null);relUi()}));
+}
+/* após editar, só atualiza a barra da seção (sem refazer os gráficos nem perder o foco) */
+function relUiSuave(k){
+  const box=$('gRelPrev');if(!box)return;
+  box.querySelectorAll('.sec').forEach(s=>{
+    const t=s.querySelector('.txt[data-sec]'),b=s.querySelector('.ed-bar');if(!t||!b)return;
+    const ed=(lerEdits()[k]||{})[t.dataset.sec]!==undefined;
+    b.innerHTML=(ed?'✎ texto editado por você — <a href="#" data-restore="'+t.dataset.sec+'">↺ restaurar texto automático</a>':'✎ clique no texto para editar — a análise acima foi gerada automaticamente');
+    const a=b.querySelector('[data-restore]');if(a)a.addEventListener('click',ev=>{ev.preventDefault();if(!confirm('Voltar ao texto automático desta seção? Sua edição será descartada.'))return;gravarEdit(k,a.dataset.restore,null);relUi()});
+  });
+}
 window.gestPdf=function(){try{localStorage.setItem('controle_refugos_2026_gestao_relnum',$('gRelNum').value)}catch(e){}gerarPdfRel($('gRelMes').value||hojeK())};
 window.gestXlsx=function(){gerarXlsx($('gRelMes').value||hojeK())};
 function render(){
@@ -575,8 +609,67 @@ window.gestAba=function(a){
 };
 window.gestInit=function(){if(!built)build();gestAba(aba);badge()};
 window.gestRefresh=function(){badge();const s=$('gestao');if(built&&s&&s.classList.contains('active'))render()};
+
+/* ---------- classificar motivos por causa (Cadastro → Motivos) ---------- */
+const CAUSAS=['Metalúrgica','Erro humano','Falha de maquinário'];
+function sugerirCausa(desc){
+  const t=String(desc||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+  const tem=a=>a.some(w=>t.includes(w));
+  if(tem(['PREPARACAO','PROGRAMACAO','MONTAGEM','ATENCAO','IDENTIFICACAO','FALHA NO CONTROLE','OPERADOR','ERRO','ESQUEC','REBARBACAO','ACABAMENTO','MANUSEIO','ARMAZENAMENTO','EMBALAGEM','AJUSTE']))return 'Erro humano';
+  if(tem(['QUEBRA','FERRAMENT','DISPOSITIVO','MAQUINA','VIBR','BEDAME','INSERTO','MANUTENCAO','DESGASTE','EQUIPAMENTO','FORNO','PANE','ROLAMENTO','CNC','HIDRAUL']))return 'Falha de maquinário';
+  if(tem(['AREIA','RECHUPE','POROSIDADE','VAZAMENTO','JUNTA FRIA','TRINCA','DUREZA','CARBONETO','INCLUSAO','CORRIDA','COMPOSICAO','GAS','CONTRACAO','MACHARIA','METAL']))return 'Metalúrgica';
+  return '';
+}
+function usoMotivos(){
+  const ms=(cadastros&&Array.isArray(cadastros.motivos))?cadastros.motivos:[],byC=new Map(),byD=new Map();
+  ms.forEach((x,i)=>{const c=String(x.codigo??'').trim().replace(/^0+(?=\d)/,'');if(c&&!byC.has(c))byC.set(c,i);const d=normalizeText(x.descricao);if(d&&!byD.has(d))byD.set(d,i)});
+  const uso=ms.map(()=>({n:0,kg:0}));
+  (Array.isArray(data)?data:[]).forEach(r=>{
+    const mc=String(r['MOTIVO DO REFUGO']??r.motivo??'').trim().match(/^\d+/);
+    let i=mc?byC.get(mc[0].replace(/^0+(?=\d)/,'')):undefined;
+    if(i===undefined){const d=normalizeText(r['DESCRIÇÃO DO MOTIVO']??r.descricaoMotivo??'');if(d)i=byD.get(d)}
+    if(i!==undefined){uso[i].n++;uso[i].kg+=kg(r)}
+  });
+  return uso;
+}
+function mcFecha(){const m=$('mcModal');if(m)m.remove()}
+window.motCausaAbrir=function(){
+  mcFecha();
+  const ms=cadastros.motivos||[],uso=usoMotivos();
+  const m=document.createElement('div');m.id='mcModal';
+  m.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px';
+  m.innerHTML=`<div style="background:var(--card,#fff);color:var(--text,#222);border-radius:14px;max-width:980px;width:100%;max-height:92vh;display:flex;flex-direction:column;padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px">🏷 Classificar motivos por causa</b><button type="button" class="btn secondary" id="mcX">Fechar</button></div>
+    <div class="small" id="mcResumo" style="margin:6px 0"></div>
+    <div class="g-bar"><label><input type="checkbox" id="mcSo" checked> só motivos sem causa</label><input id="mcBusca" placeholder="Buscar código ou descrição…" style="min-width:200px">
+      <button type="button" class="btn secondary" id="mcSug">💡 Sugerir pelas palavras da descrição</button><button type="button" class="btn primary" id="mcSalvar">✓ Salvar classificações</button></div>
+    <div class="small">As sugestões são apenas um ponto de partida (não salvam sozinhas): confira cada linha antes de salvar. A lista vem ordenada pelo maior peso de refugo.</div>
+    <div style="overflow:auto;margin-top:8px"><table style="width:100%"><thead><tr><th>Código</th><th>Descrição</th><th>Planta</th><th>Lanç.</th><th>Kg refugo</th><th>Causa</th></tr></thead><tbody id="mcBody"></tbody></table></div></div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{if(e.target===m)mcFecha()});$('mcX').onclick=mcFecha;
+  const ordem=ms.map((x,i)=>i).sort((a,b)=>uso[b].kg-uso[a].kg);
+  const pend={};
+  const desenha=()=>{
+    const so=$('mcSo').checked,q=normalizeText($('mcBusca').value);
+    const itens=ordem.filter(i=>{const x=ms[i];if(so&&x.causa&&pend[i]===undefined)return false;if(so&&pend[i]===undefined&&x.causa)return false;return !q||normalizeText((x.codigo||'')+' '+(x.descricao||'')).includes(q)});
+    $('mcBody').innerHTML=itens.length?itens.map(i=>{const x=ms[i],v=pend[i]!==undefined?pend[i]:(x.causa||'');return `<tr><td>${esc(x.codigo||'')}</td><td style="white-space:normal">${esc(x.descricao||'')}</td><td>${esc(x.planta||'')}</td><td>${fmt(uso[i].n)}</td><td>${fmt(uso[i].kg)}</td><td><select data-i="${i}"><option value="">— selecionar —</option>${CAUSAS.map(c=>`<option${v===c?' selected':''}>${c}</option>`).join('')}</select></td></tr>`}).join(''):'<tr><td colspan="6" class="small" style="text-align:center">Nenhum motivo para mostrar.</td></tr>';
+    $('mcBody').querySelectorAll('select').forEach(s=>s.addEventListener('change',()=>{pend[s.dataset.i]=s.value}));
+    const sem=ms.map((x,i)=>i).filter(i=>!(pend[i]!==undefined?pend[i]:ms[i].causa)),kgT=uso.reduce((a,u)=>a+u.kg,0),kgS=sem.reduce((a,i)=>a+uso[i].kg,0);
+    $('mcResumo').innerHTML=`<b>${sem.length}</b> de ${ms.length} motivos ainda sem causa${kgT?` — representam <b>${fmt(kgS/kgT*100)}%</b> do refugo em kg`:''}.`;
+  };
+  $('mcSo').onchange=desenha;$('mcBusca').oninput=desenha;
+  $('mcSug').onclick=()=>{let n=0;ms.forEach((x,i)=>{if(x.causa||pend[i]!==undefined)return;const s=sugerirCausa(x.descricao);if(s){pend[i]=s;n++}});desenha();alert(n+' sugestão(ões) preenchida(s). Revise e clique em "Salvar classificações".')};
+  $('mcSalvar').onclick=()=>{
+    let n=0;Object.keys(pend).forEach(i=>{const x=ms[i];if(!x)return;const v=pend[i];if(v){if(x.causa!==v){x.causa=v;n++}}else if(x.causa){delete x.causa;n++}});
+    __causaVer++;saveCad();try{dashboardDirty=true;dashboardQtdDirty=true}catch(e){}
+    try{renderCadastro()}catch(e){}try{window.gestRefresh&&window.gestRefresh()}catch(e){}
+    mcFecha();alert(n+' motivo(s) atualizado(s).');
+  };
+  desenha();
+};
+
 /* para testes */
-window.__gestao={relCompleto,REPCSS,calcAlertas,relatorio,cruzar,xlsxBlob,relSheets,metricasMes,crc32};
+window.__gestao={sugerirCausa,relCompleto,REPCSS,calcAlertas,relatorio,cruzar,xlsxBlob,relSheets,metricasMes,crc32};
 css();
 setTimeout(badge,3000);
 window.addEventListener('resize',()=>{if(built&&(aba==='comp')&&$('gestao')?.classList.contains('active'))compUi()});
