@@ -2280,7 +2280,7 @@ function loadingLabel(page){
   })[page]||'Carregando informações...';
 }
 
-function navigate(page){if(page==='devolucoes')setTimeout(function(){window.devInit&&window.devInit()},0);if(page==='auditoria')setTimeout(function(){window.audInit&&window.audInit()},0);if(page==='retrabalho')setTimeout(function(){window.rtInit&&window.rtInit()},0);if(page==='reuniao')setTimeout(function(){window.reuniaoInit&&window.reuniaoInit()},0);
+function navigate(page){if(page==='gestao')setTimeout(function(){window.gestInit&&window.gestInit()},0);if(page==='devolucoes')setTimeout(function(){window.devInit&&window.devInit()},0);if(page==='auditoria')setTimeout(function(){window.audInit&&window.audInit()},0);if(page==='retrabalho')setTimeout(function(){window.rtInit&&window.rtInit()},0);if(page==='reuniao')setTimeout(function(){window.reuniaoInit&&window.reuniaoInit()},0);
  if(page==='cadastro' && !cadastroAccessAllowed()){openSecurityModal('cadastro',()=>navigate('cadastro'));closeMobileMenu();return;}
  const btns=document.querySelectorAll('.tab');
  btns.forEach(x=>x.classList.toggle('active',x.dataset.page===page));

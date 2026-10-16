@@ -26,7 +26,7 @@ const brDate=iso=>String(iso||'').split('-').reverse().join('/');
 /* ---------- estilo ---------- */
 (function(){
   const st=document.createElement('style');
-  st.textContent='#dvBalao{position:fixed;z-index:9999;background:var(--card,#fff);color:var(--text,#222);border:1px solid var(--border,#ddd);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:12px 14px;max-height:60vh;overflow:auto;font-size:12px}#dvBalao .dvt{font-weight:800;font-size:14px;padding-right:22px}#dvBalao .dvs{color:var(--muted,#667);margin:2px 0 8px}#dvBalao table{width:100%;border-collapse:collapse}#dvBalao th,#dvBalao td{text-align:left;padding:4px 6px;border-top:1px solid var(--border,#ddd);white-space:normal}#dvBalao th:nth-child(n+3),#dvBalao td:nth-child(n+3){text-align:right;white-space:nowrap}#dvBalao .dvx{position:absolute;top:6px;right:8px;border:0;background:none;font-size:20px;line-height:1;cursor:pointer;color:var(--muted,#667)}.dev-h{margin:18px 0 8px;font-size:15px}.dv-item{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px;background:var(--card)}.dv-ih{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.dev-sec{margin:22px 0 10px;font-size:18px;padding-left:10px;border-left:5px solid var(--orange)}.dvbox{position:relative;height:320px}.dvbox canvas{width:100%;height:100%;display:block}.dev-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.dev-tab{border:1px solid var(--border);background:var(--card);color:var(--text);padding:9px 14px;border-radius:10px;font-weight:800;cursor:pointer;font-size:13px}.dev-tab.on{background:var(--orange);color:#fff;border-color:var(--orange)}.dev-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}.dev-filters label{font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px}.dev-info{font-size:12px;color:var(--muted);margin:2px 0 10px}.dev-disp{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(255,90,24,.12);color:var(--orange);white-space:nowrap}.dev-disp.ok{background:#eaf7f1;color:#157348}.dev-disp.no{background:#eef2f6;color:#536273}';
+  st.textContent='#dvBalao{position:fixed;z-index:9999;background:var(--card,#fff);color:var(--text,#222);border:1px solid var(--border,#ddd);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:12px 14px;max-height:60vh;overflow:auto;font-size:12px}#dvBalao .dvt{font-weight:800;font-size:14px;padding-right:22px}#dvBalao .dvs{color:var(--muted,#667);margin:2px 0 8px}#dvBalao table{width:100%;border-collapse:collapse}#dvBalao th,#dvBalao td{text-align:left;padding:4px 6px;border-top:1px solid var(--border,#ddd);white-space:normal}#dvBalao th:nth-child(n+3),#dvBalao td:nth-child(n+3){text-align:right;white-space:nowrap}#dvBalao .dvx{position:absolute;top:6px;right:8px;border:0;background:none;font-size:20px;line-height:1;cursor:pointer;color:var(--muted,#667)}.dv-prev{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.dv-prev .th{position:relative}.dv-prev img{height:84px;border-radius:8px;border:1px solid var(--border)}.dv-prev button{position:absolute;top:-6px;right:-6px;border:0;border-radius:50%;width:20px;height:20px;background:#d32f2f;color:#fff;cursor:pointer;line-height:1}#dvFotoModal{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:14px}#dvFotoModal .box{background:var(--card,#fff);color:var(--text,#222);border-radius:14px;max-width:900px;width:100%;max-height:90vh;overflow:auto;padding:16px}#dvFotoModal .gal{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}#dvFotoModal .gal .th{position:relative}#dvFotoModal .gal img{height:150px;border-radius:10px;border:1px solid var(--border);cursor:zoom-in}#dvFotoModal .gal button{position:absolute;top:4px;right:4px}.dev-h{margin:18px 0 8px;font-size:15px}.dv-item{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px;background:var(--card)}.dv-ih{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.dev-sec{margin:22px 0 10px;font-size:18px;padding-left:10px;border-left:5px solid var(--orange)}.dvbox{position:relative;height:320px}.dvbox canvas{width:100%;height:100%;display:block}.dev-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.dev-tab{border:1px solid var(--border);background:var(--card);color:var(--text);padding:9px 14px;border-radius:10px;font-weight:800;cursor:pointer;font-size:13px}.dev-tab.on{background:var(--orange);color:#fff;border-color:var(--orange)}.dev-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}.dev-filters label{font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px}.dev-info{font-size:12px;color:var(--muted);margin:2px 0 10px}.dev-disp{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(255,90,24,.12);color:var(--orange);white-space:nowrap}.dev-disp.ok{background:#eaf7f1;color:#157348}.dev-disp.no{background:#eef2f6;color:#536273}';
   document.head.appendChild(st);
 })();
 
@@ -72,6 +72,7 @@ window.devListen=function(){
   if(!fbOk())return;
   try{if(localStorage.getItem(FIREBASE_SYNC_KEY)==='false')return}catch(e){}
   try{unsub=col().onSnapshot(onSnap,e=>console.error('Escuta devoluções:',e))}catch(e){console.error(e)}
+  try{reenviarFotos()}catch(e){}
 };
 window.devUnlisten=function(){if(unsub){try{unsub()}catch(e){}unsub=null}};
 
@@ -101,6 +102,8 @@ function build(){
         <div class="field"><label>Inspetor</label><input id="dvInsp"></div>
         <div class="field"><label>Vendas</label><input id="dvVend"></div>
       </div>
+      <input type="hidden" id="dvReg">
+      <div class="field full" style="margin:6px 0 4px"><label>📷 Fotos da etiqueta / peça devolvida (opcional)</label><input id="dvFotoIn" type="file" accept="image/*" multiple><div id="dvFotoPrev" class="dv-prev"></div></div>
       <h4 class="dev-h">Itens devolvidos neste registro</h4>
       <div id="dvItens"></div>
       <div class="actions"><button type="button" class="btn secondary" onclick="devAddItem()">➕ Adicionar item</button><button type="button" class="btn secondary" onclick="devLimpar()">Limpar</button><button type="submit" class="btn primary">Salvar registro</button></div>
@@ -135,11 +138,12 @@ function build(){
 
   <div id="dvLista" class="panel" style="display:none">
     <h3>Devoluções lançadas</h3>
-    <div class="toolbar"><input id="dvBusca" placeholder="Buscar cliente, código, peça, NF, OF, motivo…"><span id="dvCount" class="small"></span><button class="btn secondary" type="button" onclick="devCsv()">⬇ Exportar CSV</button></div>
+    <div class="toolbar"><input id="dvBusca" placeholder="Buscar cliente, código, peça, NF, OF, motivo…"><span id="dvCount" class="small"></span><button class="btn secondary" type="button" onclick="devCsv()">⬇ Exportar CSV</button><button class="btn secondary" type="button" onclick="devBackup()">💾 Backup JSON</button><label class="btn secondary">📂 Restaurar backup<input type="file" accept=".json" hidden onchange="devRestaurar(this)"></label></div>
     <div class="tablewrap"><table><thead><tr><th>Tipo</th><th>FQ</th><th>Data</th><th>Cliente</th><th>Código</th><th>Peça</th><th>NF</th><th>Qtd.</th><th>Kg</th><th>Motivo</th><th>Procede</th><th>Destino</th><th>Ações</th></tr></thead><tbody id="dvTbody"></tbody></table></div>
   </div>`;
 
   $('dvForm').addEventListener('submit',salvar);
+  $('dvFotoIn').addEventListener('change',async ev=>{for(const f of [...ev.target.files]){try{pend.push(await comprimir(f))}catch(e){alert('Não foi possível ler a imagem '+f.name)}}ev.target.value='';prevFotos()});
   $('dvTipo').addEventListener('change',()=>document.querySelectorAll('#dvItens .dv-item').forEach(buscarRow));
   const it=$('dvItens');
   it.addEventListener('input',ev=>{const f=ev.target.dataset&&ev.target.dataset.f,row=ev.target.closest('.dv-item');if(!row)return;if(f==='cod')buscarRow(row);else if(f==='qtd'||f==='peso')calcRow(row)});
@@ -225,14 +229,18 @@ function salvar(ev){
   }
   if(!itens.length)return alert('Adicione ao menos um item.');
   const editId=$('dvId').value,agora=Date.now();
+  const oldRec=editId?lista.find(x=>x.id===editId):null;
+  const regId=$('dvReg').value||(oldRec&&oldRec.regId)||('R'+agora.toString(36)+Math.random().toString(36).slice(2,6));
   itens.forEach((it,k)=>{
     const id=(editId&&it.i===0)?editId:('d'+agora.toString(36)+Math.random().toString(36).slice(2,6)+k);
     const old=lista.find(x=>x.id===id);
-    const r={id,tipo:c.tipo,numFq:c.numFq,recebPor:c.recebPor,origem:c.origem,procede:it.procede,sa:c.sa,inspetor:c.inspetor,vendas:c.vendas,data:c.data,codigo:it.codigo,cliente:it.cliente,produto:it.produto,planta:c.tipo,nf:c.nf,of:it.of,qtd:it.qtd,pesoUn:it.pesoUn,motivo:it.motivo,disp:it.disp,obs:it.obs,criado:old?old.criado:new Date().toISOString(),ts:agora+k};
+    const r={id,regId,nFotos:(old&&old.nFotos)||(lista.find(x=>x.regId===regId)||{}).nFotos||0,tipo:c.tipo,numFq:c.numFq,recebPor:c.recebPor,origem:c.origem,procede:it.procede,sa:c.sa,inspetor:c.inspetor,vendas:c.vendas,data:c.data,codigo:it.codigo,cliente:it.cliente,produto:it.produto,planta:c.tipo,nf:c.nf,of:it.of,qtd:it.qtd,pesoUn:it.pesoUn,motivo:it.motivo,disp:it.disp,obs:it.obs,criado:old?old.criado:new Date().toISOString(),ts:agora+k};
     if(old)lista[lista.indexOf(old)]=r;else lista.push(r);
     pushOne(r);
   });
   persist();
+  const nova=pend.slice();
+  if(nova.length)salvarFotos(regId,nova);
   const edit=!!editId;
   limpar();
   try{showToast(edit?'Registro atualizado.':('Registro salvo com '+itens.length+(itens.length===1?' item.':' itens.')))}catch(e){}
@@ -241,6 +249,7 @@ function limpar(){
   $('dvForm').reset();$('dvId').value='';$('dvTitulo').textContent='Novo registro de devolução';
   $('dvData').value=hoje();
   $('dvItens').innerHTML='';addItem();
+  $('dvReg').value='';pend=[];prevFotos();
   listaMotivos();
 }
 function listaMotivos(){
@@ -252,6 +261,7 @@ function listaMotivos(){
 }
 window.devLimpar=limpar;
 function fillCab(r){
+  $('dvReg').value=r.regId||'';pend=[];prevFotos();
   $('dvTipo').value=tipoDe(r);$('dvNum').value=r.numFq||'';$('dvData').value=r.data||hoje();$('dvRecb').value=r.recebPor||'';
   $('dvOrig').value=r.origem||'Cliente';$('dvNf').value=r.nf||'';$('dvSA').value=r.sa||'';$('dvInsp').value=r.inspetor||'';$('dvVend').value=r.vendas||'';
 }
@@ -283,8 +293,102 @@ window.devDel=function(id){
   const r=lista.find(x=>x.id===id);if(!r)return;
   if(!confirm('Excluir a devolução de '+brDate(r.data)+' ('+(r.produto||r.codigo)+')?'))return;
   lista=lista.filter(x=>x.id!==id);persist();
+  if(r.regId&&!lista.some(x=>x.regId===r.regId))apagarFotosReg(r.regId);
   const t=tombs();t.add(id);saveTombs(t);delOne(id);
   renderAba();
+};
+
+/* ---------- fotos da etiqueta (IndexedDB local + Firestore "devolucaoFotos") ---------- */
+let pend=[];
+function idbOpen(){return new Promise((res,rej)=>{if(!window.indexedDB)return rej(new Error('sem IndexedDB'));const q=indexedDB.open('controle_refugos_devfotos',1);q.onupgradeneeded=()=>{q.result.createObjectStore('f',{keyPath:'id'}).createIndex('reg','regId')};q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
+async function fotosLocais(regId){try{const db=await idbOpen();return await new Promise(res=>{const o=db.transaction('f').objectStore('f').index('reg').getAll(regId);o.onsuccess=()=>res(o.result||[]);o.onerror=()=>res([])})}catch(e){return []}}
+async function fotosTodas(){try{const db=await idbOpen();return await new Promise(res=>{const o=db.transaction('f').objectStore('f').getAll();o.onsuccess=()=>res(o.result||[]);o.onerror=()=>res([])})}catch(e){return []}}
+async function fotoPut(f){const db=await idbOpen();return new Promise((res,rej)=>{const t=db.transaction('f','readwrite');t.objectStore('f').put(f);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
+async function fotoDelLocal(id){try{const db=await idbOpen();await new Promise(res=>{const t=db.transaction('f','readwrite');t.objectStore('f').delete(id);t.oncomplete=()=>res();t.onerror=()=>res()})}catch(e){}}
+function colF(){return firebaseRoot().collection('devolucaoFotos')}
+async function fotoUp(f){
+  if(!fbOk())return false;
+  try{await colF().doc(f.id).set({id:f.id,regId:f.regId,dataUrl:f.dataUrl,ts:f.ts});if(!f.up){f.up=true;await fotoPut(f)}return true}catch(e){console.warn('Foto não enviada:',e);return false}
+}
+async function reenviarFotos(){if(!fbOk())return;for(const f of await fotosTodas()){if(!f.up)await fotoUp(f)}}
+function comprimir(file){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onerror=()=>rej(fr.error);
+    fr.onload=()=>{
+      const im=new Image();
+      im.onerror=()=>rej(new Error('imagem inválida'));
+      im.onload=()=>{
+        const M=1280,s=Math.min(1,M/Math.max(im.width,im.height)),w=Math.round(im.width*s),h=Math.round(im.height*s);
+        const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);
+        res(c.toDataURL('image/jpeg',0.7));
+      };
+      im.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+function prevFotos(){
+  const el=$('dvFotoPrev');if(!el)return;
+  el.innerHTML=pend.map((u,i)=>`<div class="th"><img src="${u}" alt="foto ${i+1}"><button type="button" title="Remover" onclick="devFotoPend(${i})">×</button></div>`).join('');
+}
+window.devFotoPend=function(i){pend.splice(i,1);prevFotos()};
+async function contaFotos(regId){
+  const n=(await fotosLocais(regId)).length;
+  lista.forEach(r=>{if(r.regId===regId&&r.nFotos!==n){r.nFotos=n;r.ts=Date.now();pushOne(r)}});
+  persist();if(built)renderAba();
+  return n;
+}
+async function salvarFotos(regId,urls){
+  for(let i=0;i<urls.length;i++){
+    const f={id:regId+'_'+Date.now().toString(36)+i,regId,dataUrl:urls[i],ts:Date.now(),up:false};
+    try{await fotoPut(f)}catch(e){alert('Não foi possível guardar a foto neste navegador.');continue}
+    fotoUp(f);
+  }
+  await contaFotos(regId);
+  try{showToast('Foto(s) da etiqueta salva(s).')}catch(e){}
+}
+async function apagarFotosReg(regId){
+  for(const f of await fotosLocais(regId)){await fotoDelLocal(f.id);if(fbOk()){try{await colF().doc(f.id).delete()}catch(e){}}}
+}
+async function baixarFotosRemotas(regId){
+  if(!fbOk())return;
+  try{
+    const snap=await colF().where('regId','==',regId).get();
+    for(const d of snap.docs){const x=d.data();await fotoPut({id:d.id,regId:x.regId,dataUrl:x.dataUrl,ts:x.ts||0,up:true})}
+  }catch(e){console.warn('Fotos remotas:',e)}
+}
+function fechaFotos(){const m=$('dvFotoModal');if(m)m.remove()}
+async function abreFotos(regId,titulo){
+  fechaFotos();
+  const m=document.createElement('div');m.id='dvFotoModal';
+  m.innerHTML='<div class="box"><div style="display:flex;justify-content:space-between;align-items:center"><b>📷 Fotos — '+esc(titulo)+'</b><button type="button" class="btn secondary" id="dvFotoX">Fechar</button></div><div class="gal" id="dvGal">Carregando…</div><label class="btn primary" style="display:inline-block">➕ Adicionar foto<input type="file" accept="image/*" multiple hidden id="dvFotoAdd"></label></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{if(e.target===m)fechaFotos()});
+  $('dvFotoX').onclick=fechaFotos;
+  const mostrar=async()=>{
+    let fs=await fotosLocais(regId);
+    if(!fs.length){await baixarFotosRemotas(regId);fs=await fotosLocais(regId)}
+    fs.sort((a,b)=>(a.ts||0)-(b.ts||0));
+    $('dvGal').innerHTML=fs.length?fs.map(f=>`<div class="th"><img src="${f.dataUrl}" data-id="${f.id}" alt="foto"><button type="button" class="btn danger" data-del="${f.id}">Excluir</button></div>`).join(''):'<div class="small">Nenhuma foto neste registro.</div>';
+    $('dvGal').querySelectorAll('img').forEach(im=>im.onclick=()=>{const w=window.open('');if(w){w.document.write('<img src="'+im.src+'" style="max-width:100%">');}});
+    $('dvGal').querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
+      if(!confirm('Excluir esta foto?'))return;
+      const id=b.dataset.del;await fotoDelLocal(id);if(fbOk()){try{await colF().doc(id).delete()}catch(e){}}
+      await contaFotos(regId);mostrar();
+    });
+  };
+  $('dvFotoAdd').addEventListener('change',async ev=>{
+    const urls=[];for(const f of [...ev.target.files]){try{urls.push(await comprimir(f))}catch(e){}}
+    ev.target.value='';
+    if(urls.length){await salvarFotos(regId,urls);mostrar()}
+  });
+  mostrar();
+}
+window.devFotos=function(id){
+  const r=lista.find(x=>x.id===id);if(!r)return;
+  if(!r.regId){r.regId='R'+r.id;persist()}
+  abreFotos(r.regId,(r.numFq?'registro '+r.numFq+' • ':'')+(r.cliente||''));
 };
 
 /* ---------- lista ---------- */
@@ -294,10 +398,38 @@ function tabela(){
   const rows=lista.filter(r=>!q||JSON.stringify(r).toLowerCase().includes(q)).sort((a,b)=>String(b.data).localeCompare(String(a.data))||String(b.numFq||'').localeCompare(String(a.numFq||''))||(a.ts||0)-(b.ts||0));
   $('dvCount').textContent=rows.length.toLocaleString('pt-BR')+' de '+lista.length.toLocaleString('pt-BR')+' itens devolvidos';
   const mostra=rows.slice(0,300);
-  $('dvTbody').innerHTML=mostra.map(r=>`<tr><td>${esc(tipoDe(r))}</td><td>${esc(r.numFq||'')}</td><td>${esc(brDate(r.data))}</td><td>${esc(r.cliente)}</td><td>${esc(r.codigo)}</td><td style="white-space:normal;min-width:160px">${esc(r.produto)}</td><td>${esc(r.nf||'')}</td><td>${fmt(r.qtd)}</td><td>${fmt(totalKg(r))}</td><td style="white-space:normal;min-width:120px">${esc(r.motivo||'')}</td><td>${esc(r.procede||'')}</td><td><span class="dev-disp ${dispCls(r.disp)}">${esc(r.disp||'')}</span></td><td><button class="btn secondary" type="button" onclick="devEdit('${r.id}')">Editar</button> <button class="btn secondary" type="button" onclick="devMaisItem('${r.id}')" title="Adicionar outro item a este registro">+ Item</button> <button class="btn danger" type="button" onclick="devDel('${r.id}')">Excluir</button></td></tr>`).join('')
+  $('dvTbody').innerHTML=mostra.map(r=>`<tr><td>${esc(tipoDe(r))}</td><td>${esc(r.numFq||'')}</td><td>${esc(brDate(r.data))}</td><td>${esc(r.cliente)}</td><td>${esc(r.codigo)}</td><td style="white-space:normal;min-width:160px">${esc(r.produto)}</td><td>${esc(r.nf||'')}</td><td>${fmt(r.qtd)}</td><td>${fmt(totalKg(r))}</td><td style="white-space:normal;min-width:120px">${esc(r.motivo||'')}</td><td>${esc(r.procede||'')}</td><td><span class="dev-disp ${dispCls(r.disp)}">${esc(r.disp||'')}</span></td><td><button class="btn secondary" type="button" onclick="devEdit('${r.id}')">Editar</button> <button class="btn secondary" type="button" onclick="devMaisItem('${r.id}')" title="Adicionar outro item a este registro">+ Item</button> <button class="btn secondary" type="button" onclick="devFotos('${r.id}')" title="Fotos da etiqueta">📷${r.nFotos?' '+r.nFotos:''}</button> <button class="btn danger" type="button" onclick="devDel('${r.id}')">Excluir</button></td></tr>`).join('')
     ||'<tr><td colspan="12" class="small" style="text-align:center">Nenhuma devolução lançada.</td></tr>';
   if(rows.length>mostra.length)$('dvTbody').innerHTML+=`<tr><td colspan="12" class="small" style="text-align:center">Exibindo as 300 mais recentes. Use a busca para localizar as demais.</td></tr>`;
 }
+window.devBackup=function(){
+  const dados=lista.map(limpo);
+  const blob=new Blob([JSON.stringify({tipo:'devolucoes',versao:1,geradoEm:new Date().toISOString(),total:dados.length,devolucoes:dados,excluidas:[...tombs()]},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-devolucoes-'+hoje()+'.json';a.click();
+  try{showToast('Backup de devoluções baixado ('+dados.length+' itens).')}catch(e){}
+};
+window.devRestaurar=function(inp){
+  const f=inp&&inp.files&&inp.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const j=JSON.parse(rd.result),arr=Array.isArray(j)?j:j.devolucoes;
+      if(!Array.isArray(arr)||(j.tipo&&j.tipo!=='devolucoes'))throw new Error('formato');
+      const t=tombs();let novos=0,atual=0;
+      arr.forEach(r=>{
+        if(!r||!r.id)return;
+        const x=lista.find(l=>l.id===r.id);
+        if(!x){lista.push({...r});novos++;t.delete(r.id);pushOne(r)}
+        else if((r.ts||0)>(x.ts||0)){lista[lista.indexOf(x)]={...r};atual++;pushOne(r)}
+      });
+      saveTombs(t);persist();
+      if(built)renderAba();
+      alert('Backup de devoluções restaurado: '+novos+' item(ns) novo(s) e '+atual+' atualizado(s). Nada foi apagado.');
+    }catch(e){alert('Arquivo inválido. Use um backup de devoluções (.json) gerado pelo app.')}
+    inp.value='';
+  };
+  rd.readAsText(f);
+};
 window.devCsv=function(){
   const h=['Tipo','Nº FQ','Recebido por','Origem','Procede','S.A.','Inspetor','Vendas','Data','Cliente','Código','Peça','Planta','NF','OF','Quantidade','Peso unitário (kg)','Peso total (kg)','Motivo','Destino','Observação'];
   const rows=[...lista].sort((a,b)=>String(b.data).localeCompare(String(a.data))).map(r=>[tipoDe(r),r.numFq,r.recebPor,r.origem,r.procede,r.sa,r.inspetor,r.vendas,brDate(r.data),r.cliente,r.codigo,r.produto,r.planta,r.nf,r.of,r.qtd,r.pesoUn,totalKg(r),r.motivo,r.disp,r.obs]);
@@ -419,6 +551,8 @@ function painel(){
   });
 }
 window.devRefresh=function(){if(built&&aba==='painel'&&$('devolucoes')?.classList.contains('active'))painel()};
+window.devDados=function(){return lista.map(limpo)};
+window.devKg=totalKg;window.devValor=valorR;window.devTipo=tipoDe;
 window.devLimparFiltros=function(){['dvFa','dvFm','dvFc'].forEach(id=>$(id).value='');painel()};
 
 /* ---------- abas ---------- */
