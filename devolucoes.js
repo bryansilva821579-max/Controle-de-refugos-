@@ -15,7 +15,9 @@ try{lista=JSON.parse(localStorage.getItem(DKEY)||'[]');if(!Array.isArray(lista))
 let unsub=null,built=false,aba='lancar';
 const $=id=>document.getElementById(id);
 const num=v=>{const x=Number(String(v??'').replace(',','.'));return Number.isFinite(x)?x:0};
-const totalKg=r=>num(r.qtd)*num(r.pesoUn);
+const naoProcede=r=>r.procede==='Não'||r.disp==='Reclamação não procede';
+let viewRaw=false,tabPl=0;
+const totalKg=r=>(naoProcede(r)&&!viewRaw)?0:num(r.qtd)*num(r.pesoUn);
 const okCusto=()=>{try{return costAccessAllowed()}catch(e){return false}};
 const valorR=r=>{try{return totalKg(r)*window.custoDevKg(tipoDe(r),r.data)}catch(e){return 0}};
 const tipoPl=pl=>normalizeText(pl||'').indexOf('USINAGEM')===0?'Usinagem':'Fundição';
@@ -116,24 +118,27 @@ function build(){
       <select id="dvFa"><option value="">Todos os anos</option></select>
       <select id="dvFm"><option value="">Todos os meses</option>${meses}</select>
       <select id="dvFc"><option value="">Todos os clientes</option></select>
+      <select id="dvFp" title="Filtrar por procedência"><option value="proc">Só as que procedem</option><option value="nao">Só as que NÃO procedem</option><option value="todas">Todas (procede + não procede)</option></select>
       <button class="btn secondary" type="button" onclick="devLimparFiltros()">Limpar</button>
     </div>
     <div class="dev-info">Clique em uma barra para ver o que foi devolvido (cliente, peça e quantidade). Em cada gráfico: <b style="color:var(--orange)">quantidade (peças)</b> no eixo esquerdo e <b style="color:#1f5f99">peso (kg)</b> no eixo direito, lado a lado.</div>
-    ${TIPOS.map((t,i)=>`
+    <div id="dvTabs" style="display:flex;gap:8px;margin:10px 0">${TIPOS.map((t,i)=>`<button type="button" class="btn secondary" id="dvTab${i}" onclick="devTab(${i})">${t.n}</button>`).join('')}</div>
+    ${TIPOS.map((t,i)=>`<div id="dvSec${i}" style="display:${i===0?'block':'none'}">
     <h2 class="dev-sec">${t.n}</h2>
     <div class="cards">
       <div class="card"><div class="kpi-accent"></div><div class="label">Registros (etiquetas)</div><div class="value" id="dvK${i}Reg">0</div><div class="sub">nº de FQ051 distintos</div></div>
       <div class="card"><div class="kpi-accent"></div><div class="label">Peças devolvidas</div><div class="value" id="dvK${i}Qtd">0</div><div class="sub">quantidade total</div></div>
-      <div class="card"><div class="kpi-accent"></div><div class="label">Peso devolvido</div><div class="value" id="dvK${i}Kg">0 kg</div><div class="sub">quantidade × peso unitário</div></div>
+      <div class="card"><div class="kpi-accent"></div><div class="label">Peso devolvido (só procedentes)</div><div class="value" id="dvK${i}Kg">0 kg</div><div class="sub">qtd × peso unit.; "não procede" fica fora</div></div>
       <div class="card"><div class="kpi-accent"></div><div class="label">Valor devolvido</div><div class="value" id="dvK${i}Rs">—</div><div class="sub" id="dvK${i}RsS">kg × R$/kg da planta</div></div>
       <div class="card"><div class="kpi-accent"></div><div class="label">Aguardando análise</div><div class="value" id="dvK${i}Ab">0</div><div class="sub">sem destino definido</div></div>
     </div>
     <div class="grid">
       <div class="panel wide"><h3>Evolução mensal — ${t.k}</h3><div class="hint">Peças (barras) e kg (linha) por mês.</div><div class="chartbox dvbox"><canvas id="dvC${i}Mes"></canvas></div></div>
+      ${i===0?`<div class="panel wide"><h3>Produção × devolução — Fundição</h3><div class="hint">Barras: produção da Fundição no mês (kg, eixo esquerdo). Linha: % devolvido = kg devolvido (só procedentes) ÷ produção (eixo direito). A produção é a da planta inteira (não muda com o filtro de cliente).</div><div class="chartbox dvbox"><canvas id="dvCmp"></canvas></div><div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>Período</th><th>Produção (kg)</th><th>Peças devolvidas</th><th>Kg devolvido</th><th>% devolvido</th><th>Peças "não procede"</th></tr></thead><tbody id="dvCmpBody"></tbody></table></div></div>`:''}
       <div class="panel wide"><h3>Por cliente — ${t.k}</h3><div class="hint">Clientes que mais devolveram.</div><div class="chartbox dvbox"><canvas id="dvC${i}Cli"></canvas></div></div>
       <div class="panel wide"><h3>Por motivo — ${t.k}</h3><div class="hint">Principais motivos de devolução.</div><div class="chartbox dvbox"><canvas id="dvC${i}Mot"></canvas></div></div>
       <div class="panel wide"><h3>Por peça — ${t.k}</h3><div class="hint">Peças mais devolvidas.</div><div class="chartbox dvbox"><canvas id="dvC${i}Pec"></canvas></div></div>
-    </div>`).join('')}
+    </div></div>`).join('')}
   </div>
 
   <div id="dvLista" class="panel" style="display:none">
@@ -148,7 +153,7 @@ function build(){
   const it=$('dvItens');
   it.addEventListener('input',ev=>{const f=ev.target.dataset&&ev.target.dataset.f,row=ev.target.closest('.dv-item');if(!row)return;if(f==='cod')buscarRow(row);else if(f==='qtd'||f==='peso')calcRow(row)});
   it.addEventListener('focusout',ev=>{if(ev.target.dataset&&ev.target.dataset.f==='cod')buscarRow(ev.target.closest('.dv-item'))});
-  ['dvFa','dvFm','dvFc'].forEach(id=>$(id).addEventListener('change',painel));
+  ['dvFa','dvFm','dvFc','dvFp'].forEach(id=>$(id).addEventListener('change',painel));
   $('dvBusca').addEventListener('input',tabela);
   $('dvData').value=hoje();
   built=true;
@@ -444,8 +449,8 @@ function opcoes(id,vazio,itens,fmtLabel){
   if(itens.map(String).includes(old))el.value=old;
 }
 function filtrados(){
-  const y=$('dvFa').value,m=$('dvFm').value,c=$('dvFc').value;
-  return lista.filter(r=>{const d=String(r.data||'');return (!y||d.slice(0,4)===y)&&(!m||String(Number(d.slice(5,7)))===m)&&(!c||r.cliente===c)});
+  const y=$('dvFa').value,m=$('dvFm').value,c=$('dvFc').value,p=$('dvFp').value||'proc';
+  return lista.filter(r=>{const d=String(r.data||'');return (!y||d.slice(0,4)===y)&&(!m||String(Number(d.slice(5,7)))===m)&&(!c||r.cliente===c)&&(p==='todas'||(p==='nao')===naoProcede(r))});
 }
 function agrupa(rows,chave,med,limite){
   const o={};rows.forEach(r=>{const k=String(chave(r)||'').trim()||'Não informado';o[k]=(o[k]||0)+med(r)});
@@ -454,7 +459,8 @@ function agrupa(rows,chave,med,limite){
 function cor(n,f){try{return getComputedStyle(document.documentElement).getPropertyValue(n).trim()||f}catch(e){return f}}
 function curto(t,n){t=String(t);return t.length>n?t.slice(0,n-1)+'…':t}
 /* gráfico combinado: quantidade (eixo esq.) x peso (eixo dir.) */
-function combo(id,labels,qtd,kg,linha,grupos){
+function combo(id,labels,qtd,kg,linha,grupos,eix){
+  eix=eix||{q:'Peças',k:'kg'};
   const cv=$(id);if(!cv)return;
   cv.style.cursor='pointer';
   const W=cv.clientWidth||cv.parentElement.clientWidth||600,H=cv.clientHeight||320,dpr=window.devicePixelRatio||1;
@@ -476,8 +482,8 @@ function combo(id,labels,qtd,kg,linha,grupos){
     c.fillStyle=cq;c.textAlign='right';c.fillText(f(mq*i/4),x0-6,y+4);
     c.fillStyle=ck;c.textAlign='left';c.fillText(f(mk*i/4),x1+6,y+4);
   }
-  c.fillStyle=cq;c.textAlign='left';c.font='bold 11px sans-serif';c.fillText('Peças',x0-40,y0-10);
-  c.fillStyle=ck;c.textAlign='right';c.fillText('kg',x1+52,y0-10);c.font='11px sans-serif';
+  c.fillStyle=cq;c.textAlign='left';c.font='bold 11px sans-serif';c.fillText(eix.q,x0-40,y0-10);
+  c.fillStyle=ck;c.textAlign='right';c.fillText(eix.k,x1+52,y0-10);c.font='11px sans-serif';
   const bw=linha?Math.min(34,gw*.55):Math.min(26,gw*.34);
   const px=[];
   labels.forEach((l,i)=>{
@@ -527,12 +533,36 @@ function balao(cv,ev){
 }
 document.addEventListener('click',ev=>{const b=$('dvBalao');if(b&&!b.contains(ev.target))fechaBalao()});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape')fechaBalao()});
+function comparativo(rows){
+  let prod=new Map();try{prod=prodMonthTotals()}catch(e){}
+  const y=$('dvFa').value,mf=$('dvFm').value;
+  const pk=(yy,mm)=>{const a=prod.get(yy+'-'+mm),b=prod.get(yy+'-'+String(mm).padStart(2,'0')),c=prod.get(String(yy)+'-'+Number(mm));return num(a??b??c)};
+  let per=[];
+  if(y)for(let m=1;m<=12;m++)per.push([Number(y),m]);
+  else{const s=new Set();rows.forEach(r=>{const d=String(r.data||'');if(d.length>=7)s.add(d.slice(0,4)+'-'+Number(d.slice(5,7)))});per=[...s].map(k=>k.split('-').map(Number)).sort((a,b)=>a[0]-b[0]||a[1]-b[1])}
+  if(mf)per=per.filter(p=>String(p[1])===mf);
+  const lab=[],P=[],pc=[],gr=[],lin=[];
+  per.forEach(([yy,mm])=>{
+    const rs=rows.filter(r=>{const d=String(r.data||'');return d.slice(0,4)===String(yy)&&Number(d.slice(5,7))===mm});
+    const pr=pk(yy,mm),kgD=rs.reduce((a,r)=>a+totalKg(r),0),qD=rs.reduce((a,r)=>a+num(r.qtd),0),qNp=rs.filter(naoProcede).reduce((a,r)=>a+num(r.qtd),0);
+    if(!pr&&!rs.length)return;
+    const p=pr?kgD/pr*100:0;
+    lab.push(months[mm-1]+(y?'':'/'+String(yy).slice(2)));P.push(pr);pc.push(Math.round(p*100)/100);gr.push(rs);
+    lin.push(`<tr><td>${months[mm-1]}/${yy}</td><td>${pr?fmt(pr):'—'}</td><td>${fmt(qD)}</td><td>${fmt(kgD)}</td><td>${pr?fmt(p)+'%':'—'}</td><td>${fmt(qNp)}</td></tr>`);
+  });
+  combo('dvCmp',lab,P,pc,true,gr,{q:'Produção (kg)',k:'% devol.'});
+  const tb=$('dvCmpBody');if(tb)tb.innerHTML=lin.join('')||'<tr><td colspan="6" class="small" style="text-align:center">Sem dados no período.</td></tr>';
+}
 function painel(){
   if(!built)return;
   opcoes('dvFa','Todos os anos',[...new Set(lista.map(r=>String(r.data||'').slice(0,4)).filter(Boolean))].sort());
   opcoes('dvFc','Todos os clientes',[...new Set(lista.map(r=>r.cliente).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR')));
   const todas=filtrados();
+  viewRaw=($('dvFp').value||'proc')!=='proc';
   TIPOS.forEach((t,i)=>{
+    const ab=$('dvTab'+i);if(ab){ab.className='btn '+(i===tabPl?'primary':'secondary');ab.textContent=t.n+' ('+todas.filter(r=>tipoDe(r)===t.k).length+')'}
+    $('dvSec'+i).style.display=i===tabPl?'block':'none';
+    if(i!==tabPl)return;
     const rows=todas.filter(r=>tipoDe(r)===t.k);
     const tq=rows.reduce((a,r)=>a+num(r.qtd),0),tk=rows.reduce((a,r)=>a+totalKg(r),0);
     $('dvK'+i+'Reg').textContent=fmt(new Set(rows.map(r=>r.numFq?(r.data+'|'+r.numFq+'|'+r.cliente):r.id)).size);$('dvK'+i+'Qtd').textContent=fmt(tq);$('dvK'+i+'Kg').textContent=fmt(tk)+' kg';
@@ -547,13 +577,16 @@ function painel(){
       const it=Object.entries(o).sort((a,b)=>b[1].k-a[1].k||b[1].q-a[1].q).slice(0,8);
       combo(id,it.map(x=>x[0]),it.map(x=>x[1].q),it.map(x=>x[1].k),false,it.map(x=>x[1].rs));
     };
+    if(i===0)comparativo(rows);
     por('dvC'+i+'Cli',r=>r.cliente);por('dvC'+i+'Mot',r=>r.motivo);por('dvC'+i+'Pec',r=>r.produto||r.codigo);
   });
 }
 window.devRefresh=function(){if(built&&aba==='painel'&&$('devolucoes')?.classList.contains('active'))painel()};
 window.devDados=function(){return lista.map(limpo)};
-window.devKg=totalKg;window.devValor=valorR;window.devTipo=tipoDe;
-window.devLimparFiltros=function(){['dvFa','dvFm','dvFc'].forEach(id=>$(id).value='');painel()};
+const semRaw=f=>function(){const s=viewRaw;viewRaw=false;try{return f.apply(null,arguments)}finally{viewRaw=s}};
+window.devKg=semRaw(totalKg);window.devValor=semRaw(valorR);window.devTipo=tipoDe;
+window.devLimparFiltros=function(){['dvFa','dvFm','dvFc'].forEach(id=>$(id).value='');$('dvFp').value='proc';painel()};
+window.devTab=function(i){tabPl=i;painel()};
 
 /* ---------- abas ---------- */
 function renderAba(){
