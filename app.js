@@ -369,6 +369,7 @@ if(localStorage.getItem(KEY+'_auto_cadastro_version')!==AUTO_CADASTRO_VERSION){ 
   }
 
   cadastros.motivos=cadastros.motivos.filter(x=>x && (x.codigo||x.descricao));
+  cadastros.motivos.forEach(x=>{if(x.causa==='Metalúrgica')x.causa='Processos';else if(x.causa==='Falha de maquinário')x.causa='Maquinários'});
   {const __seenM=new Set();cadastros.motivos=cadastros.motivos.filter(x=>{const k=motivoCodeKey(x.codigo);if(__seenM.has(k))return false;__seenM.add(k);return true});}
   cadastros.pecas=cadastros.pecas.map(x=>({
     ...x,
@@ -524,8 +525,8 @@ function editMotivo(i){
  if(!code&&!desc)return alert('Informe o código ou a descrição do motivo.');
  const duplicate=cadastros.motivos.some((x,idx)=>idx!==i&&motivoCodeKey(x.codigo)===motivoCodeKey(code)&&String(x.descricao??'').trim().toUpperCase()===desc.toUpperCase());
  if(duplicate)return alert('Esse motivo já está cadastrado.');
- const cs=prompt('Causa do motivo:\n1 = Metalúrgica\n2 = Erro humano\n3 = Falha de maquinário\n(deixe em branco para manter)',''); if(cs===null)return;
- const causa=({'1':CAUSAS_MOTIVO[0],'2':CAUSAS_MOTIVO[1],'3':CAUSAS_MOTIVO[2]})[cs.trim()]||item.causa||'';
+ const cs=prompt('Causa do motivo:\n1 = Processos\n2 = Projetos\n3 = Erro humano\n4 = Laboratório\n5 = Maquinários\n6 = Ferramental\n7 = Outros\n(deixe em branco para manter)',''); if(cs===null)return;
+ const causa=CAUSAS_MOTIVO[Number(cs.trim())-1]||item.causa||'';
  cadastros.motivos[i]={...item,codigo:code,descricao:desc}; if(causa)cadastros.motivos[i].causa=causa; __causaVer++; saveCad(); renderCadastro();
 }
 function editPeca(i){
@@ -571,7 +572,7 @@ function editCliente(i){
  cadastros.clientes[i]=novo; cadastros.clientes.sort((a,b)=>a.localeCompare(b,'pt-BR')); saveCad(); renderCadastro();
 }
 
-function addMotivo(){const c=document.getElementById('cadMotivoCode').value.trim(),d=document.getElementById('cadMotivoDesc').value.trim();if(!c&&!d)return alert('Informe o código ou a descrição do motivo.');if(cadastros.motivos.some(x=>String(x.codigo)===c&&String(x.descricao).toUpperCase()===d.toUpperCase()))return alert('Esse motivo já está cadastrado.');const pl=(document.getElementById('cadMotivoPlanta')?.value||'').trim(),ca=(document.getElementById('cadMotivoCausa')?.value||'').trim();if(!ca)return alert('Selecione a causa do motivo (Metalúrgica, Erro humano ou Falha de maquinário).');const novo={codigo:c,descricao:d};if(pl)novo.planta=pl;novo.causa=ca;cadastros.motivos.push(novo);__causaVer++;saveCad();document.getElementById('cadMotivoCode').value='';document.getElementById('cadMotivoDesc').value='';['cadMotivoPlanta','cadMotivoCausa'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});renderCadastro();}
+function addMotivo(){const c=document.getElementById('cadMotivoCode').value.trim(),d=document.getElementById('cadMotivoDesc').value.trim();if(!c&&!d)return alert('Informe o código ou a descrição do motivo.');if(cadastros.motivos.some(x=>String(x.codigo)===c&&String(x.descricao).toUpperCase()===d.toUpperCase()))return alert('Esse motivo já está cadastrado.');const pl=(document.getElementById('cadMotivoPlanta')?.value||'').trim(),ca=(document.getElementById('cadMotivoCausa')?.value||'').trim();if(!ca)return alert('Selecione a causa do motivo (Processos, Projetos, Erro humano, Laboratório, Maquinários, Ferramental ou Outros).');const novo={codigo:c,descricao:d};if(pl)novo.planta=pl;novo.causa=ca;cadastros.motivos.push(novo);__causaVer++;saveCad();document.getElementById('cadMotivoCode').value='';document.getElementById('cadMotivoDesc').value='';['cadMotivoPlanta','cadMotivoCausa'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});renderCadastro();}
 function addPeca(){
  const editRaw=document.getElementById('cadPecaEditIndex')?.value??'';
  const editIndex=editRaw!==''?Number(editRaw):null;
@@ -751,7 +752,7 @@ function __motPlantaMaps(){
   arr.forEach(x=>{const pl=okPl[norm(x.planta)];if(!pl)return;const c=String(x.codigo??'').trim().replace(/^0+(?=\d)/,'');if(c)byCode.set(c,pl);const d=norm(x.descricao);if(d&&!byDesc.has(d))byDesc.set(d,pl)});
   __motPlantaCache={byCode,byDesc,norm};__motPlantaRef=arr;__motPlantaLen=arr.length;return __motPlantaCache;
 }
-const CAUSAS_MOTIVO=['Metalúrgica','Erro humano','Falha de maquinário'];
+const CAUSAS_MOTIVO=['Processos','Projetos','Erro humano','Laboratório','Maquinários','Ferramental','Outros'];
 let __causaCache=null,__causaRef=null,__causaLen=-1,__causaVer=0;
 function causaMaps(){
   const arr=(typeof cadastros!=='undefined'&&cadastros&&Array.isArray(cadastros.motivos))?cadastros.motivos:[];

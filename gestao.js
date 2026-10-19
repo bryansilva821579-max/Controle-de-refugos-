@@ -423,7 +423,7 @@ function relCompleto(k,numTxt,opt){
     const nc=Lc.find(e=>e.nome==='Não classificado');if(nc&&nc.qtd/totQ>0.2)t10+=' Há muitos motivos ainda sem causa definida: classifique-os em Cadastro → Motivos para melhorar esta análise.';
     t10+='</p>';
   }
-  sec('Total de peças por causa do motivo (Metalúrgica, Erro humano, Falha de maquinário).',Lc.length?imgBar(Lc.map(e=>e.nome),Lc.map(e=>e.qtd),{f:v=>String(Math.round(v))}):null,t10);
+  sec('Total de peças por causa do motivo (Processos, Projetos, Erro humano, Laboratório, Maquinários, Ferramental, Outros).',Lc.length?imgBar(Lc.map(e=>e.nome),Lc.map(e=>e.qtd),{f:v=>String(Math.round(v))}):null,t10);
   /* 11 devoluções */
   const dd=D.filter(r=>r.k===k),dq=somar(dd,r=>r.qtd),dkg=somar(dd,r=>r.kg),dN=new Set(dd.map(r=>r.fq?r.data+'|'+r.fq+'|'+r.cli:r.raw.id)).size;
   let t11='';const Ld=topo(dd,r=>r.cli,10);
@@ -611,13 +611,13 @@ window.gestInit=function(){if(!built)build();gestAba(aba);badge()};
 window.gestRefresh=function(){badge();const s=$('gestao');if(built&&s&&s.classList.contains('active'))render()};
 
 /* ---------- classificar motivos por causa (Cadastro → Motivos) ---------- */
-const CAUSAS=['Metalúrgica','Erro humano','Falha de maquinário'];
+const CAUSAS=['Processos','Projetos','Erro humano','Laboratório','Maquinários','Ferramental','Outros'];
 function sugerirCausa(desc){
   const t=String(desc||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
   const tem=a=>a.some(w=>t.includes(w));
   if(tem(['PREPARACAO','PROGRAMACAO','MONTAGEM','ATENCAO','IDENTIFICACAO','FALHA NO CONTROLE','OPERADOR','ERRO','ESQUEC','REBARBACAO','ACABAMENTO','MANUSEIO','ARMAZENAMENTO','EMBALAGEM','AJUSTE']))return 'Erro humano';
-  if(tem(['QUEBRA','FERRAMENT','DISPOSITIVO','MAQUINA','VIBR','BEDAME','INSERTO','MANUTENCAO','DESGASTE','EQUIPAMENTO','FORNO','PANE','ROLAMENTO','CNC','HIDRAUL']))return 'Falha de maquinário';
-  if(tem(['AREIA','RECHUPE','POROSIDADE','VAZAMENTO','JUNTA FRIA','TRINCA','DUREZA','CARBONETO','INCLUSAO','CORRIDA','COMPOSICAO','GAS','CONTRACAO','MACHARIA','METAL']))return 'Metalúrgica';
+  if(tem(['QUEBRA','FERRAMENT','DISPOSITIVO','MAQUINA','VIBR','BEDAME','INSERTO','MANUTENCAO','DESGASTE','EQUIPAMENTO','FORNO','PANE','ROLAMENTO','CNC','HIDRAUL']))return 'Maquinários';
+  if(tem(['AREIA','RECHUPE','POROSIDADE','VAZAMENTO','JUNTA FRIA','TRINCA','DUREZA','CARBONETO','INCLUSAO','CORRIDA','COMPOSICAO','GAS','CONTRACAO','MACHARIA','METAL']))return 'Processos';
   return '';
 }
 function usoMotivos(){

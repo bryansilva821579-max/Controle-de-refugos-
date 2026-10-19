@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Controle de Refugos 2026</title>
-<link rel="stylesheet" href="base.css?v=133">
+<link rel="stylesheet" href="base.css?v=135">
 
 <style id="dashboardPdfStyles">
 @page{size:A4 landscape;margin:8mm 8mm 9mm 8mm}
@@ -181,8 +181,8 @@ html[data-theme="dark"] .firebase-modal{background:#101a2a;color:#f3f4f6}.data-o
 [data-theme="dark"] .help-note{background:#172235;color:#e7edf5;border-left-color:var(--orange);border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
 @media (max-width:760px){.help-intro{grid-template-columns:1fr}.help-badge{justify-self:start}.help-grid{grid-template-columns:1fr}}
 </style>
-<link rel="stylesheet" href="graficos.css?v=133">
-<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=133">
+<link rel="stylesheet" href="graficos.css?v=135">
+<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=135">
 <script>
 /* ===== CONFIGURAÇÃO DO FIREBASE =====
    Preencha uma vez e todos os computadores conectam sozinhos. Deixe "" para não usar. */
@@ -194,7 +194,7 @@ window.EMBEDDED_FIREBASE_CONFIG={
   messagingSenderId:"894679339944",
   appId:"1:894679339944:web:fcf8fc0bf6f45439c7c39d"
 };
-window.APP_VERSION="v133";
+window.APP_VERSION="v135";
 /* Mostra erros de JavaScript na tela em vez de ficar em branco */
 window.addEventListener('error',function(ev){
   try{
@@ -572,7 +572,7 @@ service cloud.firestore {
 <div id="cadTabMotivos" class="cad-tab-panel active" style="margin-top:16px">
   <div class="panel">
     <div class="cad-section-head"><div><h3>Motivos de refugo</h3><div class="small">Cadastre, edite ou exclua os motivos utilizados nos lançamentos.</div><button type="button" class="btn secondary" style="margin-top:8px" onclick="window.motCausaAbrir&&window.motCausaAbrir()">🏷 Classificar motivos por causa</button></div><div id="motivosCount" class="cad-count"></div></div>
-    <div class="cad-form"><input id="cadMotivoCode" placeholder="Código (ex.: 34)"><input id="cadMotivoDesc" placeholder="Descrição (ex.: RECHUPE)"><select id="cadMotivoPlanta"><option value="">Planta do motivo</option><option>FUNDICAO</option><option>FUNDICAO NA USINAGEM</option><option>USINAGEM</option></select><select id="cadMotivoCausa"><option value="">Causa (obrigatório)</option><option>Metalúrgica</option><option>Erro humano</option><option>Falha de maquinário</option></select><button class="btn primary" style="grid-column:1/-1" onclick="addMotivo()">+ Adicionar motivo</button></div>
+    <div class="cad-form"><input id="cadMotivoCode" placeholder="Código (ex.: 34)"><input id="cadMotivoDesc" placeholder="Descrição (ex.: RECHUPE)"><select id="cadMotivoPlanta"><option value="">Planta do motivo</option><option>FUNDICAO</option><option>FUNDICAO NA USINAGEM</option><option>USINAGEM</option></select><select id="cadMotivoCausa"><option value="">Causa (obrigatório)</option><option>Processos</option><option>Projetos</option><option>Erro humano</option><option>Laboratório</option><option>Maquinários</option><option>Ferramental</option><option>Outros</option></select><button class="btn primary" style="grid-column:1/-1" onclick="addMotivo()">+ Adicionar motivo</button></div>
     <div id="motivosListView" class="cad-list cad-list-wide"></div>
   </div>
 </div>
@@ -692,7 +692,7 @@ service cloud.firestore {
 
 <div class="grid analysis-grid">
   <div class="panel"><h3>Análise por cliente</h3><div class="hint">Soma do peso, quantidade, participação e custo por cliente.</div><div class="tablewrap"><table><thead><tr><th>Cliente</th><th>Kg refugo</th><th>Qtd.</th><th>% do total</th><th>Valor / custo</th></tr></thead><tbody id="clientAnalysis"></tbody><tfoot id="clientAnalysisTotal"></tfoot></table></div></div>
-  <div class="panel"><h3>Análise por causa do motivo</h3><div class="hint">Metalúrgica, erro humano ou falha de maquinário (definido no Cadastro de motivos).</div><div class="tablewrap"><table><thead><tr><th>Causa</th><th>Kg refugo</th><th>Qtd.</th><th>% do total</th><th>Valor / custo</th></tr></thead><tbody id="causaAnalysis"></tbody><tfoot id="causaAnalysisTotal"></tfoot></table></div></div>
+  <div class="panel"><h3>Análise por causa do motivo</h3><div class="hint">Processos, projetos, erro humano, laboratório, maquinários, ferramental ou outros (definido no Cadastro de motivos).</div><div class="tablewrap"><table><thead><tr><th>Causa</th><th>Kg refugo</th><th>Qtd.</th><th>% do total</th><th>Valor / custo</th></tr></thead><tbody id="causaAnalysis"></tbody><tfoot id="causaAnalysisTotal"></tfoot></table></div></div>
   <div class="panel"><h3>Análise por peça</h3><div class="hint">Identifique quais produtos concentram o maior peso de refugo.</div><div class="tablewrap"><table><thead><tr><th>Produto</th><th>Kg refugo</th><th>Qtd.</th><th>% do total</th><th>Valor / custo</th></tr></thead><tbody id="partAnalysis"></tbody><tfoot id="partAnalysisTotal"></tfoot></table></div></div>
   <div class="panel wide"><h3>Análise por OF</h3><div class="hint">Visualize o total por ordem de fabricação e o principal motivo.</div><div class="tablewrap"><table><thead><tr><th>OF</th><th>Cliente</th><th>Kg refugo</th><th>Qtd.</th><th>% do total</th><th>Motivo principal</th></tr></thead><tbody id="ofAnalysis"></tbody><tfoot id="ofAnalysisTotal"></tfoot></table></div></div>
 </div>
@@ -950,15 +950,15 @@ service cloud.firestore {
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script src="dados-iniciais.js?v=133"></script>
-<script src="analises.js?v=133"></script>
-<script src="filtros.js?v=133"></script>
-<script src="retrabalhos.js?v=133"></script>
-<script src="app.js?v=133"></script>
-<script src="devolucoes.js?v=133"></script>
-<script src="gestao.js?v=133"></script>
-<script src="reuniao.js?v=133"></script>
-<script src="auditoria.js?v=133"></script>
-<script src="versao.js?v=133"></script>
+<script src="dados-iniciais.js?v=135"></script>
+<script src="analises.js?v=135"></script>
+<script src="filtros.js?v=135"></script>
+<script src="retrabalhos.js?v=135"></script>
+<script src="app.js?v=135"></script>
+<script src="devolucoes.js?v=135"></script>
+<script src="gestao.js?v=135"></script>
+<script src="reuniao.js?v=135"></script>
+<script src="auditoria.js?v=135"></script>
+<script src="versao.js?v=135"></script>
 </body>
 </html>
