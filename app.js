@@ -296,6 +296,14 @@ window.__NORMALIZAR_CODIGO__ = function(v){
 window.__BUSCAR_PRODUTO_OFICIAL__ = function(codigo){
   const key=window.__NORMALIZAR_CODIGO__(codigo);
   if(!key) return null;
+  // O cadastro salvo (com as edições do usuário) tem prioridade sobre a base embutida da planilha.
+  try{
+    if(typeof cadastros!=='undefined'&&cadastros&&Array.isArray(cadastros.pecas)){
+      const ed=cadastros.pecas.filter(x=>window.__NORMALIZAR_CODIGO__(x?.codigo)===key);
+      const hit=ed.find(x=>x._editado)||ed.find(x=>String(x.descricao||'').trim())||ed[0];
+      if(hit) return hit;
+    }
+  }catch(e){}
   const list=window.__PRODUTOS_CADASTRO_OFICIAL__;
   return list.find(x=>window.__NORMALIZAR_CODIGO__(x?.codigo)===key) || null;
 };
@@ -581,7 +589,7 @@ function addPeca(){
  if(principal===null||arvore===null||fundUsin===null||usinado===null)return alert('Preencha os 4 pesos com valores válidos.');
  const normalizeClient=x=>canonicalClientName(x||'').trim();
  const cliente=normalizeClient(cli);
- const registro={cliente,codigo:c,planta,descricao:d,pesoPrincipal:principal,pesoArvore:arvore,pesoFundUsin:fundUsin,pesoUsinado:usinado};
+ const registro={cliente,codigo:c,planta,descricao:d,pesoPrincipal:principal,pesoArvore:arvore,pesoFundUsin:fundUsin,pesoUsinado:usinado,_editado:true};
  if(editIndex!==null && Number.isInteger(editIndex) && cadastros.pecas[editIndex]){
    const duplicate=cadastros.pecas.some((x,idx)=>idx!==editIndex&&String(x.codigo??'').trim()===c&&String(x.cliente??'').trim().toUpperCase()===cliente.toUpperCase());
    if(duplicate)return alert('Essa combinação de cliente + código já está cadastrada em outro produto.');
