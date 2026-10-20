@@ -84,7 +84,7 @@ function fsAssemble(cfgSnap,chunkSnap){
   return{ok:true,cloudState,remote};
 }
 /* ===== Atualização em tempo real: escuta mudanças feitas por outros computadores ===== */
-let firebaseUnsub=[],firebasePullTimer=null,firebasePushPending=false,firebasePulling=false;
+let firebaseUnsub=[],firebasePullTimer=null,firebasePushPending=false,firebasePulling=false,firebaseKnownDataId=null,firebaseDataDirty=false;
 function fsStable(v){
   if(v===undefined||v===null)return 'null';
   if(Array.isArray(v))return '['+v.map(fsStable).join(',')+']';
@@ -112,6 +112,23 @@ async function pullRemoteQuiet(){
   try{
     const root=firebaseRoot();
     const cfgSnap=await root.collection('config').doc('estado').get();
+    /* Caminho leve: se os lançamentos na nuvem não mudaram (mesmo dataId), não baixa tudo de novo. */
+    if(cfgSnap.exists&&firebaseKnownDataId){
+      const cs=fsDesanitize(cfgSnap.data());
+      if(cs.dataId&&cs.dataId===firebaseKnownDataId){
+        const dMeta=cs.meta&&fsStable(cs.meta)!==fsStable(meta),dCad=cs.cadastros&&fsStable(cs.cadastros)!==fsStable(cadastros),dProd=Array.isArray(cs.producaoFundicao)&&fsStable(cs.producaoFundicao)!==fsStable(producaoFundicao);
+        if(!dMeta&&!dCad&&!dProd)return;
+        firebaseApplyingRemote=true;
+        try{
+          if(dMeta){meta=cs.meta;localStorage.setItem(KEY+'_meta',JSON.stringify(meta))}
+          if(dProd){producaoFundicao=cs.producaoFundicao.map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao))}
+          if(dCad){cadastros=cs.cadastros;saveCad()}
+          refresh();
+        }finally{firebaseApplyingRemote=false}
+        setFirebaseStatus('Atualizado em tempo real às '+new Date().toLocaleTimeString('pt-BR')+'.','ok');
+        return;
+      }
+    }
     const chunkSnap=await root.collection('lancamentos').orderBy('index').get();
     const asm=fsAssemble(cfgSnap,chunkSnap);
     if(!asm.ok)return; /* nuvem sendo atualizada por outro computador: espera o próximo aviso */
@@ -121,7 +138,7 @@ async function pullRemoteQuiet(){
     const mesmoMeta=!cloudState.meta||fsStable(cloudState.meta)===fsStable(meta);
     const mesmoCad=!cloudState.cadastros||fsStable(cloudState.cadastros)===fsStable(cadastros);
     const mesmoProd=!Array.isArray(cloudState.producaoFundicao)||fsStable(cloudState.producaoFundicao)===fsStable(producaoFundicao);
-    if(mesmoData&&mesmoMeta&&mesmoCad&&mesmoProd)return;
+    if(mesmoData&&mesmoMeta&&mesmoCad&&mesmoProd){if(mesmoData&&cloudState.dataId)firebaseKnownDataId=cloudState.dataId;return}
     if(!firebaseFirstPullDone){
       firebaseFirstPullDone=true;
       if(data.length>0){
@@ -145,16 +162,18 @@ async function pullRemoteQuiet(){
       saveCad();
       refresh();
     }finally{firebaseApplyingRemote=false}
+    if(cloudState.dataId)firebaseKnownDataId=cloudState.dataId;
     firebaseFirstPullDone=true;setFirebaseStatus('Atualizado em tempo real às '+new Date().toLocaleTimeString('pt-BR')+'.','ok');
   }catch(e){console.error('Atualização remota:',e)}
   finally{firebasePulling=false}
 }
-async function uploadLocalToFirebase(showMessage=true){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Enviando dados locais para o Firebase...');const root=firebaseRoot();const fonteHistorico={versao:'v79',custoRefugoKg:2.60,producaoFundicao:Array.isArray(producaoFundicao)?producaoFundicao.map(x=>({...x,custoKg:2.6})):[],reunioes:Array.isArray(window.reunioes)?window.reunioes:[]};if(showMessage){const _c=await root.collection('config').doc('estado').get();const _k=await root.collection('lancamentos').orderBy('index').get();const _a=fsAssemble(_c,_k);if(_a.ok&&_a.remote.length&&(_a.remote.length!==data.length||Math.abs(fsKgTotal(_a.remote)-fsKgTotal(data))>0.5)){if(!confirm('ATENÇÃO: a nuvem já tem dados DIFERENTES dos deste computador.\n\nNuvem: '+_a.remote.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(_a.remote))+' kg\nEste computador: '+data.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(data))+' kg\n\nSubstituir os dados da nuvem pelos deste computador?')){setFirebaseStatus('Envio cancelado. A nuvem não foi alterada.','');return}}}
-const dataId=Date.now().toString(36)+Math.random().toString(36).slice(2,8);const metaPayload={meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,dataId,totalRecords:data.length,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()};const chunks=[];for(let i=0;i<data.length;i+=FIREBASE_CHUNK_SIZE)chunks.push({index:Math.floor(i/FIREBASE_CHUNK_SIZE),records:data.slice(i,i+FIREBASE_CHUNK_SIZE),uploadId:dataId,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()});metaPayload.totalChunks=chunks.length;for(let i=0;i<chunks.length;i+=20){const batch=firebaseDbOnline.batch();chunks.slice(i,i+20).forEach(ch=>batch.set(root.collection('lancamentos').doc('chunk_'+String(ch.index).padStart(4,'0')),fsSanitize(ch)));await batch.commit()}const existing=await root.collection('lancamentos').get();const valid=new Set(chunks.map(ch=>'chunk_'+String(ch.index).padStart(4,'0')));let batch=firebaseDbOnline.batch(),count=0;existing.docs.forEach(d=>{if(!valid.has(d.id)){batch.delete(d.ref);count++}});if(count)await batch.commit();await root.collection('config').doc('estado').set(fsSanitize(metaPayload),{merge:true});firebaseSyncPaused=false;firebaseFirstPullDone=true;setFirebaseStatus('Dados locais enviados para o Firebase.','ok');if(showMessage)alert('Sincronização concluída: '+data.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao enviar: '+(e?.message||e),'err');alert('Erro ao enviar os dados para o Firebase.\n\n'+(e?.message||e))}}
+async function uploadLocalToFirebase(showMessage=true,cadOnly=false){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Enviando dados locais para o Firebase...');const root=firebaseRoot();const fonteHistorico={versao:'v79',custoRefugoKg:2.60,producaoFundicao:Array.isArray(producaoFundicao)?producaoFundicao.map(x=>({...x,custoKg:2.6})):[],reunioes:Array.isArray(window.reunioes)?window.reunioes:[]};if(showMessage){const _c=await root.collection('config').doc('estado').get();const _k=await root.collection('lancamentos').orderBy('index').get();const _a=fsAssemble(_c,_k);if(_a.ok&&_a.remote.length&&(_a.remote.length!==data.length||Math.abs(fsKgTotal(_a.remote)-fsKgTotal(data))>0.5)){if(!confirm('ATENÇÃO: a nuvem já tem dados DIFERENTES dos deste computador.\n\nNuvem: '+_a.remote.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(_a.remote))+' kg\nEste computador: '+data.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(data))+' kg\n\nSubstituir os dados da nuvem pelos deste computador?')){setFirebaseStatus('Envio cancelado. A nuvem não foi alterada.','');return}}}
+if(!showMessage&&!firebaseDataDirty&&(firebaseKnownDataId||cadOnly)){await root.collection('config').doc('estado').set(fsSanitize({meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()}),{merge:true});setFirebaseStatus('Cadastros enviados ao Firebase.','ok');return}
+const dataId=Date.now().toString(36)+Math.random().toString(36).slice(2,8);const metaPayload={meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,dataId,totalRecords:data.length,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()};const chunks=[];for(let i=0;i<data.length;i+=FIREBASE_CHUNK_SIZE)chunks.push({index:Math.floor(i/FIREBASE_CHUNK_SIZE),records:data.slice(i,i+FIREBASE_CHUNK_SIZE),uploadId:dataId,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()});metaPayload.totalChunks=chunks.length;for(let i=0;i<chunks.length;i+=20){const batch=firebaseDbOnline.batch();chunks.slice(i,i+20).forEach(ch=>batch.set(root.collection('lancamentos').doc('chunk_'+String(ch.index).padStart(4,'0')),fsSanitize(ch)));await batch.commit()}const existing=await root.collection('lancamentos').get();const valid=new Set(chunks.map(ch=>'chunk_'+String(ch.index).padStart(4,'0')));let batch=firebaseDbOnline.batch(),count=0;existing.docs.forEach(d=>{if(!valid.has(d.id)){batch.delete(d.ref);count++}});if(count)await batch.commit();await root.collection('config').doc('estado').set(fsSanitize(metaPayload),{merge:true});firebaseSyncPaused=false;firebaseFirstPullDone=true;firebaseKnownDataId=dataId;firebaseDataDirty=false;setFirebaseStatus('Dados locais enviados para o Firebase.','ok');if(showMessage)alert('Sincronização concluída: '+data.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao enviar: '+(e?.message||e),'err');alert('Erro ao enviar os dados para o Firebase.\n\n'+(e?.message||e))}}
 async function downloadFromFirebase(){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Baixando dados do Firebase...');const root=firebaseRoot();const cfgSnap=await root.collection('config').doc('estado').get();const chunkSnap=await root.collection('lancamentos').orderBy('index').get();if(!cfgSnap.exists&&!chunkSnap.size){throw new Error('Não existem dados publicados neste Firebase para este sistema.')}
  const _asm=fsAssemble(cfgSnap,chunkSnap);if(!_asm.ok)throw new Error('A nuvem está sendo atualizada por outro computador. Tente de novo em alguns segundos.');const cloudState=_asm.cloudState;const remote=_asm.remote;if(!remote.length&&!data.length)throw new Error('O Firebase está conectado, mas não há lançamentos para baixar.');if(remote.length){data=remote;if(cloudState.meta)meta=cloudState.meta;if(Array.isArray(cloudState.producaoFundicao))producaoFundicao=cloudState.producaoFundicao;if(cloudState.cadastros)cadastros=cloudState.cadastros;if(Array.isArray(cloudState.reunioes)){window.reunioes=cloudState.reunioes;localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}if(cloudState.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cloudState.historicoFonte))}catch(e){}}producaoFundicao=(Array.isArray(producaoFundicao)?producaoFundicao:[]).map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));salvarHistoricoFonte();localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'_meta',JSON.stringify(meta));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));saveCad();refresh();}firebaseSyncPaused=false;firebaseFirstPullDone=true;setFirebaseStatus('Dados do Firebase carregados neste navegador.','ok');alert('Dados do Firebase carregados: '+remote.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao baixar: '+(e?.message||e),'err');alert('Erro ao baixar os dados do Firebase.\n\n'+(e?.message||e))}}
 function disconnectFirebase(){try{stopFirebaseListener();if(firebaseAuthOnline)firebaseAuthOnline.signOut();if(firebaseAppOnline&&firebaseAppOnline.delete)firebaseAppOnline.delete()}catch{}firebaseOnlineConnected=false;firebaseAuthOnline=null;firebaseDbOnline=null;firebaseAppOnline=null;localStorage.removeItem(FIREBASE_CONFIG_KEY);localStorage.removeItem(FIREBASE_SYNC_KEY);setFirebaseStatus('Desconectado. O sistema voltou para o modo local.','')}
-function scheduleFirebasePush(){if(!firebaseOnlineConnected||firebaseApplyingRemote||firebaseSyncPaused||localStorage.getItem(FIREBASE_SYNC_KEY)==='false')return;clearTimeout(firebasePushTimer);firebasePushPending=true;firebasePushTimer=setTimeout(()=>{uploadLocalToFirebase(false).catch(()=>{}).finally(()=>{firebasePushPending=false})},800)}
+function scheduleFirebasePush(cadOnly){if(!firebaseOnlineConnected||firebaseApplyingRemote||firebaseSyncPaused||localStorage.getItem(FIREBASE_SYNC_KEY)==='false')return;clearTimeout(firebasePushTimer);firebasePushPending=true;firebasePushTimer=setTimeout(()=>{uploadLocalToFirebase(false,cadOnly===true).catch(()=>{}).finally(()=>{firebasePushPending=false})},800)}
 window.addEventListener('load',()=>{const cfg=getFirebaseConfig();if(cfg)setTimeout(()=>connectFirebase(cfg,false),700)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeFirebaseModal()});document.getElementById('firebaseOverlay')?.addEventListener('click',e=>{if(e.target.id==='firebaseOverlay')closeFirebaseModal()});
 document.getElementById('firebaseConfigBtn')?.addEventListener('click',e=>{e.preventDefault();window.openFirebaseModal();});
@@ -395,15 +414,32 @@ if(localStorage.getItem(KEY+'_auto_cadastro_version')!==AUTO_CADASTRO_VERSION){ 
 }
 
 function saveCad(){localStorage.setItem(CADKEY,JSON.stringify(cadastros));}
+/* Lista só o necessário (busca + limite) para não travar/estourar memória com milhares de cadastros. */
+window.__cadTot={};
+function cadLim(arr,key){
+  const q=normalizeText(document.getElementById(key+'Busca')?.value||''),lim=window['__lim_'+key]||60,out=[];let tot=0;
+  arr.forEach((x,i)=>{
+    if(q&&!normalizeText([x.codigo,x.descricao,x.cliente,x.planta,x.causa].join(' ')).includes(q))return;
+    tot++;if(out.length<lim)out.push([x,i]);
+  });
+  window.__cadTot[key]={tot,shown:out.length};return out;
+}
+window.cadMais=function(key){window['__lim_'+key]=(window['__lim_'+key]||60)+100;renderCadastro()};
+function cadMaisBtn(key,el){
+  const t=window.__cadTot[key];if(!el||!t)return;
+  const info=`<div class="small" style="padding:6px 2px">Mostrando ${t.shown} de ${t.tot}${t.tot>t.shown?' — use a busca acima para localizar':''}.</div>`;
+  el.insertAdjacentHTML('beforeend',info+(t.tot>t.shown?`<button type="button" class="btn secondary" onclick="cadMais('${key}')">Mostrar mais 100</button>`:''));
+}
 function renderCadastro(){
  // Não reinsere a lista-base ao renderizar: isso permite excluir motivos de forma permanente.
  if(!cadastros || typeof cadastros!=='object') cadastros={motivos:[],pecas:[],clientes:[],responsaveis:[]};
  const mv=document.getElementById('motivosListView'),pv=document.getElementById('pecasListView'),cv=document.getElementById('clientesListView'),rv=document.getElementById('responsaveisListView');
  try{renderCustosPlanta()}catch(e){}
- if(mv)mv.innerHTML=cadastros.motivos.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.codigo||'—')} — ${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Planta: ${esc(x.planta||'—')} • Causa: <select onchange="setMotivoCausa(${i},this.value)" style="padding:3px 6px;border-radius:8px;font-weight:700"><option value="">— selecionar —</option>${CAUSAS_MOTIVO.map(c=>`<option value="${c}"${x.causa===c?' selected':''}>${c}</option>`).join('')}</select></div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editMotivo(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeMotivo(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum motivo cadastrado.</div>';
- if(pv)pv.innerHTML=cadastros.pecas.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Cliente: ${esc(x.cliente||'—')} • Código: ${esc(x.codigo||'—')} • Planta: ${esc(x.planta||'—')}</div><div class="product-card-weight">Peso principal / bruto fracionado: ${x.pesoPrincipal!==''&&x.pesoPrincipal!=null?fmt(x.pesoPrincipal)+' kg':'Não informado'}</div><div class="product-card-other"><b>Pesos:</b> Árvore ${x.pesoArvore!==''&&x.pesoArvore!=null?fmt(x.pesoArvore)+' kg':'—'} • Líquido Fund./Bruto Usin. ${x.pesoFundUsin!==''&&x.pesoFundUsin!=null?fmt(x.pesoFundUsin)+' kg':'—'} • Usinado ${x.pesoUsinado!==''&&x.pesoUsinado!=null?fmt(x.pesoUsinado)+' kg':'—'}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editPeca(${i})">Editar</button><button class="btn danger cad-delete" onclick="removePeca(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhuma peça cadastrada.</div>';
+ if(mv)mv.innerHTML=cadLim(cadastros.motivos,'motivos').map(([x,i])=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.codigo||'—')} — ${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Planta: ${esc(x.planta||'—')} • Causa: <select onchange="setMotivoCausa(${i},this.value)" style="padding:3px 6px;border-radius:8px;font-weight:700"><option value="">— selecionar —</option>${CAUSAS_MOTIVO.map(c=>`<option value="${c}"${x.causa===c?' selected':''}>${c}</option>`).join('')}</select></div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editMotivo(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeMotivo(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum motivo cadastrado.</div>';
+ if(pv)pv.innerHTML=cadLim(cadastros.pecas,'pecas').map(([x,i])=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Cliente: ${esc(x.cliente||'—')} • Código: ${esc(x.codigo||'—')} • Planta: ${esc(x.planta||'—')}</div><div class="product-card-weight">Peso principal / bruto fracionado: ${x.pesoPrincipal!==''&&x.pesoPrincipal!=null?fmt(x.pesoPrincipal)+' kg':'Não informado'}</div><div class="product-card-other"><b>Pesos:</b> Árvore ${x.pesoArvore!==''&&x.pesoArvore!=null?fmt(x.pesoArvore)+' kg':'—'} • Líquido Fund./Bruto Usin. ${x.pesoFundUsin!==''&&x.pesoFundUsin!=null?fmt(x.pesoFundUsin)+' kg':'—'} • Usinado ${x.pesoUsinado!==''&&x.pesoUsinado!=null?fmt(x.pesoUsinado)+' kg':'—'}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editPeca(${i})">Editar</button><button class="btn danger cad-delete" onclick="removePeca(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhuma peça cadastrada.</div>';
  if(cv)cv.innerHTML=cadastros.clientes.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x)}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editCliente(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeCliente(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum cliente cadastrado.</div>';
  if(rv)rv.innerHTML=cadastros.responsaveis.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x)}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editResponsavel(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeResponsavel(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum responsável cadastrado.</div>';
+ cadMaisBtn('motivos',mv);cadMaisBtn('pecas',pv);
  document.getElementById('motivosCount')?.replaceChildren(document.createTextNode(`${cadastros.motivos.length} motivo(s)`));
  document.getElementById('pecasCount')?.replaceChildren(document.createTextNode(`${cadastros.pecas.length} peça(s)`));
  document.getElementById('clientesCount')?.replaceChildren(document.createTextNode(`${cadastros.clientes.length} cliente(s)`));
@@ -2522,9 +2558,9 @@ function exportCSV(){let headers=Object.values(cols);let lines=[headers,...data.
 
 // Integração do modo online ao salvamento local existente.
 const __saveOriginal=save;
-save=function(){__saveOriginal();scheduleFirebasePush()};
+save=function(){__saveOriginal();if(!firebaseApplyingRemote)firebaseDataDirty=true;scheduleFirebasePush()};
 const __saveCadOriginal=saveCad;
-saveCad=function(){__saveCadOriginal();scheduleFirebasePush()};
+saveCad=function(){__saveCadOriginal();scheduleFirebasePush(true)};
 const __saveProducaoOriginal=saveProducao;
 saveProducao=function(){__saveProducaoOriginal();scheduleFirebasePush()};
 document.getElementById('data')?.addEventListener('input',atualizarDataDisplay);document.getElementById('data')?.addEventListener('change',atualizarDataDisplay);document.getElementById('data')?.addEventListener('blur',atualizarDataDisplay);
