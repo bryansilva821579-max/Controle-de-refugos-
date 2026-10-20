@@ -107,6 +107,16 @@ function calcAlertas(k){
   /* reincidência refugo + devolução */
   const cr=cruzar(k,k,R,D).filter(x=>x.rKg>0&&x.dQtd>0);
   if(cr.length)add('warn',cr.length+' peça(s) com refugo e devolução no mês','Ex.: '+cr.slice(0,3).map(x=>x.cod||x.pec).join(', ')+'. Veja a aba "Refugo × Devolução".');
+  /* qualidade dos dados */
+  try{
+    const Rk=R.filter(r=>r.k===k),tk=somar(Rk,r=>r.kg),sc=Rk.filter(r=>!r.causa||r.causa==='Não classificado');
+    if(tk>0&&somar(sc,r=>r.kg)/tk>0.2)add('warn','Muitos motivos sem causa definida',fmt(somar(sc,r=>r.kg)/tk*100)+'% do refugo de '+lblM(k)+' (em kg) ainda não tem causa. Use Cadastro → Motivos → "Classificar motivos por causa".');
+    const sp=Rk.filter(r=>r.qtd>0&&!(r.kg>0));
+    if(sp.length)add('warn',sp.length+' lançamento(s) do mês sem peso','Produtos sem peso no cadastro fazem o refugo sair com 0 kg. Use Cadastro → Produtos → "Produtos sem peso" para completar. Ex.: '+[...new Set(sp.map(r=>r.cod||r.pec))].slice(0,4).join(', ')+'.');
+    const bk=Number(localStorage.getItem(KEY+'_backup_ultimo')||0),dias=bk?Math.floor((Date.now()-bk)/864e5):null;
+    if(dias===null)add('warn','Nenhum backup feito neste aparelho','Faça um backup em Dados e backup (o automático roda semanalmente quando está ligado).');
+    else if(dias>14)add('warn','Backup desatualizado','O último backup foi há '+dias+' dias. Faça um novo em Dados e backup.');
+  }catch(e){}
   if(!A.some(a=>a.sev==='crit'||a.sev==='warn'))add('ok','Tudo dentro do esperado','Nenhum alerta para '+lblM(k)+' com os parâmetros atuais.');
   const ord={crit:0,warn:1,info:2,ok:3};
   return A.sort((a,b)=>ord[a.sev]-ord[b.sev]);
@@ -666,6 +676,28 @@ window.motCausaAbrir=function(){
     mcFecha();alert(n+' motivo(s) atualizado(s).');
   };
   desenha();
+};
+
+
+/* ---------- produtos sem peso (Cadastro → Produtos) ---------- */
+function pesoOk(v){const x=Number(String(v??'').replace(',','.'));return Number.isFinite(x)&&x>0}
+function psFecha(){const m=$('psModal');if(m)m.remove()}
+window.pecaSemPesoAbrir=function(){
+  psFecha();
+  const pecas=(cadastros.pecas||[]),uso=new Map();
+  (Array.isArray(data)?data:[]).forEach(r=>{const c=String(val(r,'codigo')||'').trim();if(c)uso.set(c,(uso.get(c)||0)+1)});
+  const lista=pecas.map((x,i)=>({x,i,n:uso.get(String(x.codigo||'').trim())||0})).filter(o=>!['pesoPrincipal','pesoFundUsin','pesoUsinado','pesoArvore'].some(f=>pesoOk(o.x[f])));
+  lista.sort((a,b)=>b.n-a.n);
+  const m=document.createElement('div');m.id='psModal';
+  m.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px';
+  const usados=lista.filter(o=>o.n>0).length;
+  m.innerHTML=`<div style="background:var(--card,#fff);color:var(--text,#222);border-radius:14px;max-width:980px;width:100%;max-height:92vh;display:flex;flex-direction:column;padding:16px">
+   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px">⚖ Produtos sem peso</b><button type="button" class="btn secondary" id="psX">Fechar</button></div>
+   <div class="small" style="margin:6px 0"><b>${lista.length}</b> de ${pecas.length} produtos não têm nenhum peso válido cadastrado (vazio, "SEM PESO" ou "COD USINAGEM" nos quatro campos); <b>${usados}</b> deles já têm lançamentos de refugo (saem com 0 kg). Ordenados pelos mais lançados.</div>
+   <div style="overflow:auto"><table style="width:100%"><thead><tr><th>Código</th><th>Descrição</th><th>Cliente</th><th>Planta</th><th>Peso atual</th><th>Lanç.</th><th></th></tr></thead><tbody>${lista.slice(0,300).map(o=>`<tr><td>${esc(o.x.codigo||'')}</td><td style="white-space:normal">${esc(o.x.descricao||'')}</td><td>${esc(o.x.cliente||'—')}</td><td>${esc(o.x.planta||'')}</td><td>${esc(o.x.pesoPrincipal===''||o.x.pesoPrincipal==null?'(vazio)':o.x.pesoPrincipal)}</td><td>${fmt(o.n)}</td><td><button type="button" class="btn secondary" data-i="${o.i}">Editar</button></td></tr>`).join('')||'<tr><td colspan="7" class="small" style="text-align:center">Todos os produtos têm peso.</td></tr>'}</tbody></table>${lista.length>300?'<div class="small">Mostrando os 300 primeiros.</div>':''}</div></div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{if(e.target===m)psFecha();const b=e.target.closest&&e.target.closest('button[data-i]');if(b){psFecha();try{window.editPeca(Number(b.dataset.i))}catch(x){alert('Não foi possível abrir o produto.')}}});
+  $('psX').onclick=psFecha;
 };
 
 /* para testes */

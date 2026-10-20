@@ -10,10 +10,10 @@ function audLoad(){try{return JSON.parse(localStorage.getItem(AUD_KEY)||'[]')}ca
 function audStore(a){a=a.slice(0,3000);try{localStorage.setItem(AUD_KEY,JSON.stringify(a))}catch(e){try{localStorage.setItem(AUD_KEY,JSON.stringify(a.slice(0,500)))}catch(x){}}}
 function trLoad(){try{return JSON.parse(localStorage.getItem(TRASH_KEY)||'[]')}catch(e){return[]}}
 function trStore(a){try{localStorage.setItem(TRASH_KEY,JSON.stringify(a.slice(0,500)))}catch(e){console.error('Lixeira: sem espaço',e)}}
-function audUser(ask){var u=localStorage.getItem(USER_KEY)||'';if(!u&&ask&&!sessionStorage.getItem('aud_asked')){sessionStorage.setItem('aud_asked','1');u=(prompt('Digite seu nome para registrar no histórico de alterações:')||'').trim();if(u)localStorage.setItem(USER_KEY,u)}return u||'Não identificado'}
+function audUser(ask){var u=(localStorage.getItem(USER_KEY)||'').trim();if(!u&&ask!==false){var msg='Digite seu nome para registrar no histórico de alterações (obrigatório):';while(!u){u=(prompt(msg)||'').trim();if(!u)msg='O nome é obrigatório para registrar alterações. Digite seu nome:'}localStorage.setItem(USER_KEY,u)}return u||'Não identificado'}
 function audLog(tipo,acao,resumo,ref){var e={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),ts:Date.now(),quem:audUser(true),tipo:tipo,acao:acao,resumo:String(resumo||'').slice(0,400),ref:ref||''},a=audLoad();a.unshift(e);audStore(a);
   try{if(typeof rtOnline==='function'&&rtOnline())firebaseRoot().collection('auditoria').doc(e.id).set(e).catch(function(){})}catch(x){}return e}
-function trAdd(tipo,dados,resumo){var a=trLoad();a.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),ts:Date.now(),quem:audUser(false),tipo:tipo,resumo:String(resumo||'').slice(0,300),dados:dados});trStore(a)}
+function trAdd(tipo,dados,resumo){var a=trLoad();a.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),ts:Date.now(),quem:audUser(true),tipo:tipo,resumo:String(resumo||'').slice(0,300),dados:dados});trStore(a)}
 (function(){var lim=Date.now()-180*864e5,a=trLoad(),b=a.filter(function(x){return x.ts>lim});if(b.length!==a.length)trStore(b)})();
 
 /* ---------- diferenças ---------- */
@@ -51,9 +51,13 @@ function audAtas(before){var B={},C={},cur=window.reunioes||[];before.forEach(fu
 
 /* ---------- cadastros e meta ---------- */
 function cadSnapBuild(){try{cadSnap=JSON.parse(JSON.stringify(cadastros))}catch(e){}}
+function pecaDetalhe(){var out=[],F={descricao:'descrição',planta:'planta',pesoPrincipal:'peso principal',pesoArvore:'peso árvore',pesoFundUsin:'peso líq. fund./bruto usin.',pesoUsinado:'peso usinado'},K=function(x){return String(x.codigo||'')+'|'+String(x.cliente||'').toUpperCase()},old={},br=function(v){return v==null||v===''?'∅':String(v).replace('.',',')};
+  (cadSnap&&cadSnap.pecas||[]).forEach(function(x){old[K(x)]=x});
+  ((cadastros&&cadastros.pecas)||[]).forEach(function(x){var o=old[K(x)];if(!o)return;var d=[];Object.keys(F).forEach(function(f){if(JSON.stringify(o[f]==null?'':o[f])!==JSON.stringify(x[f]==null?'':x[f]))d.push(F[f]+' '+br(o[f])+' → '+br(x[f]))});if(d.length)out.push('Produto '+x.codigo+(x.cliente?' ('+x.cliente+')':'')+': '+d.join(', '))});
+  return out.length>4?out.slice(0,4).join(' | ')+' | +'+(out.length-4)+' produto(s)':out.join(' | ')}
 function cadDiffMsg(){if(!cadSnap)return'';var NM={pecas:'Produtos',motivos:'Motivos',clientes:'Clientes',responsaveis:'Responsáveis',participantes:'Participantes',materiais:'Materiais'},out=[];
   Object.keys(NM).forEach(function(k){var B=(cadSnap[k]||[]).map(function(x){return JSON.stringify(x)}),C=((cadastros&&cadastros[k])||[]).map(function(x){return JSON.stringify(x)}),sb=new Set(B),sc=new Set(C),ad=C.filter(function(x){return !sb.has(x)}).length,rm=B.filter(function(x){return !sc.has(x)}).length,ed=Math.min(ad,rm);ad-=ed;rm-=ed;
-  if(ad||rm||ed)out.push(NM[k]+': '+(ad?'+'+ad+' ':'')+(rm?'−'+rm+' ':'')+(ed?'~'+ed+' alterados':''))});return out.join(' | ')}
+  if(ad||rm||ed)out.push(NM[k]+': '+(ad?'+'+ad+' ':'')+(rm?'−'+rm+' ':'')+(ed?'~'+ed+' alterados':''))});var pd='';try{pd=pecaDetalhe()}catch(e){}if(pd)out.push(pd);return out.join(' | ')}
 (function(){var f=window.saveCad;try{cadSnapBuild()}catch(e){}if(typeof f==='function')window.saveCad=function(){var res=f.apply(this,arguments);try{var m=cadDiffMsg();if(m&&typeof cadastroAccessAllowed==='function'&&cadastroAccessAllowed())audLog('Cadastro','Editou',m,'');cadSnapBuild()}catch(e){console.error('auditoria',e)}return res};
   var g=window.saveMeta;if(typeof g==='function')window.saveMeta=function(){var b=JSON.stringify(meta),res=g.apply(this,arguments);try{if(JSON.stringify(meta)!==b)audLog('Meta','Editou','Meta % '+(JSON.parse(b).perc||'—')+' → '+meta.perc+' | Meta kg/mês '+(JSON.parse(b).kg||'—')+' → '+meta.kg,'')}catch(e){}return res}})();
 
@@ -69,7 +73,7 @@ function trEmpty(){if(!trLoad().length)return;if(!confirm('Esvaziar a lixeira? T
 
 /* ---------- backup ---------- */
 function bkGather(){var g=function(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};return{app:'Controle de Perdas, Refugos e Retrabalhos',versao:window.APP_VERSION,geradoEm:new Date().toISOString(),usuario:audUser(false),
-  data:g(KEY),cadastros:g(CADKEY),meta:g(KEY+'_meta'),producao:g(PROD_KEY),reunioes:g(REU_LS),retrabalhos:g(KEY+'_retrabalhos'),auditoria:audLoad().slice(0,1000),lixeira:trLoad()}}
+  data:g(KEY),cadastros:g(CADKEY),meta:g(KEY+'_meta'),producao:g(PROD_KEY),reunioes:g(REU_LS),retrabalhos:g(KEY+'_retrabalhos'),devolucoes:g('controle_refugos_2026_devolucoes_v1'),auditoria:audLoad().slice(0,1000),lixeira:trLoad()}}
 function bkDownload(auto){var d=new Date(),nome='backup_refugos_'+anaFmtD(d)+(auto?'_semanal':'')+'.json',b=new Blob([JSON.stringify(bkGather())],{type:'application/json'}),a=document.createElement('a');
   a.href=URL.createObjectURL(b);a.download=nome;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},4000);localStorage.setItem(BK_KEY,String(Date.now()));
   audLog('Backup',auto?'Automático':'Manual','Arquivo '+nome,'');try{showToast('💾 Backup salvo: '+nome)}catch(e){}bkRender()}
@@ -77,7 +81,7 @@ function bkAutoCheck(){if(localStorage.getItem(BK_AUTO)==='0')return;if(document
 setTimeout(function(){bkAutoCheck();setInterval(bkAutoCheck,60000)},6000);
 function bkRestore(inp){var f=inp.files&&inp.files[0];inp.value='';if(!f)return;var r=new FileReader();r.onload=function(){try{var b=JSON.parse(r.result);if(!b||!Array.isArray(b.data))throw new Error('arquivo de backup inválido');
   if(!confirm('RESTAURAR este backup ('+(b.geradoEm||'').slice(0,10)+')?\n\nOs dados atuais deste aparelho serão SUBSTITUÍDOS pelos do arquivo. Se o sistema estiver online, os outros computadores também podem receber esses dados.\n\nFaça um backup atual antes. Continuar?'))return;
-  var s=function(k,v){if(v!=null)localStorage.setItem(k,JSON.stringify(v))};s(KEY,b.data);s(CADKEY,b.cadastros);s(KEY+'_meta',b.meta);s(PROD_KEY,b.producao);s(REU_LS,b.reunioes);s(KEY+'_retrabalhos',b.retrabalhos);audLog('Backup','Restaurou','Backup de '+(b.geradoEm||'').slice(0,10),'');alert('Backup restaurado. O sistema será recarregado.');location.reload()}catch(e){alert('Não foi possível ler o backup: '+(e&&e.message||e))}};r.readAsText(f)}
+  var s=function(k,v){if(v!=null)localStorage.setItem(k,JSON.stringify(v))};s(KEY,b.data);s(CADKEY,b.cadastros);s(KEY+'_meta',b.meta);s(PROD_KEY,b.producao);s(REU_LS,b.reunioes);s(KEY+'_retrabalhos',b.retrabalhos);s('controle_refugos_2026_devolucoes_v1',b.devolucoes);audLog('Backup','Restaurou','Backup de '+(b.geradoEm||'').slice(0,10),'');alert('Backup restaurado. O sistema será recarregado.');location.reload()}catch(e){alert('Não foi possível ler o backup: '+(e&&e.message||e))}};r.readAsText(f)}
 
 /* ---------- telas ---------- */
 var AU_COR={Criou:'#16a34a',Editou:'#2563eb',Excluiu:'#dc2626',Restaurou:'#7c3aed'};

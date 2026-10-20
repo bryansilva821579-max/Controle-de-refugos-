@@ -122,6 +122,7 @@ function build(){
       <button class="btn secondary" type="button" onclick="devLimparFiltros()">Limpar</button>
     </div>
     <div class="dev-info">Clique em uma barra para ver o que foi devolvido (cliente, peça e quantidade). Em cada gráfico: <b style="color:var(--orange)">quantidade (peças)</b> no eixo esquerdo e <b style="color:#1f5f99">peso (kg)</b> no eixo direito, lado a lado.</div>
+    <div class="panel wide" style="margin-top:10px"><h3>🚫 Reclamações "não procede" por cliente</h3><div class="hint">Clientes que mais abriram devolução improcedente no período (ano e mês dos filtros; todas as plantas). Útil para conversar com Vendas.</div><div class="tablewrap"><table><thead><tr><th>Cliente</th><th>Reclamações</th><th>Não procede</th><th>% improcedente</th><th>Peças não procede</th><th>Peças total</th></tr></thead><tbody id="dvNpBody"></tbody></table></div></div>
     <div id="dvTabs" style="display:flex;gap:8px;margin:10px 0">${TIPOS.map((t,i)=>`<button type="button" class="btn secondary" id="dvTab${i}" onclick="devTab(${i})">${t.n}</button>`).join('')}</div>
     ${TIPOS.map((t,i)=>`<div id="dvSec${i}" style="display:${i===0?'block':'none'}">
     <h2 class="dev-sec">${t.n}</h2>
@@ -557,6 +558,13 @@ function painel(){
   if(!built)return;
   opcoes('dvFa','Todos os anos',[...new Set(lista.map(r=>String(r.data||'').slice(0,4)).filter(Boolean))].sort());
   opcoes('dvFc','Todos os clientes',[...new Set(lista.map(r=>r.cliente).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR')));
+  try{
+    const y=$('dvFa').value,mf=$('dvFm').value,o={};
+    lista.filter(r=>{const dt=String(r.data||'');return (!y||dt.slice(0,4)===y)&&(!mf||String(Number(dt.slice(5,7)))===mf)}).forEach(r=>{
+      const c=r.cliente||'Não informado',e=o[c]||(o[c]={n:0,np:0,q:0,qnp:0});e.n++;e.q+=num(r.qtd);if(naoProcede(r)){e.np++;e.qnp+=num(r.qtd)}});
+    const it=Object.entries(o).filter(x=>x[1].np>0).sort((a,b)=>b[1].qnp-a[1].qnp||b[1].np-a[1].np).slice(0,15);
+    $('dvNpBody').innerHTML=it.map(([c,e])=>`<tr><td>${esc(c)}</td><td>${fmt(e.n)}</td><td>${fmt(e.np)}</td><td>${fmt(e.np/e.n*100)}%</td><td>${fmt(e.qnp)}</td><td>${fmt(e.q)}</td></tr>`).join('')||'<tr><td colspan="6" class="small" style="text-align:center">Nenhuma reclamação "não procede" no período.</td></tr>';
+  }catch(e){console.warn(e)}
   const todas=filtrados();
   viewRaw=($('dvFp').value||'proc')!=='proc';
   TIPOS.forEach((t,i)=>{

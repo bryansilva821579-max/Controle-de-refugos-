@@ -105,6 +105,54 @@ function startFirebaseListener(){
   firebaseUnsub.push(root.collection('lancamentos').onSnapshot(onChange,onErr));try{rtListen()}catch(e){console.error(e)}try{devListen()}catch(e){console.error(e)}
   firebaseUnsub.push(root.collection('config').doc('estado').onSnapshot(onChange,onErr));
 }
+/* ===== Conflito de cadastro entre computadores: mescla (3 vias) em vez de sobrescrever ===== */
+let cadBase=null;
+function cadBaseSet(){try{cadBase=JSON.parse(JSON.stringify(cadastros))}catch(e){cadBase=null}}
+function cadMergeLista(B,L,R,key){
+  const m=a=>{const o=new Map();(Array.isArray(a)?a:[]).forEach(x=>{const k=key(x);if(!o.has(k))o.set(k,x)});return o};
+  const mb=m(B),ml=m(L),mr=m(R),j=x=>JSON.stringify(x),out=[],usados=new Set();
+  (Array.isArray(R)?R:[]).forEach(x=>{
+    const k=key(x);if(usados.has(k))return;usados.add(k);
+    if(ml.has(k)){out.push(!mb.has(k)||j(ml.get(k))!==j(mb.get(k))?ml.get(k):x)}
+    else if(mb.has(k)){if(j(x)!==j(mb.get(k)))out.push(x)} /* apagado aqui: só mantém se o outro computador editou */
+    else out.push(x);
+  });
+  (Array.isArray(L)?L:[]).forEach(x=>{
+    const k=key(x);if(usados.has(k))return;usados.add(k);
+    if(!mb.has(k))out.push(x); /* criado aqui */
+    else if(j(x)!==j(mb.get(k)))out.push(x); /* apagado lá, mas editado aqui */
+  });
+  return out;
+}
+function cadMerge3(base,local,remote){
+  const U=s=>String(s??'').trim().toUpperCase();
+  const keys={
+    pecas:x=>[String(x?.codigo??'').trim(),U(x?.cliente),U(x?.descricao)].join('|'),
+    motivos:x=>motivoCodeKey(x?.codigo)+'|'+U(x?.descricao),
+    clientes:x=>U(typeof x==='string'?x:x?.nome),
+    responsaveis:x=>U(typeof x==='string'?x:x?.nome),
+    participantes:x=>U(typeof x==='string'?x:x?.nome),
+    materiais:x=>U(typeof x==='string'?x:(x?.nome||x?.descricao||JSON.stringify(x)))
+  };
+  const out={...remote},j=x=>JSON.stringify(x);
+  Object.keys({...local,...remote}).forEach(k=>{
+    if(keys[k]&&(Array.isArray(local[k])||Array.isArray(remote[k])))out[k]=cadMergeLista(base[k],local[k],remote[k],keys[k]);
+    else if(j(local[k])!==j(base[k]))out[k]=local[k]; /* alterado aqui (custos, etc.) */
+    else out[k]=remote[k];
+  });
+  return out;
+}
+async function cadPreMerge(root){
+  if(!cadBase)return;
+  const snap=await root.collection('config').doc('estado').get();if(!snap.exists)return;
+  const rc=fsDesanitize(snap.data()).cadastros;if(!rc||typeof rc!=='object')return;
+  const sr=fsStable(rc);if(sr===fsStable(cadBase)||sr===fsStable(cadastros))return;
+  const merged=cadMerge3(cadBase,cadastros,rc);
+  firebaseApplyingRemote=true;
+  try{cadastros=merged;localStorage.setItem(CADKEY,JSON.stringify(cadastros));refresh()}finally{firebaseApplyingRemote=false}
+  try{showToast('⚠ O cadastro tinha sido alterado em outro computador: as alterações foram mescladas com as suas.')}catch(e){alert('O cadastro tinha sido alterado em outro computador: as alterações foram mescladas com as suas.')}
+}
+window.__cadMerge3=cadMerge3;
 async function pullRemoteQuiet(){
   if(firebasePulling||!firebaseDbOnline||firebaseSyncPaused)return;
   if(firebasePushPending){clearTimeout(firebasePullTimer);firebasePullTimer=setTimeout(pullRemoteQuiet,1500);return} /* há mudança local a enviar */
@@ -117,12 +165,13 @@ async function pullRemoteQuiet(){
       const cs=fsDesanitize(cfgSnap.data());
       if(cs.dataId&&cs.dataId===firebaseKnownDataId){
         const dMeta=cs.meta&&fsStable(cs.meta)!==fsStable(meta),dCad=cs.cadastros&&fsStable(cs.cadastros)!==fsStable(cadastros),dProd=Array.isArray(cs.producaoFundicao)&&fsStable(cs.producaoFundicao)!==fsStable(producaoFundicao);
+        if(!dCad&&!cadBase)cadBaseSet();
         if(!dMeta&&!dCad&&!dProd)return;
         firebaseApplyingRemote=true;
         try{
           if(dMeta){meta=cs.meta;localStorage.setItem(KEY+'_meta',JSON.stringify(meta))}
           if(dProd){producaoFundicao=cs.producaoFundicao.map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao))}
-          if(dCad){cadastros=cs.cadastros;saveCad()}
+          if(dCad){cadastros=cs.cadastros;saveCad();cadBaseSet()}
           refresh();
         }finally{firebaseApplyingRemote=false}
         setFirebaseStatus('Atualizado em tempo real às '+new Date().toLocaleTimeString('pt-BR')+'.','ok');
@@ -151,7 +200,7 @@ async function pullRemoteQuiet(){
       data=remote;
       if(cloudState.meta)meta=cloudState.meta;
       if(Array.isArray(cloudState.producaoFundicao))producaoFundicao=cloudState.producaoFundicao;
-      if(cloudState.cadastros)cadastros=cloudState.cadastros;
+      if(cloudState.cadastros){cadastros=cloudState.cadastros;cadBaseSet()}
       if(Array.isArray(cloudState.reunioes)){window.reunioes=cloudState.reunioes;localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}
       if(cloudState.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cloudState.historicoFonte))}catch(e){}}
       producaoFundicao=(Array.isArray(producaoFundicao)?producaoFundicao:[]).map(x=>({...x,custoKg:2.6}));
@@ -167,11 +216,11 @@ async function pullRemoteQuiet(){
   }catch(e){console.error('Atualização remota:',e)}
   finally{firebasePulling=false}
 }
-async function uploadLocalToFirebase(showMessage=true,cadOnly=false){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Enviando dados locais para o Firebase...');const root=firebaseRoot();const fonteHistorico={versao:'v79',custoRefugoKg:2.60,producaoFundicao:Array.isArray(producaoFundicao)?producaoFundicao.map(x=>({...x,custoKg:2.6})):[],reunioes:Array.isArray(window.reunioes)?window.reunioes:[]};if(showMessage){const _c=await root.collection('config').doc('estado').get();const _k=await root.collection('lancamentos').orderBy('index').get();const _a=fsAssemble(_c,_k);if(_a.ok&&_a.remote.length&&(_a.remote.length!==data.length||Math.abs(fsKgTotal(_a.remote)-fsKgTotal(data))>0.5)){if(!confirm('ATENÇÃO: a nuvem já tem dados DIFERENTES dos deste computador.\n\nNuvem: '+_a.remote.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(_a.remote))+' kg\nEste computador: '+data.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(data))+' kg\n\nSubstituir os dados da nuvem pelos deste computador?')){setFirebaseStatus('Envio cancelado. A nuvem não foi alterada.','');return}}}
-if(!showMessage&&!firebaseDataDirty&&(firebaseKnownDataId||cadOnly)){await root.collection('config').doc('estado').set(fsSanitize({meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()}),{merge:true});setFirebaseStatus('Cadastros enviados ao Firebase.','ok');return}
-const dataId=Date.now().toString(36)+Math.random().toString(36).slice(2,8);const metaPayload={meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,dataId,totalRecords:data.length,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()};const chunks=[];for(let i=0;i<data.length;i+=FIREBASE_CHUNK_SIZE)chunks.push({index:Math.floor(i/FIREBASE_CHUNK_SIZE),records:data.slice(i,i+FIREBASE_CHUNK_SIZE),uploadId:dataId,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()});metaPayload.totalChunks=chunks.length;for(let i=0;i<chunks.length;i+=20){const batch=firebaseDbOnline.batch();chunks.slice(i,i+20).forEach(ch=>batch.set(root.collection('lancamentos').doc('chunk_'+String(ch.index).padStart(4,'0')),fsSanitize(ch)));await batch.commit()}const existing=await root.collection('lancamentos').get();const valid=new Set(chunks.map(ch=>'chunk_'+String(ch.index).padStart(4,'0')));let batch=firebaseDbOnline.batch(),count=0;existing.docs.forEach(d=>{if(!valid.has(d.id)){batch.delete(d.ref);count++}});if(count)await batch.commit();await root.collection('config').doc('estado').set(fsSanitize(metaPayload),{merge:true});firebaseSyncPaused=false;firebaseFirstPullDone=true;firebaseKnownDataId=dataId;firebaseDataDirty=false;setFirebaseStatus('Dados locais enviados para o Firebase.','ok');if(showMessage)alert('Sincronização concluída: '+data.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao enviar: '+(e?.message||e),'err');alert('Erro ao enviar os dados para o Firebase.\n\n'+(e?.message||e))}}
+async function uploadLocalToFirebase(showMessage=true,cadOnly=false){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Enviando dados locais para o Firebase...');const root=firebaseRoot();if(!showMessage){try{await cadPreMerge(root)}catch(e){console.warn('Mescla do cadastro:',e)}}const fonteHistorico={versao:'v79',custoRefugoKg:2.60,producaoFundicao:Array.isArray(producaoFundicao)?producaoFundicao.map(x=>({...x,custoKg:2.6})):[],reunioes:Array.isArray(window.reunioes)?window.reunioes:[]};if(showMessage){const _c=await root.collection('config').doc('estado').get();const _k=await root.collection('lancamentos').orderBy('index').get();const _a=fsAssemble(_c,_k);if(_a.ok&&_a.remote.length&&(_a.remote.length!==data.length||Math.abs(fsKgTotal(_a.remote)-fsKgTotal(data))>0.5)){if(!confirm('ATENÇÃO: a nuvem já tem dados DIFERENTES dos deste computador.\n\nNuvem: '+_a.remote.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(_a.remote))+' kg\nEste computador: '+data.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(data))+' kg\n\nSubstituir os dados da nuvem pelos deste computador?')){setFirebaseStatus('Envio cancelado. A nuvem não foi alterada.','');return}}}
+if(!showMessage&&!firebaseDataDirty&&(firebaseKnownDataId||cadOnly)){await root.collection('config').doc('estado').set(fsSanitize({meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()}),{merge:true});cadBaseSet();setFirebaseStatus('Cadastros enviados ao Firebase.','ok');return}
+const dataId=Date.now().toString(36)+Math.random().toString(36).slice(2,8);const metaPayload={meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,dataId,totalRecords:data.length,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()};const chunks=[];for(let i=0;i<data.length;i+=FIREBASE_CHUNK_SIZE)chunks.push({index:Math.floor(i/FIREBASE_CHUNK_SIZE),records:data.slice(i,i+FIREBASE_CHUNK_SIZE),uploadId:dataId,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()});metaPayload.totalChunks=chunks.length;for(let i=0;i<chunks.length;i+=20){const batch=firebaseDbOnline.batch();chunks.slice(i,i+20).forEach(ch=>batch.set(root.collection('lancamentos').doc('chunk_'+String(ch.index).padStart(4,'0')),fsSanitize(ch)));await batch.commit()}const existing=await root.collection('lancamentos').get();const valid=new Set(chunks.map(ch=>'chunk_'+String(ch.index).padStart(4,'0')));let batch=firebaseDbOnline.batch(),count=0;existing.docs.forEach(d=>{if(!valid.has(d.id)){batch.delete(d.ref);count++}});if(count)await batch.commit();await root.collection('config').doc('estado').set(fsSanitize(metaPayload),{merge:true});firebaseSyncPaused=false;firebaseFirstPullDone=true;firebaseKnownDataId=dataId;firebaseDataDirty=false;cadBaseSet();setFirebaseStatus('Dados locais enviados para o Firebase.','ok');if(showMessage)alert('Sincronização concluída: '+data.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao enviar: '+(e?.message||e),'err');alert('Erro ao enviar os dados para o Firebase.\n\n'+(e?.message||e))}}
 async function downloadFromFirebase(){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Baixando dados do Firebase...');const root=firebaseRoot();const cfgSnap=await root.collection('config').doc('estado').get();const chunkSnap=await root.collection('lancamentos').orderBy('index').get();if(!cfgSnap.exists&&!chunkSnap.size){throw new Error('Não existem dados publicados neste Firebase para este sistema.')}
- const _asm=fsAssemble(cfgSnap,chunkSnap);if(!_asm.ok)throw new Error('A nuvem está sendo atualizada por outro computador. Tente de novo em alguns segundos.');const cloudState=_asm.cloudState;const remote=_asm.remote;if(!remote.length&&!data.length)throw new Error('O Firebase está conectado, mas não há lançamentos para baixar.');if(remote.length){data=remote;if(cloudState.meta)meta=cloudState.meta;if(Array.isArray(cloudState.producaoFundicao))producaoFundicao=cloudState.producaoFundicao;if(cloudState.cadastros)cadastros=cloudState.cadastros;if(Array.isArray(cloudState.reunioes)){window.reunioes=cloudState.reunioes;localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}if(cloudState.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cloudState.historicoFonte))}catch(e){}}producaoFundicao=(Array.isArray(producaoFundicao)?producaoFundicao:[]).map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));salvarHistoricoFonte();localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'_meta',JSON.stringify(meta));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));saveCad();refresh();}firebaseSyncPaused=false;firebaseFirstPullDone=true;setFirebaseStatus('Dados do Firebase carregados neste navegador.','ok');alert('Dados do Firebase carregados: '+remote.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao baixar: '+(e?.message||e),'err');alert('Erro ao baixar os dados do Firebase.\n\n'+(e?.message||e))}}
+ const _asm=fsAssemble(cfgSnap,chunkSnap);if(!_asm.ok)throw new Error('A nuvem está sendo atualizada por outro computador. Tente de novo em alguns segundos.');const cloudState=_asm.cloudState;const remote=_asm.remote;if(!remote.length&&!data.length)throw new Error('O Firebase está conectado, mas não há lançamentos para baixar.');if(remote.length){data=remote;if(cloudState.meta)meta=cloudState.meta;if(Array.isArray(cloudState.producaoFundicao))producaoFundicao=cloudState.producaoFundicao;if(cloudState.cadastros){cadastros=cloudState.cadastros;cadBaseSet()}if(Array.isArray(cloudState.reunioes)){window.reunioes=cloudState.reunioes;localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}if(cloudState.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cloudState.historicoFonte))}catch(e){}}producaoFundicao=(Array.isArray(producaoFundicao)?producaoFundicao:[]).map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));salvarHistoricoFonte();localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'_meta',JSON.stringify(meta));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));saveCad();refresh();}firebaseSyncPaused=false;firebaseFirstPullDone=true;setFirebaseStatus('Dados do Firebase carregados neste navegador.','ok');alert('Dados do Firebase carregados: '+remote.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao baixar: '+(e?.message||e),'err');alert('Erro ao baixar os dados do Firebase.\n\n'+(e?.message||e))}}
 function disconnectFirebase(){try{stopFirebaseListener();if(firebaseAuthOnline)firebaseAuthOnline.signOut();if(firebaseAppOnline&&firebaseAppOnline.delete)firebaseAppOnline.delete()}catch{}firebaseOnlineConnected=false;firebaseAuthOnline=null;firebaseDbOnline=null;firebaseAppOnline=null;localStorage.removeItem(FIREBASE_CONFIG_KEY);localStorage.removeItem(FIREBASE_SYNC_KEY);setFirebaseStatus('Desconectado. O sistema voltou para o modo local.','')}
 function scheduleFirebasePush(cadOnly){if(!firebaseOnlineConnected||firebaseApplyingRemote||firebaseSyncPaused||localStorage.getItem(FIREBASE_SYNC_KEY)==='false')return;clearTimeout(firebasePushTimer);firebasePushPending=true;firebasePushTimer=setTimeout(()=>{uploadLocalToFirebase(false,cadOnly===true).catch(()=>{}).finally(()=>{firebasePushPending=false})},800)}
 window.addEventListener('load',()=>{const cfg=getFirebaseConfig();if(cfg)setTimeout(()=>connectFirebase(cfg,false),700)});
