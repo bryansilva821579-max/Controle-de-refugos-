@@ -132,6 +132,7 @@ function cadMerge3(base,local,remote){
     clientes:x=>U(typeof x==='string'?x:x?.nome),
     responsaveis:x=>U(typeof x==='string'?x:x?.nome),
     participantes:x=>U(typeof x==='string'?x:x?.nome),
+    setores:x=>U(x?.codigo),
     materiais:x=>U(typeof x==='string'?x:(x?.nome||x?.descricao||JSON.stringify(x)))
   };
   const out={...remote},j=x=>JSON.stringify(x);
@@ -322,7 +323,7 @@ let producaoFundicao=JSON.parse(localStorage.getItem(PROD_KEY)||'null') || [];
 producaoFundicao=(Array.isArray(producaoFundicao)?producaoFundicao:[]).map(x=>({...x,custoKg:x?.custoKg==null?'':x.custoKg}));
 (function seedProducaoFundicao2026(){const dados=[{mes:1,kg:44100},{mes:2,kg:36200},{mes:3,kg:51800},{mes:4,kg:35500},{mes:5,kg:44700},{mes:6,kg:44400},{mes:7,kg:37100},{mes:8,kg:44500},{mes:9,kg:52600}];let alterado=false;dados.forEach(d=>{const idx=producaoFundicao.findIndex(x=>Number(x.ano)===2026&&Number(x.mes)===d.mes);const registro={ano:2026,mes:d.mes,kg:d.kg,custoKg:2.6,observacao:'Produção mensal da Fundição'};if(idx>=0){const atual=producaoFundicao[idx]||{};const atualizado={...atual,ano:2026,mes:d.mes,kg:d.kg,custoKg:2.6,observacao:atual.observacao||registro.observacao};if(JSON.stringify(atual)!==JSON.stringify(atualizado)){producaoFundicao[idx]=atualizado;alterado=true}}else{producaoFundicao.push(registro);alterado=true}});if(alterado)localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));})();
 const months=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const cols={cliente:'CLIENTE',codigo:'CÓDIGO SISTEMA',produto:'DESCRIÇÃO DO PRODUTO',of:'OF',quantidade:'QUANTIDADE',pesoArvore:'PESO ARVORE',pesoCanal:'PESO S/CANAL',kgArvore:'Kg TOTAL ARVORE',kgFundUsin:'Kg LIQUIDO FUNDICAO / BRUTO USINAGEM',kgRefugo:'Kg  S/CANAL REFUGADOS',motivo:'MOTIVO DO REFUGO',descricaoMotivo:'DESCRIÇÃO DO MOTIVO',planta:'PLANTA',material:'MATERIAL',data:'DATA DO REFUGO',responsavel:'RESPONSÁVEL PELA ETIQUETA',observacao:'OBSERVAÇÃO',dataLancamento:'DATA DO LANÇAMENTO',produzidoKg:'TOTAL PRODUZIDO (KG)',custoKg:'CUSTO DO REFUGO (R$/KG)'};
+const cols={cliente:'CLIENTE',codigo:'CÓDIGO SISTEMA',produto:'DESCRIÇÃO DO PRODUTO',of:'OF',quantidade:'QUANTIDADE',pesoArvore:'PESO ARVORE',pesoCanal:'PESO S/CANAL',kgArvore:'Kg TOTAL ARVORE',kgFundUsin:'Kg LIQUIDO FUNDICAO / BRUTO USINAGEM',kgRefugo:'Kg  S/CANAL REFUGADOS',motivo:'MOTIVO DO REFUGO',descricaoMotivo:'DESCRIÇÃO DO MOTIVO',planta:'PLANTA',setor:'SETOR / MÁQUINA',material:'MATERIAL',data:'DATA DO REFUGO',responsavel:'RESPONSÁVEL PELA ETIQUETA',observacao:'OBSERVAÇÃO',dataLancamento:'DATA DO LANÇAMENTO',produzidoKg:'TOTAL PRODUZIDO (KG)',custoKg:'CUSTO DO REFUGO (R$/KG)'};
 const MOTIVOS_VERSION='2026-09-30-motivos-v1';
 const DEFAULT_MOTIVOS=[{"codigo":"2","planta":"FUNDICAO","descricao":"COMP. QUIMICA FORA DO ESPECIFICADO"},{"codigo":"3","planta":"FUNDICAO","descricao":"DESLOCAMENTO DO MACHO"},{"codigo":"4","planta":"FUNDICAO","descricao":"DESLOCAMENTO DO MOLDE"},{"codigo":"5","planta":"FUNDICAO","descricao":"DUREZA FORA DO ESPECIFICADO"},{"codigo":"6","planta":"FUNDICAO","descricao":"EMPENAMENTO"},{"codigo":"7","planta":"FUNDICAO","descricao":"ESTRUTURA METALOGRAFICA REPROVADA"},{"codigo":"8","planta":"FUNDICAO","descricao":"FALHA DE ACABAMENTO"},{"codigo":"9","planta":"FUNDICAO","descricao":"FALHA DE IDENTIFICACAO"},{"codigo":"10","planta":"FUNDICAO","descricao":"FALHA NA DESMOLDAGEM"},{"codigo":"11","planta":"FUNDICAO","descricao":"FALHA NO DIMENSIONAL"},{"codigo":"12","planta":"FUNDICAO","descricao":"FALHA NA MACHARIA"},{"codigo":"13","planta":"FUNDICAO","descricao":"FALHA NA MOLDAGEM"},{"codigo":"14","planta":"FUNDICAO","descricao":"FALHA NA QUEBRA DOS CANAIS"},{"codigo":"15","planta":"FUNDICAO","descricao":"FALHA NO CORTE"},{"codigo":"16","planta":"FUNDICAO","descricao":"FALHA NO MANUSEIO"},{"codigo":"17","planta":"FUNDICAO","descricao":"FALHA NO TRANSPORTE/MOVIMENTACAO"},{"codigo":"18","planta":"FUNDICAO","descricao":"FALHA NO VAZAMENTO"},{"codigo":"19","planta":"FUNDICAO","descricao":"FALTA DE IDENTIFICACAO"},{"codigo":"20","planta":"FUNDICAO","descricao":"FALTA DE METAL"},{"codigo":"21","planta":"FUNDICAO","descricao":"INCLUSAO DE AREIA"},{"codigo":"22","planta":"FUNDICAO","descricao":"NCLUSAO DE ESCORIA"},{"codigo":"23","planta":"FUNDICAO","descricao":"INCLUSAO DE GAS"},{"codigo":"24","planta":"FUNDICAO","descricao":"JUNTA FRIA"},{"codigo":"25","planta":"FUNDICAO","descricao":"MACHO QUEBRADO"},{"codigo":"26","planta":"FUNDICAO","descricao":"MATERIAL FRIO"},{"codigo":"27","planta":"FUNDICAO","descricao":"MOLDE QUEBRADO"},{"codigo":"28","planta":"FUNDICAO","descricao":"OUTROS"},{"codigo":"29","planta":"FUNDICAO","descricao":"OXIDACAO"},{"codigo":"30","planta":"FUNDICAO","descricao":"PENETRACAO METALICA"},{"codigo":"31","planta":"FUNDICAO","descricao":"POROSIDADE"},{"codigo":"32","planta":"FUNDICAO","descricao":"PROPRIEDADE MECANICA"},{"codigo":"33","planta":"FUNDICAO","descricao":"REACAO COM TINTA"},{"codigo":"34","planta":"FUNDICAO","descricao":"RECHUPE"},{"codigo":"35","planta":"FUNDICAO","descricao":"SINTERIZACAO"},{"codigo":"36","planta":"FUNDICAO","descricao":"SUJEIRA NO MOLDE"},{"codigo":"37","planta":"FUNDICAO","descricao":"VAZAMENTO DE METAL DO MOLDE"},{"codigo":"38","planta":"FUNDICAO","descricao":"VEIOS"},{"codigo":"39","planta":"FUNDICAO","descricao":"FALHA DE PROJETO/DESENVOLVIMENTO"},{"codigo":"40","planta":"FUNDICAO","descricao":"MOLDE EMPENADO"},{"codigo":"41","planta":"FUNDICAO","descricao":"REBARBACAO EXCESSIVA"},{"codigo":"42","planta":"FUNDICAO","descricao":"LUVA INSERIDA NA PECA"},{"codigo":"43","planta":"FUNDICAO","descricao":"PECA MANCHADA"},{"codigo":"44","planta":"FUNDICAO","descricao":"INCLUSAO DE FILTRO NA PECA"},{"codigo":"45","planta":"FUNDICAO","descricao":"ANALISE DE SANIDADE DO FUNDIDO"},{"codigo":"46","planta":"FUNDICAO","descricao":"FLUIDEZ PREJUDICADA"},{"codigo":"47","planta":"FUNDICAO","descricao":"FLUIDEZ PREJUDICADA / ALIMENTACAO"},{"codigo":"48","planta":"FUNDICAO","descricao":"ALIMENTA€ÇO INSUFICIENTE"},{"codigo":"49","planta":"FUNDICAO","descricao":"COPO DE VAZAMENTO INCOMPATIVEL COM O PESO DA"},{"codigo":"50","planta":"FUNDICAO","descricao":"BAIXA RESISTENCIA DO MOLDE (RACHADURA)"},{"codigo":"51","planta":"FUNDICAO","descricao":"FALHA NA COLAGEM DOS COPOS"},{"codigo":"52","planta":"FUNDICAO","descricao":"PEÇA COM INCHAMENTO"},{"codigo":"53","planta":"FUNDICAO","descricao":"MOLDE TRINCADO"},{"codigo":"54","planta":"FUNDICAO","descricao":"PEÇA QUEBRADA"},{"codigo":"55","planta":"FUNDICAO","descricao":"BAIXA TEMPERATURADE VAZAMENTO"},{"codigo":"56","planta":"FUNDICAO","descricao":"BAIXA RESISTENCIA MECANICA DO COPO"},{"codigo":"57","planta":"FUNDICAO","descricao":"EXCESSO DE DESMOLDANTE"},{"codigo":"58","planta":"FUNDICAO","descricao":"FALTA DE MACHO"},{"codigo":"59","planta":"FUNDICAO","descricao":"FERVURA"},{"codigo":"101","planta":"FUNDICAO NA USINAGEM","descricao":"COLA NA PECA"},{"codigo":"102","planta":"FUNDICAO NA USINAGEM","descricao":"COMP QUIM FORA ESPECIF"},{"codigo":"103","planta":"FUNDICAO NA USINAGEM","descricao":"DESLOCAMENTO DO MACHO"},{"codigo":"104","planta":"FUNDICAO NA USINAGEM","descricao":"DESLOCAMENTO DO MOLDE"},{"codigo":"105","planta":"FUNDICAO NA USINAGEM","descricao":"DUREZA FORA DO ESPECIF"},{"codigo":"106","planta":"FUNDICAO NA USINAGEM","descricao":"EMPENAMENTO"},{"codigo":"107","planta":"FUNDICAO NA USINAGEM","descricao":"ESTR METALOGR REPROVAD"},{"codigo":"108","planta":"FUNDICAO NA USINAGEM","descricao":"FALHA DE ACABAMENTO"},{"codigo":"109","planta":"FUNDICAO NA USINAGEM","descricao":"FALHA DE IDENTIFICACAO"},{"codigo":"110","planta":"FUNDICAO NA USINAGEM","descricao":"FALHA NA DESMOLDAGEM"},{"codigo":"111","planta":"FUNDICAO NA USINAGEM","descricao":"FALHA NO DIMENSIONAL"},{"codigo":"112","planta":"FUNDICAO NA USINAGEM","descricao":"FALHA NA MACHARIA"},{"codigo":"113","planta":"FUNDICAO NA USINAGEM","descricao":"FALHA NA MOLDAGEM"},{"codigo":"114","planta":"FUNDICAO NA USINAGEM","descricao":"FALHA NA QBRA CANAIS"},{"codigo":"115","planta":"FUNDICAO NA USINAGEM","descricao":"FALHA NO CORTE"},{"codigo":"116","planta":"FUNDICAO NA USINAGEM","descricao":"FALHA NO MANUSEIO"},{"codigo":"117","planta":"FUNDICAO NA USINAGEM","descricao":"ALHA NO TRANSP/MOVIM"},{"codigo":"118","planta":"FUNDICAO NA USINAGEM","descricao":"FALHA NO VAZAMENTO"},{"codigo":"119","planta":"FUNDICAO NA USINAGEM","descricao":"FALTA DE IDENTIFICACAO"},{"codigo":"120","planta":"FUNDICAO NA USINAGEM","descricao":"FALTA DE METAL"},{"codigo":"121","planta":"FUNDICAO NA USINAGEM","descricao":"INCLUSAO DE AREIA"},{"codigo":"122","planta":"FUNDICAO NA USINAGEM","descricao":"INCLUSAO DE ESCORIA"},{"codigo":"123","planta":"FUNDICAO NA USINAGEM","descricao":"INCLUSAO DE GAS"},{"codigo":"124","planta":"FUNDICAO NA USINAGEM","descricao":"JUNTA FRIA"},{"codigo":"125","planta":"FUNDICAO NA USINAGEM","descricao":"MACHO QUEBRADO"},{"codigo":"126","planta":"FUNDICAO NA USINAGEM","descricao":"MATERIAL FRIO"},{"codigo":"127","planta":"FUNDICAO NA USINAGEM","descricao":"MOLDE QUEBRADO"},{"codigo":"128","planta":"FUNDICAO NA USINAGEM","descricao":"OUTROS"},{"codigo":"129","planta":"FUNDICAO NA USINAGEM","descricao":"OXIDACAO"},{"codigo":"130","planta":"FUNDICAO NA USINAGEM","descricao":"PENETRACAO METALICA"},{"codigo":"131","planta":"FUNDICAO NA USINAGEM","descricao":"POROSIDADE"},{"codigo":"132","planta":"FUNDICAO NA USINAGEM","descricao":"PROPRIEDADE MECANICA"},{"codigo":"133","planta":"FUNDICAO NA USINAGEM","descricao":"REACAO COM TINTA"},{"codigo":"134","planta":"FUNDICAO NA USINAGEM","descricao":"RECHUPE"},{"codigo":"135","planta":"FUNDICAO NA USINAGEM","descricao":"SINTERIZACAO"},{"codigo":"136","planta":"FUNDICAO NA USINAGEM","descricao":"SUJEIRA NO MOLDE"},{"codigo":"137","planta":"FUNDICAO NA USINAGEM","descricao":"VAZAMENTO DE METAL DO"},{"codigo":"138","planta":"FUNDICAO NA USINAGEM","descricao":"VEIOS"},{"codigo":"139","planta":"FUNDICAO NA USINAGEM","descricao":"FALHA DE PROJ/DESENV"},{"codigo":"140","planta":"FUNDICAO NA USINAGEM","descricao":"MOLDE EMPENADO"},{"codigo":"141","planta":"FUNDICAO NA USINAGEM","descricao":"REBARBACAO EXCESSIVA"},{"codigo":"142","planta":"FUNDICAO NA USINAGEM","descricao":"LUVA INSERIDA NA PECA"},{"codigo":"143","planta":"FUNDICAO NA USINAGEM","descricao":"PECA MANCHADA"},{"codigo":"144","planta":"FUNDICAO NA USINAGEM","descricao":"INCLUSAO DE FILTRO NA PEÇA"},{"codigo":"145","planta":"FUNDICAO NA USINAGEM","descricao":"ANALISE DE SANIDADE DO FUNDIDO"},{"codigo":"146","planta":"FUNDICAO NA USINAGEM","descricao":"FLUIDEZ PREJUDICADA"},{"codigo":"147","planta":"FUNDICAO NA USINAGEM","descricao":"FLUIDEZ  PREJUDICADA / ALIMENTAÇÃO"},{"codigo":"148","planta":"FUNDICAO NA USINAGEM","descricao":"ALIMENTAÇÃO INSUFICIENTE"},{"codigo":"149","planta":"FUNDICAO NA USINAGEM","descricao":"COPO DE VAZAMENTO INCOMPATIVEL"},{"codigo":"150","planta":"FUNDICAO NA USINAGEM","descricao":"BAIXA RESISTENCIA DO MOLDE (RACHADURA)"},{"codigo":"151","planta":"FUNDICAO NA USINAGEM","descricao":"FALHA COL. DOS COPOS"},{"codigo":"152","planta":"FUNDICAO NA USINAGEM","descricao":"PEÇA COM INCHAMENTO"},{"codigo":"153","planta":"FUNDICAO NA USINAGEM","descricao":"MOLDE TRINCADO"},{"codigo":"154","planta":"FUNDICAO NA USINAGEM","descricao":"PEÇA QUEBRADA"},{"codigo":"155","planta":"FUNDICAO NA USINAGEM","descricao":"BAIXA TEMPERATURADE VAZAMENTO"},{"codigo":"156","planta":"FUNDICAO NA USINAGEM","descricao":"BAIXA RESISTENCIA MECANICA DO COPO"},{"codigo":"157","planta":"FUNDICAO NA USINAGEM","descricao":"EXCESSO DE DESMOLDANTE"},{"codigo":"158","planta":"FUNDICAO NA USINAGEM","descricao":"FALTA DE MACHO"},{"codigo":"159","planta":"FUNDICAO NA USINAGEM","descricao":"FERVURA"},{"codigo":"201","planta":"USINAGEM","descricao":"DEFEITO DE FUNDICAO"},{"codigo":"202","planta":"USINAGEM","descricao":"FALHA NA CONTAGEM"},{"codigo":"203","planta":"USINAGEM","descricao":"FALHA NA INSPECAO"},{"codigo":"204","planta":"USINAGEM","descricao":"FALHA NA MONTAGEM"},{"codigo":"205","planta":"USINAGEM","descricao":"FALHA NA PREPARACAO DA MAQUINA"},{"codigo":"206","planta":"USINAGEM","descricao":"FALHA NA PREPARACAO INSTR. MEDICAO"},{"codigo":"207","planta":"USINAGEM","descricao":"FALHA NA PRESERVACAO"},{"codigo":"208","planta":"USINAGEM","descricao":"FALHA NA PROGRAMACAO DA MAQUINA"},{"codigo":"209","planta":"USINAGEM","descricao":"FALHA NO CONTROLE DIMENSIONAL"},{"codigo":"210","planta":"USINAGEM","descricao":"FALHA NO REGISTRO DE MANUTENCAO"},{"codigo":"211","planta":"USINAGEM","descricao":"FALHA NO REGISTRO DE PRODUCAO"},{"codigo":"212","planta":"USINAGEM","descricao":"FALHA NO REGISTRO DE RECEBIMENTO"},{"codigo":"213","planta":"USINAGEM","descricao":"FALHA NO TRANSPORTE/MOVIMENTACAO"},{"codigo":"214","planta":"USINAGEM","descricao":"FALTA DE ATENCAO DO COLABORADOR"},{"codigo":"215","planta":"USINAGEM","descricao":"FALTA DE IDENTIFICACAO"},{"codigo":"216","planta":"USINAGEM","descricao":"MAQUINA COM DEFEITO"},{"codigo":"217","planta":"USINAGEM","descricao":"OUTROS"},{"codigo":"218","planta":"USINAGEM","descricao":"FALHA DE PROJETO/DESENVOLVIMENTO"},{"codigo":"219","planta":"USINAGEM","descricao":"PEÇA COM VIBRAMENTO"},{"codigo":"220","planta":"USINAGEM","descricao":"REPROVADA NO TESTE/ POKA YOKE"},{"codigo":"221","planta":"USINAGEM","descricao":"FERRAMENTAL SOLTO / SOLTOU"},{"codigo":"222","planta":"USINAGEM","descricao":"FERRAMENTAL QUEBROU"},{"codigo":"301","planta":"GERAL","descricao":"RECLAMACAO NAO PROCEDE"},{"codigo":"302","planta":"GERAL","descricao":"OUTROS"},{"codigo":"303","planta":"SISTEMA","descricao":"FALHA MEGATRON (DIF. QUANT. PROD.)"}];
 const CADKEY='controle_refugos_2026_cadastros_v1';
@@ -437,6 +438,7 @@ if(localStorage.getItem(KEY+'_auto_cadastro_version')!==AUTO_CADASTRO_VERSION){ 
   }
 
   cadastros.motivos=cadastros.motivos.filter(x=>x && (x.codigo||x.descricao));
+  {const L=cadastros.setores;if(!Array.isArray(L)||!L.length||L.every(x=>typeof x==='string'))cadastros.setores=SETORES_SEED();else cadastros.setores=L.filter(x=>x&&typeof x==='object'&&x.codigo)}
   cadastros.motivos.forEach(x=>{if(x.causa==='Metalúrgica')x.causa='Processos';else if(x.causa==='Falha de maquinário')x.causa='Maquinários'});
   {const __seenM=new Set();cadastros.motivos=cadastros.motivos.filter(x=>{const k=motivoCodeKey(x.codigo);if(__seenM.has(k))return false;__seenM.add(k);return true});}
   cadastros.pecas=cadastros.pecas.map(x=>({
@@ -460,6 +462,116 @@ if(localStorage.getItem(KEY+'_auto_cadastro_version')!==AUTO_CADASTRO_VERSION){ 
     .map(x=>String(x).trim()).filter(Boolean)
     .filter((()=>{const seen=new Set();return x=>{const k=x.toUpperCase();if(seen.has(k))return false;seen.add(k);return true}})())
     .sort((a,b)=>a.localeCompare(b,'pt-BR'));
+}
+
+
+/* ===== Setores / máquinas (Cadastro) — usados em refugos e retrabalhos ===== */
+function SETORES_SEED(){return `TC01|CNC|USINAGEM
+TC02|CNC|USINAGEM
+TC10|CNC|USINAGEM
+TC12|CNC|USINAGEM
+TC14|CNC|USINAGEM
+TC15|CNC|USINAGEM
+TC16|CNC|USINAGEM
+CT01|CENTRO DE USINAGEM|USINAGEM
+CT02|CENTRO DE USINAGEM|USINAGEM
+CT03|CENTRO DE USINAGEM|USINAGEM
+CF01|CENTRO DE FURAÇÃO|USINAGEM
+B01|BRUNIDORA|USINAGEM
+FU01|FURADEIRA|USINAGEM
+FU02|FURADEIRA|USINAGEM
+FU03|FURADEIRA|USINAGEM
+FU04|FURADEIRA|USINAGEM
+FU05|FURADEIRA|USINAGEM
+FU06|FURADEIRA|USINAGEM
+FU07|FURADEIRA|USINAGEM
+FU08|FURADEIRA|USINAGEM
+F01|FRESAS|USINAGEM
+F02|FRESAS|USINAGEM
+F03|FRESAS|USINAGEM
+F04|FRESAS|USINAGEM
+F05|FRESAS|USINAGEM
+F06|FRESAS|USINAGEM
+F07|FRESAS|USINAGEM
+F08|FRESAS|USINAGEM
+R02|RETIFICA|USINAGEM
+TB01|TAMBOREADOR|USINAGEM
+TB02|TAMBOREADOR|USINAGEM
+TB03|TAMBOREADOR|USINAGEM
+PL01|POLICORTE|USINAGEM
+PL02|POLICORTE|USINAGEM
+EXPEDIÇÃO USINAGEM|EXPEDIÇÃO USINAGEM|USINAGEM
+EMBALAGEM USINAGEM|EMBALAGEM USINAGEM|USINAGEM
+ALMOXARIFADO USINAGEM|ALMOXARIFADO USINAGEM|USINAGEM
+MODELAÇÃO|MODELAÇÃO|FUNDIÇÃO
+COLD BOX|COLD BOX|FUNDIÇÃO
+PEP SET|PEP SET|FUNDIÇÃO
+FUSÃO|FUSÃO|FUNDIÇÃO
+FORNO|FORNO|FUNDIÇÃO
+LINHA DE FUSÃO|LINHA DE FUSÃO|FUNDIÇÃO
+DESMOLDAGEM|DESMOLDAGEM|FUNDIÇÃO
+REBARBAÇÃO|REBARBAÇÃO|FUNDIÇÃO
+ALMOXARIFADO FUNDIÇÃO|ALMOXARIFADO FUNDIÇÃO|FUNDIÇÃO
+EXPEDIÇÃO FUNDIÇÃO|EXPEDIÇÃO FUNDIÇÃO|FUNDIÇÃO
+T01|TORNO|USINAGEM
+T02|TORNO|USINAGEM
+T03|TORNO|USINAGEM
+FRESAS|FRESAS|USINAGEM
+TAMBOREADOR|TAMBOREADOR|USINAGEM
+GRAVAÇÃO|EMBALAGEM USINAGEM|USINAGEM
+POKA YOKE|INSPEÇÃO|USINAGEM
+LABORATÓRIO|LABORATÓRIO|FUNDIÇÃO`.split('\n').map(l=>{const p=l.split('|');return{codigo:p[0],tipo:p[1],planta:p[2]}})}
+function setorLista(){return (cadastros&&Array.isArray(cadastros.setores))?cadastros.setores:[]}
+function setorInfo(cod){const c=String(cod||'').trim().toUpperCase();return c?(setorLista().find(x=>String(x.codigo).trim().toUpperCase()===c)||null):null}
+function setorTxt(cod){const s=setorInfo(cod);return s?(s.codigo===s.tipo?s.codigo:s.codigo+' — '+s.tipo):String(cod||'')}
+function setorTipo(cod){const s=setorInfo(cod);return s?s.tipo:''}
+function setorOptionsHtml(vazio,atual){
+  const L=setorLista().slice().sort((x,y)=>String(x.planta).localeCompare(String(y.planta),'pt-BR')||String(x.tipo).localeCompare(String(y.tipo),'pt-BR')||String(x.codigo).localeCompare(String(y.codigo),'pt-BR',{numeric:true}));
+  const grp={};L.forEach(s=>{(grp[s.planta||'Outros']=grp[s.planta||'Outros']||[]).push(s)});
+  let o=`<option value="">${vazio}</option>`;
+  Object.keys(grp).forEach(p=>{o+=`<optgroup label="${esc(p)}">`+grp[p].map(s=>`<option value="${esc(s.codigo)}">${esc(setorTxt(s.codigo))}</option>`).join('')+'</optgroup>'});
+  if(atual&&!setorInfo(atual))o+=`<option value="${esc(atual)}">${esc(atual)}</option>`;
+  return o;
+}
+function setorPop(){const e=document.getElementById('setor');if(!e)return;const cur=e.value;e.innerHTML=setorOptionsHtml('Selecione',cur);e.value=cur}
+function renderSetores(){
+  const el=document.getElementById('setoresListView');if(!el)return;
+  const q=normalizeText(document.getElementById('setoresBusca')?.value||''),pl=document.getElementById('setoresFiltroPl')?.value||'';
+  const L=setorLista().map((x,i)=>({x,i})).filter(o=>(!pl||normalizeText(o.x.planta)===normalizeText(pl))&&(!q||normalizeText([o.x.codigo,o.x.tipo,o.x.planta].join(' ')).includes(q)));
+  el.innerHTML='<table style="width:100%"><thead><tr><th>Código</th><th>Tipo / descrição</th><th>Planta</th><th></th></tr></thead><tbody>'+(L.map(o=>`<tr><td><b>${esc(o.x.codigo)}</b></td><td>${esc(o.x.tipo)}</td><td>${esc(o.x.planta)}</td><td style="white-space:nowrap"><button class="btn secondary cad-edit" onclick="editSetor(${o.i})">Editar</button> <button class="btn danger cad-delete" onclick="removeSetor(${o.i})">Excluir</button></td></tr>`).join('')||'<tr><td colspan="4" class="small" style="text-align:center">Nenhum setor encontrado.</td></tr>')+'</tbody></table>';
+  document.getElementById('setoresCount')?.replaceChildren(document.createTextNode(`${setorLista().length} setor(es)/máquina(s)`));
+}
+function afterSetorChange(){saveCad();renderSetores();try{setorPop()}catch(e){}try{window.rtInit&&window.rtInit()}catch(e){}}
+function addSetor(){
+  const c=(document.getElementById('cadSetorCod')?.value||'').trim().toUpperCase(),t=(document.getElementById('cadSetorTipo')?.value||'').trim().toUpperCase(),p=(document.getElementById('cadSetorPlanta')?.value||'').trim();
+  if(!c)return alert('Informe o código do setor/máquina (ex.: TC01).');
+  if(!t)return alert('Informe o tipo / descrição (ex.: CNC).');
+  if(!p)return alert('Selecione a planta.');
+  if(setorInfo(c))return alert('Já existe um setor/máquina com esse código.');
+  cadastros.setores.push({codigo:c,tipo:t,planta:p});
+  ['cadSetorCod','cadSetorTipo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  afterSetorChange();
+}
+function editSetor(i){
+  const s=setorLista()[i];if(!s)return;
+  const c=prompt('Código do setor/máquina:',s.codigo);if(c===null)return;
+  const t=prompt('Tipo / descrição:',s.tipo);if(t===null)return;
+  const p=prompt('Planta (USINAGEM ou FUNDIÇÃO):',s.planta);if(p===null)return;
+  const cod=c.trim().toUpperCase(),tip=t.trim().toUpperCase(),pla=p.trim().toUpperCase();
+  if(!cod||!tip||!pla)return alert('Preencha código, tipo e planta.');
+  if(setorLista().some((x,k)=>k!==i&&String(x.codigo).toUpperCase()===cod))return alert('Já existe um setor/máquina com esse código.');
+  const antigo=s.codigo;
+  cadastros.setores[i]={codigo:cod,tipo:tip,planta:pla};
+  if(antigo!==cod&&confirm('Atualizar também os lançamentos de refugo e retrabalho que usam "'+antigo+'" para "'+cod+'"?')){
+    try{data.forEach(r=>{if(String(val(r,'setor')||'').toUpperCase()===String(antigo).toUpperCase())r[cols.setor]=cod});save()}catch(e){}
+    try{const a=rtRaw();let ch=false;a.forEach(r=>{if(String(r.setor||'').toUpperCase()===String(antigo).toUpperCase()){r.setor=cod;r.ts=Date.now();rtPendAdd(r.id);ch=true}});if(ch){rtStore(a);rtFlush()}}catch(e){}
+  }
+  afterSetorChange();
+}
+function removeSetor(i){
+  const s=setorLista()[i];if(!s)return;
+  if(!confirm('Excluir o setor/máquina "'+s.codigo+' — '+s.tipo+'"?\n\nLançamentos antigos que usam este código continuam mostrando o código.'))return;
+  cadastros.setores.splice(i,1);afterSetorChange();
 }
 
 function saveCad(){localStorage.setItem(CADKEY,JSON.stringify(cadastros));}
@@ -520,7 +632,7 @@ function renderCadastro(){
    }
  }
 }
-function popularCamposLancamento(){try{ltMatPop()}catch(e){}
+function popularCamposLancamento(){try{ltMatPop()}catch(e){}try{setorPop()}catch(e){}
   // Preenche responsáveis, motivos e clientes do formulário de Lançamento
   // sem depender de a aba Cadastro (protegida) ter sido aberta antes.
   try{
@@ -600,6 +712,7 @@ function switchCadTab(tab){
  document.getElementById('cadTabParticipantes')?.classList.toggle('active',tab==='participantes');
  document.getElementById('cadTabMetas')?.classList.toggle('active',tab==='metas');
  document.getElementById('cadTabMateriais')?.classList.toggle('active',tab==='materiais');if(tab==='materiais')cadMatLoad();
+ document.getElementById('cadTabSetores')?.classList.toggle('active',tab==='setores');if(tab==='setores')renderSetores();
  document.getElementById('cadTabValores')?.classList.toggle('active',tab==='valores');if(tab==='valores'){try{renderCustosPlanta()}catch(e){}}
 }
 function editMotivo(i){
@@ -1381,8 +1494,7 @@ function toggleHistorySelection(index,checked){
   renderTable();
 }
 function toggleSelectAllVisible(){
-  const q=String(document.getElementById('search')?.value||'').toLowerCase();
-  const visible=data.map((r,i)=>({r,i})).filter(x=>JSON.stringify(x.r).toLowerCase().includes(q));
+  const visible=data.map((r,i)=>({r,i})).filter(x=>historyMatch(x.r));
   const indices=visible.map(x=>x.i);
   if(!indices.length)return;
   const all=indices.every(i=>historySelected.has(i));
@@ -1405,21 +1517,78 @@ const HISTORY_PAGE=150;
 let historyLimit=HISTORY_PAGE;
 let __historySearchCache=new WeakMap();
 function __historySearchText(r){let t=__historySearchCache.get(r);if(t===undefined){t=JSON.stringify(r).toLowerCase();__historySearchCache.set(r,t)}return t}
+/* ---------- filtros do histórico ---------- */
+function historyFiltros(){
+  const g=id=>(document.getElementById(id)?.value||'').trim();
+  const d=(id,fim)=>{const v=g(id);if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return null;const x=new Date(v+'T00:00:00');return fim?x.getTime()+86399999:x.getTime()};
+  return{de:d('hfDe'),ate:d('hfAte',true),lde:d('hfLde'),late:d('hfLate',true),cli:g('hfCli'),pl:g('hfPl'),mot:g('hfMot'),resp:g('hfResp'),cod:normalizeText(g('hfCod')),zero:!!document.getElementById('hfZero')?.checked,foto:g('hfFoto'),causa:g('hfCausa'),setor:g('hfSetor'),kmin:g('hfKgMin')===''?null:Number(g('hfKgMin').replace(',','.')),kmax:g('hfKgMax')===''?null:Number(g('hfKgMax').replace(',','.'))};
+}
+function historyMatch(r,q,f){
+  if(q===undefined)q=String(document.getElementById('search')?.value||'').toLowerCase();
+  f=f||historyFiltros();
+  if(q&&!__historySearchText(r).includes(q))return false;
+  if(f.de!==null||f.ate!==null){const t=historyDateMs(r);if(!t||(f.de!==null&&t<f.de)||(f.ate!==null&&t>f.ate))return false}
+  if(f.lde!==null||f.late!==null){const d=date({[cols.data]:val(r,'dataLancamento')}),t=d?d.getTime():0;if(!t||(f.lde!==null&&t<f.lde)||(f.late!==null&&t>f.late))return false}
+  if(f.cli&&canonicalClientName(val(r,'cliente'))!==f.cli)return false;
+  if(f.pl&&String(val(r,'planta')||'')!==f.pl)return false;
+  if(f.mot&&motivoCompleto(r)!==f.mot)return false;
+  if(f.resp&&String(val(r,'responsavel')||'').trim()!==f.resp)return false;
+  if(f.cod&&!normalizeText(String(val(r,'codigo')||'')+' '+String(val(r,'of')||'')).includes(f.cod))return false;
+  if(f.zero&&kg(r)>0)return false;
+  if(f.causa&&(causaPeloMotivo(r)||'Não classificado')!==f.causa)return false;
+  if(f.setor&&String(val(r,'setor')||'')!==f.setor)return false;
+  if(f.kmin!==null&&Number.isFinite(f.kmin)&&kg(r)<f.kmin)return false;
+  if(f.kmax!==null&&Number.isFinite(f.kmax)&&kg(r)>f.kmax)return false;
+  if(f.foto==='com'&&!(Array.isArray(r.FOTOS)&&r.FOTOS.length))return false;
+  if(f.foto==='sem'&&Array.isArray(r.FOTOS)&&r.FOTOS.length)return false;
+  return true;
+}
+let __hfSig='';
+function historyFiltrosOpcoes(){
+  const sig=data.length+'|'+(cadastros&&cadastros.motivos?cadastros.motivos.length:0);
+  if(sig===__hfSig)return;__hfSig=sig;
+  const un=fn=>[...new Set(data.map(fn).map(x=>String(x||'').trim()).filter(Boolean))].sort((x,y)=>x.localeCompare(y,'pt-BR'));
+  const set=(id,vazio,l)=>{const el=document.getElementById(id);if(!el)return;const old=el.value;el.innerHTML=`<option value="">${vazio}</option>`+l.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');if(l.includes(old))el.value=old};
+  set('hfCli','Todos os clientes',un(r=>canonicalClientName(val(r,'cliente'))));
+  set('hfPl','Todas as plantas',un(r=>val(r,'planta')));
+  set('hfMot','Todos os motivos',un(r=>motivoCompleto(r)));
+  set('hfResp','Todos os responsáveis',un(r=>val(r,'responsavel')));
+  set('hfCausa','Todas as causas',[...CAUSAS_MOTIVO,'Não classificado']);
+  set('hfSetor','Todos os setores',[...new Set(data.map(r=>String(val(r,'setor')||'').trim()).filter(Boolean))].sort());
+}
+function historyPeriodo(v){
+  const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10),n=new Date(),y=n.getFullYear(),m=n.getMonth();
+  let de='',ate='';
+  if(v==='mes'){de=iso(new Date(y,m,1));ate=iso(new Date(y,m+1,0))}
+  else if(v==='mesant'){de=iso(new Date(y,m-1,1));ate=iso(new Date(y,m,0))}
+  else if(v==='30'){de=iso(new Date(Date.now()-29*864e5));ate=iso(n)}
+  else if(v==='ano'){de=iso(new Date(y,0,1));ate=iso(new Date(y,11,31))}
+  document.getElementById('hfDe').value=de;document.getElementById('hfAte').value=ate;historyFiltroMudou();
+}
+let __hfT;
+function historyFiltroMudou(){clearTimeout(__hfT);__hfT=setTimeout(()=>{historyLimit=HISTORY_PAGE;renderTable()},200)}
+function historyLimparFiltros(){['hfDe','hfAte','hfLde','hfLate','hfCli','hfPl','hfMot','hfResp','hfCod','hfFoto','hfPer','hfCausa','hfSetor','hfKgMin','hfKgMax','hfOrd'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});const z=document.getElementById('hfZero');if(z)z.checked=false;const s=document.getElementById('search');if(s)s.value='';historyLimit=HISTORY_PAGE;renderTable()}
 function historyShowMore(){historyLimit+=HISTORY_PAGE;renderTable()}
 function renderTable(){
  limparRegistrosZeradosHistorico();
  const searchEl=document.getElementById('search');
  let q=String(searchEl?.value||'').toLowerCase();
  let rows=[];
- for(let i=0;i<data.length;i++){const r=data[i];if(!q||__historySearchText(r).includes(q))rows.push({r,i})}
+ historyFiltrosOpcoes();const __f=historyFiltros();
+ for(let i=0;i<data.length;i++){const r=data[i];if(historyMatch(r,q,__f))rows.push({r,i})}
  // Mais recente primeiro. Em empate, o registro lançado por último fica acima.
  rows.forEach(x=>{x.t=historyDateMs(x.r)});
- rows.sort((a,b)=>b.t-a.t||b.i-a.i);
+ const __ord=document.getElementById('hfOrd')?.value||'';
+if(__ord==='kg')rows.sort((a,b)=>kg(b.r)-kg(a.r)||b.t-a.t);
+else if(__ord==='qtd')rows.sort((a,b)=>qty(b.r)-qty(a.r)||b.t-a.t);
+else if(__ord==='lanc'){const L=x=>{const d=date({[cols.data]:val(x.r,'dataLancamento')});return d?d.getTime():0};rows.sort((a,b)=>L(b)-L(a)||b.i-a.i)}
+else if(__ord==='antigo')rows.sort((a,b)=>a.t-b.t||a.i-b.i);
+else rows.sort((a,b)=>b.t-a.t||b.i-a.i);
  // Descarta da seleção índices que já não existem após exclusões/limpezas.
  [...historySelected].forEach(i=>{if(!data[i])historySelected.delete(i)});
  const hc=document.getElementById('historyCount');
  const shown=rows.slice(0,historyLimit);
- if(hc) hc.textContent=`${rows.length.toLocaleString('pt-BR')} de ${data.length.toLocaleString('pt-BR')} lançamentos`+(rows.length>shown.length?` • exibindo ${shown.length.toLocaleString('pt-BR')}`:'');
+ if(hc) hc.textContent=`${rows.length.toLocaleString('pt-BR')} de ${data.length.toLocaleString('pt-BR')} lançamentos`+(rows.length>shown.length?` • exibindo ${shown.length.toLocaleString('pt-BR')}`:'')+` • total filtrado: ${fmt(rows.reduce((s,x)=>s+qty(x.r),0))} peças / ${fmt(rows.reduce((s,x)=>s+kg(x.r),0))} kg`;
  const body=document.getElementById('tbody');
  if(body){
   const html=shown.map(({r,i})=>`<tr>
@@ -1434,11 +1603,12 @@ function renderTable(){
    <td>${fmt(kg(r))}</td>
    <td><strong>${esc(motivoCompleto(r))}</strong></td>
    <td>${esc(val(r,'planta'))}</td>
+   <td>${esc(setorTxt(val(r,'setor')))}</td>
    <td>${esc(val(r,'responsavel'))}</td>
    <td>${Array.isArray(r.FOTOS)&&r.FOTOS.length?`<button class="btn secondary" title="Ver fotos e observação" onclick="verFotos(${i})">📷 ${r.FOTOS.length}</button> `:''}<button class="btn secondary" onclick="edit(${i})">Editar</button> <button class="btn danger" onclick="removeRow(${i})">Excluir</button></td>
  </tr>`).join('');
-  const more=rows.length>shown.length?`<tr><td colspan="13" style="text-align:center;padding:14px"><button class="btn secondary" onclick="historyShowMore()">Mostrar mais ${HISTORY_PAGE} (exibindo ${shown.length.toLocaleString('pt-BR')} de ${rows.length.toLocaleString('pt-BR')})</button></td></tr>`:'';
-  body.innerHTML=(html+more)||'<tr><td colspan="13" style="text-align:center" class="small">Nenhum lançamento encontrado.</td></tr>';
+  const more=rows.length>shown.length?`<tr><td colspan="14" style="text-align:center;padding:14px"><button class="btn secondary" onclick="historyShowMore()">Mostrar mais ${HISTORY_PAGE} (exibindo ${shown.length.toLocaleString('pt-BR')} de ${rows.length.toLocaleString('pt-BR')})</button></td></tr>`:'';
+  body.innerHTML=(html+more)||'<tr><td colspan="14" style="text-align:center" class="small">Nenhum lançamento encontrado.</td></tr>';
  }
  updateHistorySelectionUI(rows.map(x=>x.i));
 }
@@ -1719,6 +1889,7 @@ function edit(i){
   ['cliente','codigo','produto','of','quantidade','pesoArvore','pesoCanal','kgFundUsin','kgRefugo','motivo','descricaoMotivo','planta','material','responsavel','observacao','data','dataLancamento'].forEach(k=>{
     const el=document.getElementById(k);if(el)el.value=val(r,k);
   });
+  try{const sv=val(r,'setor')||'';setorPop();const se=document.getElementById('setor');if(se){if(sv&&![...se.options].some(o=>o.value===sv))se.insertAdjacentHTML('beforeend',`<option value="${esc(sv)}">${esc(sv)}</option>`);se.value=sv}}catch(e){}
   atualizarDataDisplay();
   ltMatSet(val(r,"material"));loadFormFotos(r.FOTOS);
   setFieldValue('editIndex',i);
@@ -2112,6 +2283,10 @@ function analysis(){
   if(partBody)partBody.innerHTML=partEntries.length?partEntries.map(([name,v])=>`<tr><td>${esc(name)}</td><td>${fmt(v.kg)}</td><td>${fmt(v.q)}</td><td>${totalKg?fmt(v.kg/totalKg*100)+'%':'—'}</td><td>${costAccessAllowed()?'R$ '+fmt(v.cost):'🔒 Restrito'}</td></tr>`).join(''):`<tr><td colspan="5" class="small" style="text-align:center">Nenhum registro para os filtros informados.</td></tr>`;
   totalFoot('partAnalysisTotal',totalKg,totalQty,totalCost);
 
+  [['setorAnalysis',r=>val(r,'setor')?setorTxt(val(r,'setor')):'Não informado'],['setorTipoAnalysis',r=>val(r,'setor')?(setorTipo(val(r,'setor'))||val(r,'setor')):'Não informado']].forEach(([id,fn])=>{
+    const g=Object.entries(groupAnalysis(rows,fn)).sort((x,y)=>y[1].kg-x[1].kg),b=document.getElementById(id);
+    if(b)b.innerHTML=g.length?g.map(([name,v])=>`<tr><td>${esc(name)}</td><td>${fmt(v.kg)}</td><td>${fmt(v.q)}</td><td>${totalKg?fmt(v.kg/totalKg*100)+'%':'—'}</td><td>${costAccessAllowed()?'R$ '+fmt(v.cost):'🔒 Restrito'}</td></tr>`).join(''):'<tr><td colspan="5" class="small" style="text-align:center">Sem dados.</td></tr>';
+  });
   const cam=groupAnalysis(rows,r=>causaPeloMotivo(r));
   const causaEntries=Object.entries(cam).sort((a,b)=>b[1].kg-a[1].kg);
   const causaBody=document.getElementById('causaAnalysis');

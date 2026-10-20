@@ -120,9 +120,10 @@ function build(){
       <select id="dvFc"><option value="">Todos os clientes</option></select>
       <select id="dvFp" title="Filtrar por procedência"><option value="proc">Só as que procedem</option><option value="nao">Só as que NÃO procedem</option><option value="todas">Todas (procede + não procede)</option></select>
       <button class="btn secondary" type="button" onclick="devLimparFiltros()">Limpar</button>
+      <button class="btn primary" type="button" onclick="devPdf()">📄 PDF do período</button>
     </div>
     <div class="dev-info">Clique em uma barra para ver o que foi devolvido (cliente, peça e quantidade). Em cada gráfico: <b style="color:var(--orange)">quantidade (peças)</b> no eixo esquerdo e <b style="color:#1f5f99">peso (kg)</b> no eixo direito, lado a lado.</div>
-    <div class="panel wide" style="margin-top:10px"><h3>🚫 Reclamações "não procede" por cliente</h3><div class="hint">Clientes que mais abriram devolução improcedente no período (ano e mês dos filtros; todas as plantas). Útil para conversar com Vendas.</div><div class="tablewrap"><table><thead><tr><th>Cliente</th><th>Reclamações</th><th>Não procede</th><th>% improcedente</th><th>Peças não procede</th><th>Peças total</th></tr></thead><tbody id="dvNpBody"></tbody></table></div></div>
+    <div id="dvNpPanel" class="panel wide" style="margin-top:10px"><h3>🚫 Reclamações "não procede" por cliente</h3><div class="hint">Clientes que mais abriram devolução improcedente no período (ano e mês dos filtros; todas as plantas). Útil para conversar com Vendas.</div><div class="tablewrap"><table><thead><tr><th>Cliente</th><th>Reclamações</th><th>Não procede</th><th>% improcedente</th><th>Peças não procede</th><th>Peças total</th></tr></thead><tbody id="dvNpBody"></tbody></table></div></div>
     <div id="dvTabs" style="display:flex;gap:8px;margin:10px 0">${TIPOS.map((t,i)=>`<button type="button" class="btn secondary" id="dvTab${i}" onclick="devTab(${i})">${t.n}</button>`).join('')}</div>
     ${TIPOS.map((t,i)=>`<div id="dvSec${i}" style="display:${i===0?'block':'none'}">
     <h2 class="dev-sec">${t.n}</h2>
@@ -404,7 +405,7 @@ function tabela(){
   const rows=lista.filter(r=>!q||JSON.stringify(r).toLowerCase().includes(q)).sort((a,b)=>String(b.data).localeCompare(String(a.data))||String(b.numFq||'').localeCompare(String(a.numFq||''))||(a.ts||0)-(b.ts||0));
   $('dvCount').textContent=rows.length.toLocaleString('pt-BR')+' de '+lista.length.toLocaleString('pt-BR')+' itens devolvidos';
   const mostra=rows.slice(0,300);
-  $('dvTbody').innerHTML=mostra.map(r=>`<tr><td>${esc(tipoDe(r))}</td><td>${esc(r.numFq||'')}</td><td>${esc(brDate(r.data))}</td><td>${esc(r.cliente)}</td><td>${esc(r.codigo)}</td><td style="white-space:normal;min-width:160px">${esc(r.produto)}</td><td>${esc(r.nf||'')}</td><td>${fmt(r.qtd)}</td><td>${fmt(totalKg(r))}</td><td style="white-space:normal;min-width:120px">${esc(r.motivo||'')}</td><td>${esc(r.procede||'')}</td><td><span class="dev-disp ${dispCls(r.disp)}">${esc(r.disp||'')}</span></td><td><button class="btn secondary" type="button" onclick="devEdit('${r.id}')">Editar</button> <button class="btn secondary" type="button" onclick="devMaisItem('${r.id}')" title="Adicionar outro item a este registro">+ Item</button> <button class="btn secondary" type="button" onclick="devFotos('${r.id}')" title="Fotos da etiqueta">📷${r.nFotos?' '+r.nFotos:''}</button> <button class="btn danger" type="button" onclick="devDel('${r.id}')">Excluir</button></td></tr>`).join('')
+  $('dvTbody').innerHTML=mostra.map(r=>`<tr><td>${esc(tipoDe(r))}</td><td>${esc(r.numFq||'')}</td><td>${esc(brDate(r.data))}</td><td>${esc(r.cliente)}</td><td>${esc(r.codigo)}</td><td style="white-space:normal;min-width:160px">${esc(r.produto)}</td><td>${esc(r.nf||'')}</td><td>${fmt(r.qtd)}</td><td>${fmt(totalKg(r))}</td><td style="white-space:normal;min-width:120px">${esc(r.motivo||'')}</td><td>${esc(r.procede||'')}</td><td><span class="dev-disp ${dispCls(r.disp)}">${esc(r.disp||'')}</span></td><td><button class="btn secondary" type="button" onclick="devEdit('${r.id}')">Editar</button> <button class="btn secondary" type="button" onclick="devMaisItem('${r.id}')" title="Adicionar outro item a este registro">+ Item</button> <button class="btn secondary" type="button" onclick="devRegPdf('${r.id}')" title="PDF do registro (FQ051)">🖨 PDF</button> <button class="btn secondary" type="button" onclick="devFotos('${r.id}')" title="Fotos da etiqueta">📷${r.nFotos?' '+r.nFotos:''}</button> <button class="btn danger" type="button" onclick="devDel('${r.id}')">Excluir</button></td></tr>`).join('')
     ||'<tr><td colspan="12" class="small" style="text-align:center">Nenhuma devolução lançada.</td></tr>';
   if(rows.length>mostra.length)$('dvTbody').innerHTML+=`<tr><td colspan="12" class="small" style="text-align:center">Exibindo as 300 mais recentes. Use a busca para localizar as demais.</td></tr>`;
 }
@@ -594,6 +595,36 @@ window.devDados=function(){return lista.map(limpo)};
 const semRaw=f=>function(){const s=viewRaw;viewRaw=false;try{return f.apply(null,arguments)}finally{viewRaw=s}};
 window.devKg=semRaw(totalKg);window.devValor=semRaw(valorR);window.devTipo=tipoDe;
 window.devLimparFiltros=function(){['dvFa','dvFm','dvFc'].forEach(id=>$(id).value='');$('dvFp').value='proc';painel()};
+function pdfCanvasImg(orig,clone){
+  const a=[...orig.querySelectorAll('canvas')],b=[...clone.querySelectorAll('canvas')];
+  b.forEach((c,i)=>{try{const im=document.createElement('img');im.src=a[i].toDataURL('image/png');im.style.cssText='width:100%;max-height:300px;object-fit:contain';c.replaceWith(im)}catch(e){}});
+  return clone;
+}
+window.devPdf=function(){
+  const keep=tabPl,txt=id=>{const e=$(id);return e&&e.value?e.options[e.selectedIndex].text:''};
+  const fl=[txt('dvFa'),txt('dvFm'),txt('dvFc'),txt('dvFp')].filter(Boolean).join(' · ');
+  let corpo=pdfCab('↩ Relatório de devoluções',fl||'Todos os períodos');
+  corpo+=pdfCanvasImg($('dvNpPanel'),$('dvNpPanel').cloneNode(true)).outerHTML;
+  TIPOS.forEach((t,i)=>{
+    tabPl=i;painel();
+    const c=pdfCanvasImg($('dvSec'+i),$('dvSec'+i).cloneNode(true));c.style.display='block';c.style.pageBreakBefore='always';
+    corpo+=c.outerHTML;
+  });
+  tabPl=keep;painel();
+  pdfImprimir('Relatório de devoluções',corpo,true);
+};
+window.devRegPdf=function(id){
+  const r0=lista.find(x=>x.id===id);if(!r0)return;
+  const its=r0.regId?lista.filter(x=>x.regId===r0.regId):lista.filter(x=>x.numFq===r0.numFq&&x.data===r0.data&&x.cliente===r0.cliente);
+  const c=(l,v,w)=>`<div${w?' class="w"':''}><b>${l}:</b> ${v==null||v===''?'—':esc(v)}</div>`;
+  const tq=its.reduce((a,r)=>a+num(r.qtd),0),tk=its.reduce((a,r)=>a+(naoProcede(r)?0:(num(r.qtd)*num(r.pesoUn))),0);
+  const corpo=pdfCab('Registro de devolução — FQ051 nº '+(r0.numFq||'s/nº'),tipoDe(r0)+' · '+r0.cliente)+
+   '<div class="pdf-grid">'+c('Planta',tipoDe(r0))+c('Data',brDate(r0.data))+c('Cliente',r0.cliente)+c('Recebido por',r0.recebPor)+c('Origem',r0.origem)+c('NF de devolução',r0.nf)+c('S.A. nº',r0.sa)+c('Inspetor',r0.inspetor)+c('Vendas',r0.vendas)+'</div>'+
+   '<h3 style="margin:12px 0 4px">Itens devolvidos</h3><table><thead><tr><th>Código</th><th>Peça</th><th>OF</th><th>Qtd.</th><th>Peso unit. (kg)</th><th>Peso total (kg)</th><th>Motivo</th><th>Procede?</th><th>Destino</th><th>Obs.</th></tr></thead><tbody>'+
+   its.map(r=>`<tr><td>${esc(r.codigo)}</td><td>${esc(r.produto||'')}</td><td>${esc(r.of||'')}</td><td>${fmt(r.qtd)}</td><td>${fmt(r.pesoUn)}</td><td>${naoProcede(r)?'—':fmt((num(r.qtd)*num(r.pesoUn)))}</td><td>${esc(r.motivo||'')}</td><td>${esc(r.procede||'')}</td><td>${esc(r.disp||'')}</td><td>${esc(r.obs||'')}</td></tr>`).join('')+
+   `<tr><th colspan="3">TOTAL</th><th>${fmt(tq)}</th><th></th><th>${fmt(tk)}</th><th colspan="4"></th></tr></tbody></table><div style="font-size:10px;color:#555;margin-top:4px">Itens "não procede" não entram no peso total.</div>`;
+  pdfImprimir('Devolução '+(r0.numFq||''),corpo,false);
+};
 window.devTab=function(i){tabPl=i;painel()};
 
 /* ---------- abas ---------- */

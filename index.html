@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Controle de Refugos 2026</title>
-<link rel="stylesheet" href="base.css?v=139">
+<link rel="stylesheet" href="base.css?v=142">
 
 <style id="dashboardPdfStyles">
 @page{size:A4 landscape;margin:8mm 8mm 9mm 8mm}
@@ -181,8 +181,8 @@ html[data-theme="dark"] .firebase-modal{background:#101a2a;color:#f3f4f6}.data-o
 [data-theme="dark"] .help-note{background:#172235;color:#e7edf5;border-left-color:var(--orange);border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
 @media (max-width:760px){.help-intro{grid-template-columns:1fr}.help-badge{justify-self:start}.help-grid{grid-template-columns:1fr}}
 </style>
-<link rel="stylesheet" href="graficos.css?v=139">
-<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=139">
+<link rel="stylesheet" href="graficos.css?v=142">
+<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=142">
 <script>
 /* ===== CONFIGURAÇÃO DO FIREBASE =====
    Preencha uma vez e todos os computadores conectam sozinhos. Deixe "" para não usar. */
@@ -194,7 +194,7 @@ window.EMBEDDED_FIREBASE_CONFIG={
   messagingSenderId:"894679339944",
   appId:"1:894679339944:web:fcf8fc0bf6f45439c7c39d"
 };
-window.APP_VERSION="v139";
+window.APP_VERSION="v142";
 /* Mostra erros de JavaScript na tela em vez de ficar em branco */
 window.addEventListener('error',function(ev){
   try{
@@ -443,6 +443,7 @@ service cloud.firestore {
             <input id="planta" readonly placeholder="Preenchida pelo cadastro">
           </div>
 <div class="field"><label>Material</label><select id="material"><option value="">Selecione</option></select></div>
+<div class="field"><label>Setor / máquina onde ocorreu</label><select id="setor"><option value="">Selecione</option></select></div>
 
           <div class="field">
             <label>OF</label>
@@ -566,6 +567,7 @@ service cloud.firestore {
   <button type="button" class="cad-tab" data-cad-tab="participantes" onclick="switchCadTab('participantes')">Participantes</button>
   <button type="button" class="cad-tab" data-cad-tab="metas" onclick="switchCadTab('metas')">🎯 Metas</button>
   <button type="button" class="cad-tab" data-cad-tab="materiais" onclick="switchCadTab('materiais')">🧱 Materiais</button>
+  <button type="button" class="cad-tab" data-cad-tab="setores" onclick="switchCadTab('setores')">🏭 Setores / Máquinas</button>
   <button type="button" class="cad-tab" data-cad-tab="valores" onclick="switchCadTab('valores')">💰 Valores (R$/kg)</button>
 </div>
 
@@ -639,6 +641,10 @@ service cloud.firestore {
 
 <div id="cadTabValores" class="cad-tab-panel" style="margin-top:16px"><div class="panel"><div class="cad-section-head"><div><h3>Valores (R$/kg)</h3><div class="small">Valor do kg do refugo e das devoluções por planta, com histórico por período. Protegido por senha.</div></div></div><div id="cadCustosPlanta" class="small" style="margin:10px 0;padding:12px;border:1px solid var(--border);border-radius:12px"></div><div id="cadCustosDev" class="small" style="margin:10px 0;padding:12px;border:1px solid var(--border);border-radius:12px"></div></div></div>
 
+<div id="cadTabSetores" class="cad-tab-panel" style="margin-top:16px"><div class="panel"><div class="cad-section-head"><div><h3>Setores / Máquinas</h3><div class="small">Lista usada para lançar <b>refugos</b> e <b>retrabalhos</b>. Cadastre o código, o tipo e a planta.</div></div><span id="setoresCount" class="small"></span></div>
+<div class="cad-form"><input id="cadSetorCod" placeholder="Código (ex.: TC01)"><input id="cadSetorTipo" placeholder="Tipo / descrição (ex.: CNC)"><select id="cadSetorPlanta"><option value="">Planta</option><option>USINAGEM</option><option>FUNDIÇÃO</option></select><button class="btn primary" type="button" onclick="addSetor()">Adicionar</button></div>
+<div class="toolbar" style="margin:8px 0"><input id="setoresBusca" placeholder="🔎 Buscar código, tipo ou planta…" oninput="renderSetores()"><select id="setoresFiltroPl" onchange="renderSetores()"><option value="">Todas as plantas</option><option>USINAGEM</option><option>FUNDIÇÃO</option></select></div>
+<div id="setoresListView" class="tablewrap"></div></div></div>
 <div id="cadTabMateriais" class="cad-tab-panel" style="margin-top:16px"><div class="panel"><div class="cad-section-head"><div><h3>Materiais</h3><div class="small">Lista usada nos lançamentos de refugo e de retrabalho (um por linha). Ex.: GG25, GG30, GGG40.</div></div></div><textarea id="cadMatTxt" rows="8" style="width:100%;box-sizing:border-box"></textarea><div style="margin-top:10px"><button class="btn primary" type="button" onclick="salvarMateriais()">💾 Salvar materiais</button></div></div></div>
 <div id="cadTabMetas" class="cad-tab-panel" style="margin-top:16px">
   <div class="panel">
@@ -693,6 +699,8 @@ service cloud.firestore {
 <div class="grid analysis-grid">
   <div class="panel"><h3>Análise por cliente</h3><div class="hint">Soma do peso, quantidade, participação e custo por cliente.</div><div class="tablewrap"><table><thead><tr><th>Cliente</th><th>Kg refugo</th><th>Qtd.</th><th>% do total</th><th>Valor / custo</th></tr></thead><tbody id="clientAnalysis"></tbody><tfoot id="clientAnalysisTotal"></tfoot></table></div></div>
   <div class="panel"><h3>Análise por causa do motivo</h3><div class="hint">Processos, projetos, erro humano, laboratório, maquinários, ferramental ou outros (definido no Cadastro de motivos).</div><div class="tablewrap"><table><thead><tr><th>Causa</th><th>Kg refugo</th><th>Qtd.</th><th>% do total</th><th>Valor / custo</th></tr></thead><tbody id="causaAnalysis"></tbody><tfoot id="causaAnalysisTotal"></tfoot></table></div></div>
+  <div class="panel"><h3>Análise por setor / máquina</h3><div class="hint">Onde o refugo ocorreu (campo "Setor / máquina" do lançamento).</div><div class="tablewrap"><table><thead><tr><th>Setor / máquina</th><th>Kg refugo</th><th>Qtd.</th><th>% do total</th><th>Valor / custo</th></tr></thead><tbody id="setorAnalysis"></tbody></table></div></div>
+  <div class="panel"><h3>Análise por tipo de máquina</h3><div class="hint">Agrupa as máquinas do mesmo tipo (CNC, furadeira, fresa…).</div><div class="tablewrap"><table><thead><tr><th>Tipo</th><th>Kg refugo</th><th>Qtd.</th><th>% do total</th><th>Valor / custo</th></tr></thead><tbody id="setorTipoAnalysis"></tbody></table></div></div>
   <div class="panel"><h3>Análise por peça</h3><div class="hint">Identifique quais produtos concentram o maior peso de refugo.</div><div class="tablewrap"><table><thead><tr><th>Produto</th><th>Kg refugo</th><th>Qtd.</th><th>% do total</th><th>Valor / custo</th></tr></thead><tbody id="partAnalysis"></tbody><tfoot id="partAnalysisTotal"></tfoot></table></div></div>
   <div class="panel wide"><h3>Análise por OF</h3><div class="hint">Visualize o total por ordem de fabricação e o principal motivo.</div><div class="tablewrap"><table><thead><tr><th>OF</th><th>Cliente</th><th>Kg refugo</th><th>Qtd.</th><th>% do total</th><th>Motivo principal</th></tr></thead><tbody id="ofAnalysis"></tbody><tfoot id="ofAnalysisTotal"></tfoot></table></div></div>
 </div>
@@ -704,14 +712,14 @@ service cloud.firestore {
 <div id="rtSync" class="hint" style="margin:0 0 10px"></div>
 <div class="rt-tabs"><button class="rt-tab on" data-rt="lancar" onclick="rtTab('lancar')">➕ Lançar</button><button class="rt-tab" data-rt="painel" onclick="rtTab('painel')">📊 Painel</button><button class="rt-tab" data-rt="lista" onclick="rtTab('lista')">📋 Etiquetas</button></div>
 <div id="rtLancar" class="rt-pane panel"><h3>🔧 Lançar etiqueta de retrabalho <span class="hint" style="font-weight:400">(FQ 099 rev01)</span></h3>
-<input type="hidden" id="rtId"><div class="rt-grid"><div class="field "><label>Data de emissão</label><input id="rtDt" type="date"></div><div class="field "><label>Cód. do sistema</label><input id="rtCod" inputmode="numeric" oninput="rtBusca()" placeholder="mesmo código do refugo"></div><div class="field "><label>Cliente</label><input id="rtCli" list="rtCliList" onchange="rtBusca()"></div><div class="field "><label>Desc. do produto</label><input id="rtProd"></div><div class="field "><label>Cód. do produto (cliente)</label><input id="rtCodCli"></div><div class="field "><label>OF</label><input id="rtOf" placeholder="ex.: 910/26"></div><div class="field "><label>Quantidade</label><input id="rtQtd" type="number" min="0" step="1" inputmode="numeric"></div><div class="field "><label>Material</label><select id="rtMat"></select></div><div class="field "><label>Resp. (emissão)</label><input id="rtRespE" list="rtRespList"></div><div class="field "><label>Local / máquina (emissão)</label><input id="rtLocE" list="rtLocList" placeholder="ex.: TC16"></div><div class="field rt-wide"><label>Motivo</label><textarea id="rtMot" rows="2" placeholder="Ex.: peças fora de controle, realizar retrabalho na rebarba"></textarea></div></div>
+<input type="hidden" id="rtId"><div class="rt-grid"><div class="field "><label>Data de emissão</label><input id="rtDt" type="date"></div><div class="field "><label>Cód. do sistema</label><input id="rtCod" inputmode="numeric" oninput="rtBusca()" placeholder="mesmo código do refugo"></div><div class="field "><label>Cliente</label><input id="rtCli" list="rtCliList" onchange="rtBusca()"></div><div class="field "><label>Desc. do produto</label><input id="rtProd"></div><div class="field "><label>Cód. do produto (cliente)</label><input id="rtCodCli"></div><div class="field "><label>OF</label><input id="rtOf" placeholder="ex.: 910/26"></div><div class="field "><label>Quantidade</label><input id="rtQtd" type="number" min="0" step="1" inputmode="numeric"></div><div class="field "><label>Material</label><select id="rtMat"></select></div><div class="field "><label>Resp. (emissão)</label><input id="rtRespE" list="rtRespList"></div><div class="field "><label>Local / máquina (emissão)</label><input id="rtLocE" list="rtLocList" placeholder="ex.: TC16"></div><div class="field "><label>Setor do retrabalho *</label><select id="rtSetor"><option value="">Selecione</option></select></div><div class="field rt-wide"><label>Motivo</label><textarea id="rtMot" rows="2" placeholder="Ex.: peças fora de controle, realizar retrabalho na rebarba"></textarea></div></div>
 <div class="hint" id="rtHint" style="margin:8px 0"></div>
 <div class="rt-grid"><div class="field"><label>📷 Fotos ANTES do retrabalho</label><input type="file" accept="image/*" multiple onchange="rtFotoAdd('a',this)"><div id="rtFpa" class="fotoprev"></div></div><div class="field"><label>📷 Fotos DEPOIS do retrabalho</label><input type="file" accept="image/*" multiple onchange="rtFotoAdd('d',this)"><div id="rtFpd" class="fotoprev"></div></div></div>
 <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:800">Andamento do retrabalho (verso da etiqueta)</summary><div class="rt-grid" style="margin-top:10px"><div class="field "><label>Status atual</label><select id="rtSt"><option>Aguardando retrabalho</option><option>Em retrabalho</option><option>Retrabalho concluído</option></select></div><div class="field "><label>Hora inicial</label><input id="rtHi" type="time"></div><div class="field "><label>Hora final</label><input id="rtHf" type="time"></div><div class="field "><label>Data que iniciou o retrabalho</label><input id="rtDi" type="date"></div><div class="field "><label>Data que concluiu</label><input id="rtDf" type="date"></div><div class="field "><label>Peças que deram certo (OK)</label><input id="rtOk" type="number" min="0" step="1" inputmode="numeric"></div><div class="field "><label>Peças refugadas no retrabalho</label><input id="rtRf" type="number" min="0" step="1" inputmode="numeric"></div><div class="field "><label>Resp. (retrabalho)</label><input id="rtRespR" list="rtRespList"></div><div class="field "><label>Local / máquina (retrabalho)</label><input id="rtLocR" list="rtLocList"></div><div class="field rt-wide"><label>Observações</label><textarea id="rtObs" rows="2"></textarea></div></div></details>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" type="button" onclick="rtSave()">💾 Salvar etiqueta</button><button class="btn secondary" type="button" onclick="rtClear()">Limpar</button></div><div id="rtMsg" class="hint" style="margin-top:8px"></div>
 <datalist id="rtCliList"></datalist><datalist id="rtRespList"></datalist><datalist id="rtLocList"></datalist></div>
-<div id="rtPainel" class="rt-pane" style="display:none"><div class="panel"><div class="help-chips" style="margin:0 0 12px"><button type="button" class="help-chip" onclick="rtPreset('7')">7 dias</button><button type="button" class="help-chip" onclick="rtPreset('30')">30 dias</button><button type="button" class="help-chip" onclick="rtPreset('mes')">Mês atual</button><button type="button" class="help-chip" onclick="rtPreset('ant')">Mês anterior</button><button type="button" class="help-chip" onclick="rtPreset('ano')">Ano</button><button type="button" class="help-chip" onclick="rtPreset('tudo')">Tudo</button><button type="button" class="help-chip" onclick="rtLimpar()">✖ Limpar filtros</button></div><div class="rt-grid"><div class="field "><label>De</label><input id="rtPa" type="date" onchange="rtPainel()"></div><div class="field "><label>Até</label><input id="rtPb" type="date" onchange="rtPainel()"></div><div class="field "><label>Material</label><select id="rtFm" onchange="rtPainel()"></select></div><div class="field "><label>Máquina / local</label><select id="rtFl" onchange="rtPainel()"></select></div><div class="field "><label>Cliente</label><select id="rtFc" onchange="rtPainel()"></select></div><div class="field "><label>Status</label><select id="rtFst" onchange="rtPainel()"><option value="">Todos</option><option>Aguardando retrabalho</option><option>Em retrabalho</option><option>Retrabalho concluído</option></select></div><div class="field "><label>Medir por</label><select id="rtMet" onchange="rtPainel()"><option value="q">Peças</option><option value="n">Etiquetas</option></select></div></div></div><div id="rtKpis"></div><div id="rtIns"></div><div id="rtCharts" class="rt-grid" style="margin-top:14px"></div></div>
-<div id="rtLista" class="rt-pane panel" style="display:none"><h3>Etiquetas lançadas</h3><div class="rt-grid"><div class="field"><label>Buscar</label><input id="rtQ" oninput="rtLista()" placeholder="cliente, código, OF, produto, motivo"></div><div class="field"><label>Status</label><select id="rtFs" onchange="rtLista()"><option value="">Todos</option><option>Aguardando retrabalho</option><option>Em retrabalho</option><option>Retrabalho concluído</option></select></div></div><div style="margin:10px 0"><button class="btn secondary" type="button" onclick="rtCsv()">⬇ Exportar CSV</button></div><div id="rtTbl" class="tablewrap"></div></div>
+<div id="rtPainel" class="rt-pane" style="display:none"><div class="panel"><div class="help-chips" style="margin:0 0 12px"><button type="button" class="help-chip" onclick="rtPreset('7')">7 dias</button><button type="button" class="help-chip" onclick="rtPreset('30')">30 dias</button><button type="button" class="help-chip" onclick="rtPreset('mes')">Mês atual</button><button type="button" class="help-chip" onclick="rtPreset('ant')">Mês anterior</button><button type="button" class="help-chip" onclick="rtPreset('ano')">Ano</button><button type="button" class="help-chip" onclick="rtPreset('tudo')">Tudo</button><button type="button" class="help-chip" onclick="rtLimpar()">✖ Limpar filtros</button></div><div class="rt-grid"><div class="field "><label>De</label><input id="rtPa" type="date" onchange="rtPainel()"></div><div class="field "><label>Até</label><input id="rtPb" type="date" onchange="rtPainel()"></div><div class="field "><label>Material</label><select id="rtFm" onchange="rtPainel()"></select></div><div class="field "><label>Máquina / local</label><select id="rtFl" onchange="rtPainel()"></select></div><div class="field "><label>Cliente</label><select id="rtFc" onchange="rtPainel()"></select></div><div class="field "><label>Setor</label><select id="rtFsetor" onchange="rtPainel()"></select></div><div class="field "><label>Status</label><select id="rtFst" onchange="rtPainel()"><option value="">Todos</option><option>Aguardando retrabalho</option><option>Em retrabalho</option><option>Retrabalho concluído</option></select></div><div class="field "><label>Medir por</label><select id="rtMet" onchange="rtPainel()"><option value="q">Peças</option><option value="n">Etiquetas</option></select></div></div></div><div id="rtKpis"></div><div id="rtIns"></div><div id="rtCharts" class="rt-grid" style="margin-top:14px"></div></div>
+<div id="rtLista" class="rt-pane panel" style="display:none"><h3>Etiquetas lançadas</h3><div class="rt-grid"><div class="field"><label>Buscar</label><input id="rtQ" oninput="rtLista()" placeholder="cliente, código, OF, produto, motivo"></div><div class="field"><label>Status</label><select id="rtFs" onchange="rtLista()"><option value="">Todos</option><option>Aguardando retrabalho</option><option>Em retrabalho</option><option>Retrabalho concluído</option></select></div></div><div style="margin:10px 0"><button class="btn primary" type="button" onclick="rtPdf()">📄 PDF do período</button> <button class="btn secondary" type="button" onclick="rtCsv()">⬇ Exportar CSV</button></div><div id="rtTbl" class="tablewrap"></div></div>
 </section>
 
 <section id="auditoria" class="page">
@@ -920,6 +928,29 @@ service cloud.firestore {
   </div>
   <div id="excelStatus" class="small import-status">Nenhuma planilha selecionada.</div>
 </div>
+<div class="import-card" style="display:block">
+  <strong>🔎 Filtros do histórico</strong>
+  <div class="formgrid" style="margin-top:8px">
+    <div class="field"><label>Período rápido</label><select id="hfPer" onchange="historyPeriodo(this.value)"><option value="">—</option><option value="mes">Este mês</option><option value="mesant">Mês passado</option><option value="30">Últimos 30 dias</option><option value="ano">Este ano</option></select></div>
+    <div class="field"><label>Data do refugo — de</label><input type="date" id="hfDe" oninput="historyFiltroMudou()"></div>
+    <div class="field"><label>Data do refugo — até</label><input type="date" id="hfAte" oninput="historyFiltroMudou()"></div>
+    <div class="field"><label>Lançado em — de</label><input type="date" id="hfLde" oninput="historyFiltroMudou()"></div>
+    <div class="field"><label>Lançado em — até</label><input type="date" id="hfLate" oninput="historyFiltroMudou()"></div>
+    <div class="field"><label>Cliente</label><select id="hfCli" onchange="historyFiltroMudou()"><option value="">Todos os clientes</option></select></div>
+    <div class="field"><label>Planta</label><select id="hfPl" onchange="historyFiltroMudou()"><option value="">Todas as plantas</option></select></div>
+    <div class="field"><label>Motivo</label><select id="hfMot" onchange="historyFiltroMudou()"><option value="">Todos os motivos</option></select></div>
+    <div class="field"><label>Responsável</label><select id="hfResp" onchange="historyFiltroMudou()"><option value="">Todos os responsáveis</option></select></div>
+    <div class="field"><label>Setor / máquina</label><select id="hfSetor" onchange="historyFiltroMudou()"><option value="">Todos os setores</option></select></div>
+    <div class="field"><label>Causa do motivo</label><select id="hfCausa" onchange="historyFiltroMudou()"><option value="">Todas as causas</option></select></div>
+    <div class="field"><label>Kg do refugo — mínimo</label><input type="number" step="0.01" min="0" id="hfKgMin" placeholder="Ex.: 10" oninput="historyFiltroMudou()"></div>
+    <div class="field"><label>Kg do refugo — máximo</label><input type="number" step="0.01" min="0" id="hfKgMax" placeholder="Ex.: 100" oninput="historyFiltroMudou()"></div>
+    <div class="field"><label>Ordenar por</label><select id="hfOrd" onchange="historyFiltroMudou()"><option value="">Data do refugo (mais recente)</option><option value="antigo">Data do refugo (mais antigo)</option><option value="lanc">Data de lançamento (mais recente)</option><option value="kg">Maior peso (kg)</option><option value="qtd">Maior quantidade</option></select></div>
+    <div class="field"><label>Código ou OF</label><input id="hfCod" placeholder="Ex.: 65887 ou 440/26" oninput="historyFiltroMudou()"></div>
+    <div class="field"><label>Fotos</label><select id="hfFoto" onchange="historyFiltroMudou()"><option value="">Todas</option><option value="com">Só com foto</option><option value="sem">Só sem foto</option></select></div>
+    <div class="field"><label>&nbsp;</label><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="hfZero" onchange="historyFiltroMudou()"> Só com 0 kg (sem peso)</label></div>
+  </div>
+  <div class="actions"><button type="button" class="btn secondary" onclick="historyLimparFiltros()">Limpar filtros</button></div>
+</div>
 <div class="toolbar">
   <input id="search" placeholder="Buscar cliente, código, OF, produto, motivo...">
   <span id="historyCount" class="small"></span>
@@ -931,7 +962,7 @@ service cloud.firestore {
   </div>
 </div>
 <div id="historyInlineLoading" class="history-inline-loading" aria-live="polite"><div class="mini-spinner" aria-hidden="true"></div><div class="loading-copy"><strong>Carregando histórico...</strong><span>Organizando os lançamentos do mais recente para o mais antigo.</span></div></div>
-<div id="historyTableWrap" class="tablewrap"><table><thead><tr><th class="history-select-cell">Sel.</th><th>Data do refugo</th><th>Lançamento</th><th>Cliente</th><th>Código</th><th>Produto</th><th>OF</th><th>Qtd.</th><th>Kg refugo</th><th>Motivo / descrição</th><th>Planta</th><th>Responsável</th><th>Ações</th></tr></thead><tbody id="tbody"></tbody></table></div>
+<div id="historyTableWrap" class="tablewrap"><table><thead><tr><th class="history-select-cell">Sel.</th><th>Data do refugo</th><th>Lançamento</th><th>Cliente</th><th>Código</th><th>Produto</th><th>OF</th><th>Qtd.</th><th>Kg refugo</th><th>Motivo / descrição</th><th>Planta</th><th>Setor / máquina</th><th>Responsável</th><th>Ações</th></tr></thead><tbody id="tbody"></tbody></table></div>
 </div>
 </section>
 
@@ -950,15 +981,15 @@ service cloud.firestore {
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script src="dados-iniciais.js?v=139"></script>
-<script src="analises.js?v=139"></script>
-<script src="filtros.js?v=139"></script>
-<script src="retrabalhos.js?v=139"></script>
-<script src="app.js?v=139"></script>
-<script src="devolucoes.js?v=139"></script>
-<script src="gestao.js?v=139"></script>
-<script src="reuniao.js?v=139"></script>
-<script src="auditoria.js?v=139"></script>
-<script src="versao.js?v=139"></script>
+<script src="dados-iniciais.js?v=142"></script>
+<script src="analises.js?v=142"></script>
+<script src="filtros.js?v=142"></script>
+<script src="retrabalhos.js?v=142"></script>
+<script src="app.js?v=142"></script>
+<script src="devolucoes.js?v=142"></script>
+<script src="gestao.js?v=142"></script>
+<script src="reuniao.js?v=142"></script>
+<script src="auditoria.js?v=142"></script>
+<script src="versao.js?v=142"></script>
 </body>
 </html>
