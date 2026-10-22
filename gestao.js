@@ -480,6 +480,7 @@ function build(){
   const root=$('gestRoot');if(!root)return;
   root.innerHTML=`
   <div class="g-tabs">
+    <button type="button" class="g-tab" data-g="visao" onclick="gestAba('visao')">🧭 Visão geral</button>
     <button type="button" class="g-tab on" data-g="alertas" onclick="gestAba('alertas')">🔔 Alertas e metas</button>
     <button type="button" class="g-tab" data-g="comp" onclick="gestAba('comp')">⚖ Comparativo</button>
     <button type="button" class="g-tab" data-g="cruz" onclick="gestAba('cruz')">🔗 Refugo × Devolução</button>
@@ -519,6 +520,7 @@ function build(){
       <div class="hint"><b>Os textos de análise podem ser editados:</b> clique em qualquer texto abaixo, ajuste ou acrescente o seu contexto (fica salvo por mês e entra no PDF). Relatório no formato mensal da qualidade: gráficos de peças por motivo, cliente e item (Usinagem e Metalúrgica), peso, evolução mensal, causa e devoluções, cada um com uma análise do período. O PDF abre a janela de impressão (escolha “Salvar como PDF”). Valores em R$ só entram com os custos liberados.</div>
       <div id="gRelPrev" class="g-prev"></div></div>
   </div>
+  <div id="gVisao" style="display:none"></div>
   <div id="gAnalise" style="display:none"><div id="gAnalisePane"></div></div>
   <div id="gRelOld" style="display:none"><div id="gRelOldPane"></div></div>
   </div>`;
@@ -608,13 +610,13 @@ function relUiSuave(k){
 window.gestPdf=function(){try{localStorage.setItem('controle_refugos_2026_gestao_relnum',$('gRelNum').value)}catch(e){}gerarPdfRel($('gRelMes').value||hojeK())};
 window.gestXlsx=function(){gerarXlsx($('gRelMes').value||hojeK())};
 function render(){
-  if(aba==='alertas')alertasUi();else if(aba==='comp')compUi();else if(aba==='cruz')cruzUi();else if(aba==='rel')relUi();else{try{analysis()}catch(e){console.error(e)}}
+  if(aba==='alertas')alertasUi();else if(aba==='comp')compUi();else if(aba==='cruz')cruzUi();else if(aba==='rel')relUi();else if(aba==='visao'){if(window.relUiInit)window.relUiInit('vg')}else{try{analysis()}catch(e){console.error(e)}}
 }
 window.gestAba=function(a){
   if(!built)return;aba=a;
   document.querySelectorAll('#gestRoot .g-tab').forEach(b=>b.classList.toggle('on',b.dataset.g===a));
   $('gAlertas').style.display=a==='alertas'?'':'none';$('gComp').style.display=a==='comp'?'':'none';
-  $('gCruz').style.display=a==='cruz'?'':'none';$('gRel').style.display=a==='rel'?'':'none';$('gAnalise').style.display=a==='analise'?'':'none';$('gRelOld').style.display=a==='relOld'?'':'none';
+  $('gCruz').style.display=a==='cruz'?'':'none';$('gRel').style.display=a==='rel'?'':'none';$('gAnalise').style.display=a==='analise'?'':'none';$('gVisao').style.display=a==='visao'?'':'none';$('gRelOld').style.display=a==='relOld'?'':'none';
   render();
 };
 window.gestInit=function(){if(!built)build();gestAba(aba);badge()};
@@ -701,7 +703,7 @@ window.pecaSemPesoAbrir=function(){
 };
 
 /* para testes */
-window.__gestao={imgBar,imgStack,topo,baixar,limparHtml,addM,lblM,mesExt,pc1,cut,mkKey,sugerirCausa,relCompleto,REPCSS,calcAlertas,relatorio,cruzar,xlsxBlob,relSheets,metricasMes,crc32};
+window.__gestao={refAll,devAll,imgBar,imgStack,topo,baixar,limparHtml,addM,lblM,mesExt,pc1,cut,mkKey,sugerirCausa,relCompleto,REPCSS,calcAlertas,relatorio,cruzar,xlsxBlob,relSheets,metricasMes,crc32};
 css();
 setTimeout(badge,3000);
 window.addEventListener('resize',()=>{if(built&&(aba==='comp')&&$('gestao')?.classList.contains('active'))compUi()});

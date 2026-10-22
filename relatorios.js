@@ -185,6 +185,77 @@ const CFG={
   rt:{titulo:'Relatório mensal de retrabalhos',sec:rtSecoes,sheets:rtSheets,arq:'relatorio-retrabalhos'},
   dv:{titulo:'Relatório mensal de devoluções',sec:dvSecoes,sheets:dvSheets,arq:'relatorio-devolucoes'}
 };
+
+/* ---------- VISÃO GERAL (refugo + retrabalho + devolução) ---------- */
+function vgSecoes(k){
+  const g=G(),R=g.refAll(),D=g.devAll().filter(r=>!np(r.raw)),RT=rtDados(),mes=g.mesExt(k),pk=g.addM(k,-1),mesP=g.mesExt(pk);
+  const mm=g.metricasMes(k,R,D),mp=g.metricasMes(pk,R,D);
+  const rtK=m=>RT.filter(r=>isoMes(r.dt)===m),dvK=m=>D.filter(r=>r.k===m),rfK=m=>R.filter(r=>r.k===m);
+  const rtq=sum(rtK(k),r=>N(r.qtd)),rtqP=sum(rtK(pk),r=>N(r.qtd));
+  const dp=rtK(k).filter(r=>rtMpp(r)!=null),mpp=dp.length?sum(dp,r=>rtDur(r))/sum(dp,r=>rtPecasTrab(r)):null;
+  const dKg=sum(dvK(k),r=>r.kg),dKgP=sum(dvK(pk),r=>r.kg);
+  const prod=mm.prod,devF=sum(dvK(k).filter(r=>r.tipo==='Fundição'),r=>r.kg),pDev=prod?devF/prod*100:null,pRef=mm.perc;
+  const custo=okCusto(),rsTot=mm.rs+sum(dvK(k),r=>r.rs);
+  const secs=[],ms=mesesDe(k),lab=ms.map(m=>g.lblM(m));
+  const metaP=(typeof meta!=='undefined'&&meta&&meta.perc>0)?meta.perc:0;
+  /* 1 resumo */
+  const kp=[['Refugo (kg)',mm.kg,mp.kg],['Refugo Fundição (% da produção)',pRef==null?null:pRef,mp.perc],['Retrabalho (peças)',rtq,rtqP],['Devoluções procedentes (kg)',dKg,dKgP]];
+  const tb=tabela(['Indicador',mes,mesP,'Variação'],kp.map(([n,a,b])=>[n,a==null?'—':fmt(a),b==null?'—':fmt(b),(a==null||!(b>0))?'—':(a>=b?'+':'−')+fmt(Math.abs((a-b)/b*100))+'%']));
+  let t1='<p>Em '+mes+' a fábrica refugou <b>'+fmt(mm.kg)+' kg</b>'+(pRef!=null?' (<b>'+pc(pRef)+'</b> da produção da Fundição'+(metaP?', meta de '+pc(metaP)+' — '+(pRef>metaP?'<b>acima</b> da meta':'dentro da meta'):'')+')':'')+', teve <b>'+fmt(rtq)+' peças</b> em retrabalho'+(mpp!=null?' (média de '+fmt(mpp)+' min por peça)':'')+' e recebeu <b>'+fmt(dKg)+' kg</b> de devoluções procedentes'+(pDev!=null?' ('+pc(pDev)+' da produção da Fundição)':'')+'.';
+  if(custo&&rsTot>0)t1+=' O custo estimado da não qualidade (refugo + devoluções) foi de <b>'+RS(rsTot)+'</b>.';
+  t1+='</p>';
+  secs.push({t:'Resumo executivo do mês.',pre:tb,txt:t1});
+  /* 2 pontos de atenção */
+  const at=[],last3=[2,1,0].map(i=>g.metricasMes(g.addM(k,-i),R,D));
+  if(metaP&&pRef!=null&&pRef>metaP)at.push('O refugo da Fundição ('+pc(pRef)+') está acima da meta de '+pc(metaP)+'.');
+  if(last3.every(x=>x.perc!=null)&&last3[0].perc<last3[1].perc&&last3[1].perc<last3[2].perc)at.push('O % de refugo da Fundição subiu nos últimos 3 meses seguidos ('+last3.map(x=>pc(x.perc)).join(' → ')+').');
+  if(mp.kg>0&&mm.kg>mp.kg*1.2)at.push('O refugo em kg subiu '+pc((mm.kg-mp.kg)/mp.kg*100)+' em relação a '+mesP+'.');
+  if(dKgP>0&&dKg>dKgP*1.2)at.push('As devoluções procedentes subiram '+pc((dKg-dKgP)/dKgP*100)+' em kg em relação a '+mesP+'.');
+  const ab=RT.filter(r=>r.st!==RT_ST[2]&&rtAge(r)>3);if(ab.length)at.push(ab.length+' etiqueta(s) de retrabalho abertas há mais de 3 dias.');
+  const hoje=new Date();hoje.setHours(0,0,0,0);
+  const pend=D.filter(r=>(r.disp||'Aguardando análise')==='Aguardando análise'&&r.data&&(hoje-new Date(r.data+'T00:00:00'))/864e5>15);
+  if(pend.length)at.push(pend.length+' item(ns) de devolução aguardando destino há mais de 15 dias.');
+  const todas=g.devAll().filter(r=>r.k===k),npt=todas.filter(r=>np(r.raw));if(todas.length>=5&&npt.length/todas.length>0.3)at.push('Mais de 30% das reclamações do mês ('+npt.length+' de '+todas.length+') foram classificadas como não procede.');
+  const sc=rfK(k).filter(r=>!r.causa||r.causa==='Outros'||r.causa==='Sem causa');const tkR=sum(rfK(k),r=>r.kg);if(tkR>0&&sum(sc,r=>r.kg)/tkR>0.3)at.push(pc(sum(sc,r=>r.kg)/tkR*100)+' do refugo (kg) está sem causa definida ou em "Outros" — classifique os motivos por causa para melhorar a análise.');
+  secs.push({t:'Pontos de atenção.',txt:at.length?'<ul>'+at.map(x=>'<li>'+x+'</li>').join('')+'</ul>':'<p>Nenhum ponto crítico identificado automaticamente em '+mes+'.</p>'});
+  /* 3 perda % produção */
+  const ser=[{name:'Refugo Fundição (%)',cor:'#ED7D31',values:ms.map(m=>{const x=g.metricasMes(m,R,D);return x.perc==null?0:Math.round(x.perc*100)/100})},{name:'Devolução Fundição (%)',cor:'#1f5f99',values:ms.map(m=>{const pr=prodDe(m);return pr?Math.round(sum(dvK(m).filter(r=>r.tipo==='Fundição'),r=>r.kg)/pr*10000)/100:0})}];
+  const tot=ser[0].values[5]+ser[1].values[5],totP=ser[0].values[4]+ser[1].values[4];
+  secs.push({t:'Perda da Fundição como % da produção (refugo + devolução).',img:ser.some(x=>x.values.some(v=>v>0))?g.imgStack(lab,ser):null,
+    txt:prod?'<p>Em '+mes+', refugo e devolução juntos representaram <b>'+pc(tot)+'</b> da produção da Fundição'+(totP>0?' (em '+mesP+' foram '+pc(totP)+', '+(tot<totP?'uma melhora':'uma piora')+' de '+fmt(Math.abs(tot-totP))+' p.p.)':'')+'. Refugo: '+pc(ser[0].values[5])+'; devolução: '+pc(ser[1].values[5])+'.</p>':'<p>Sem produção da Fundição lançada em '+mes+'.</p>'});
+  /* 4-6 tendências */
+  const tend=(t,vals,f,unid,txtF)=>{const a=vals[5],b=vals[4],med=sum(vals.slice(0,5),x=>x)/5;secs.push({t,img:vals.some(v=>v>0)?g.imgBar(lab,vals,{f}):null,txt:'<p>'+txtF+' Em '+mes+': <b>'+fmt(a)+' '+unid+'</b>'+(b>0?' ('+(a>=b?'+':'−')+pc(Math.abs((a-b)/b*100))+' vs '+mesP+')':'')+(med>0?'; média dos 5 meses anteriores: '+fmt(med)+' '+unid+'.':'.')+'</p>'})};
+  tend('Refugo total por mês (kg).',ms.map(m=>Math.round(sum(rfK(m),r=>r.kg))),v=>String(Math.round(v)),'kg','Evolução do peso refugado.');
+  tend('Retrabalho por mês (peças).',ms.map(m=>sum(rtK(m),r=>N(r.qtd))),v=>String(Math.round(v)),'peças','Evolução das peças em retrabalho.');
+  tend('Devoluções procedentes por mês (kg).',ms.map(m=>Math.round(sum(dvK(m),r=>r.kg))),v=>String(Math.round(v)),'kg','Evolução do peso devolvido (só reclamações que procedem).');
+  /* 7 causas */
+  const Lc=rank(rfK(k),r=>r.causa||'Sem causa',r=>r.kg,10).map(e=>({nome:e.nome,v:Math.round(e.v)}));
+  secs.push({t:'Refugo por causa do motivo (kg).',img:barras(Lc),txt:txtRank(mes,Lc,sum(Lc,e=>e.v),'kg','o refugo por causa')});
+  /* 8 clientes críticos */
+  const cl=new Map(),ac=(c,f,v)=>{const key=String(c||'').trim()||'Não informado',e=cl.get(key)||{rk:0,dk:0,rq:0};e[f]+=v;cl.set(key,e)};
+  rfK(k).forEach(r=>ac(r.cli,'rk',r.kg));dvK(k).forEach(r=>ac(r.cli,'dk',r.kg));rtK(k).forEach(r=>ac(r.cli,'rq',N(r.qtd)));
+  const Lcl=[...cl].map(([n,e])=>({nome:n,...e,v:e.rk+e.dk})).sort((a,b)=>b.v-a.v).slice(0,10);
+  secs.push({t:'Clientes com maior impacto (refugo + devolução, kg).',img:barras(Lcl.map(e=>({nome:e.nome,v:Math.round(e.v)}))),pre:Lcl.length?tabela(['Cliente','Refugo (kg)','Devolução (kg)','Retrabalho (peças)'],Lcl.map(e=>[e.nome,Math.round(e.rk),Math.round(e.dk),e.rq])):'',
+    txt:Lcl.length?'<p>O cliente com maior impacto em '+mes+' foi <b>'+esc(Lcl[0].nome)+'</b>: '+fmt(Lcl[0].rk)+' kg de refugo, '+fmt(Lcl[0].dk)+' kg devolvidos e '+fmt(Lcl[0].rq)+' peças em retrabalho.</p>':'<p>Sem dados no mês.</p>'});
+  /* 9 itens recorrentes (3 meses) */
+  const w=[0,1,2].map(i=>g.addM(k,-i)),it=new Map(),ai=(cod,nome,f,v)=>{cod=String(cod||'').trim();if(!cod)return;const e=it.get(cod)||{nome:nome||cod,rf:0,rt:0,dv:0};if(nome&&e.nome===cod)e.nome=nome;e[f]+=v;it.set(cod,e)};
+  R.filter(r=>w.includes(r.k)).forEach(r=>ai(r.cod,r.pec,'rf',r.qtd));RT.filter(r=>w.includes(isoMes(r.dt))).forEach(r=>ai(r.cod,r.prod,'rt',N(r.qtd)));D.filter(r=>w.includes(r.k)).forEach(r=>ai(r.cod,r.pec,'dv',r.qtd));
+  const rec=[...it].map(([c,e])=>({c,...e,n:(e.rf>0)+(e.rt>0)+(e.dv>0),t:e.rf+e.rt+e.dv})).filter(e=>e.n>=2).sort((a,b)=>b.n-a.n||b.t-a.t).slice(0,12);
+  secs.push({t:'Itens recorrentes: com problema em mais de uma frente (últimos 3 meses).',pre:rec.length?tabela(['Item','Refugo (pç)','Retrabalho (pç)','Devolução (pç)','Frentes'],rec.map(e=>[e.c+' - '+e.nome,e.rf,e.rt,e.dv,e.n])):'',
+    txt:rec.length?'<p><b>'+rec.length+'</b> item(ns) aparecem em duas ou mais frentes (refugo, retrabalho, devolução) nos últimos 3 meses. O mais crítico é <b>'+esc(rec[0].c+' - '+rec[0].nome)+'</b>, presente em '+rec[0].n+' frente(s). Itens que escapam do refugo e voltam como retrabalho ou devolução merecem análise de causa raiz.</p>':'<p>Nenhum item com problema em mais de uma frente nos últimos 3 meses.</p>'});
+  /* 10 custo */
+  if(custo){
+    const cs=ms.map(m=>Math.round(g.metricasMes(m,R,D).rs)),cd=ms.map(m=>Math.round(sum(dvK(m),r=>r.rs)));
+    secs.push({t:'Custo estimado da não qualidade por mês (R$).',img:(cs.concat(cd)).some(v=>v>0)?g.imgStack(lab,[{name:'Refugo',cor:'#ED7D31',values:cs},{name:'Devolução',cor:'#1f5f99',values:cd}]):null,
+      txt:'<p>Em '+mes+': refugo '+RS(cs[5])+' + devoluções '+RS(cd[5])+' = <b>'+RS(cs[5]+cd[5])+'</b>'+((cs[4]+cd[4])>0?' ('+(cs[5]+cd[5]>=cs[4]+cd[4]?'+':'−')+pc(Math.abs((cs[5]+cd[5]-cs[4]-cd[4])/(cs[4]+cd[4])*100))+' vs '+mesP+')':'')+'. O retrabalho não tem custo em R$ no sistema, então não entra nesta soma.</p>'});
+  }
+  return secs;
+}
+function vgSheets(k){
+  const g=G(),R=g.refAll(),D=g.devAll().filter(r=>!np(r.raw)),RT=rtDados(),ms=mesesDe(k);
+  return [{name:'Evolução',rows:[['Mês','Refugo (kg)','Refugo Fundição %','Retrabalho (peças)','Devolução procedente (kg)'],...ms.map(m=>{const x=g.metricasMes(m,R,D);return[m,Math.round(x.kg*100)/100,x.perc==null?'':Math.round(x.perc*100)/100,sum(RT.filter(r=>isoMes(r.dt)===m),r=>N(r.qtd)),Math.round(sum(D.filter(r=>r.k===m),r=>r.kg)*100)/100]})]}];
+}
+CFG.vg={titulo:'Visão geral da qualidade',sec:vgSecoes,sheets:vgSheets,arq:'visao-geral-qualidade'};
 const EDK=c=>'controle_refugos_2026_reltxt_'+c;
 function lerEd(c){try{const o=JSON.parse(localStorage.getItem(EDK(c))||'{}');return o&&typeof o==='object'?o:{}}catch(e){return{}}}
 function gravarEd(c,k,n,html){const o=lerEd(c);o[k]=o[k]||{};if(html===null)delete o[k][n];else o[k][n]=html;try{localStorage.setItem(EDK(c),JSON.stringify(o))}catch(e){}}
@@ -217,7 +288,7 @@ function ui(c){
   box.querySelectorAll('[data-restore]').forEach(a=>a.addEventListener('click',ev=>{ev.preventDefault();if(!confirm('Voltar ao texto automático desta seção? Sua edição será descartada.'))return;gravarEd(c,k,a.dataset.restore,null);ui(c)}));
 }
 window.relUiInit=function(c){
-  const host=$(c==='rt'?'rtRelatorio':'dvRelatorio');if(!host)return;
+  const host=$(c==='rt'?'rtRelatorio':c==='dv'?'dvRelatorio':'gVisao');if(!host)return;
   if(!host.dataset.built){
     host.dataset.built='1';
     host.innerHTML='<style>.rl-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}.rl-bar label{font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px}.rl-prev{background:#fff;color:#1d2733;border-radius:12px;padding:16px;border:1px solid var(--border);overflow:auto}</style>'+
@@ -241,5 +312,5 @@ window.relXlsx=function(c){
   const k=$(c+'RelMes').value||mesAtual();
   G().baixar(G().xlsxBlob(CFG[c].sheets(k)),CFG[c].arq+'-'+k+'.xlsx');
 };
-window.__relatorios={rtSecoes,dvSecoes,rtSheets,dvSheets,montar};
+window.__relatorios={vgSecoes,vgSheets,rtSecoes,dvSecoes,rtSheets,dvSheets,montar};
 })();
