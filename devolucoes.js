@@ -87,6 +87,7 @@ function build(){
     <button type="button" class="dev-tab on" data-dv="lancar" onclick="devAba('lancar')">➕ Lançar devolução</button>
     <button type="button" class="dev-tab" data-dv="painel" onclick="devAba('painel')">📊 Dashboard</button>
     <button type="button" class="dev-tab" data-dv="lista" onclick="devAba('lista')">📋 Devoluções lançadas</button>
+    <button type="button" class="dev-tab" data-dv="relatorio" onclick="devAba('relatorio')">📄 Relatório</button>
   </div>
 
   <div id="dvLancar" class="panel">
@@ -143,6 +144,7 @@ function build(){
     </div></div>`).join('')}
   </div>
 
+  <div id="dvRelatorio" style="display:none"></div>
   <div id="dvLista" class="panel" style="display:none">
     <h3>Devoluções lançadas</h3>
     <div class="toolbar"><input id="dvBusca" placeholder="Buscar cliente, código, peça, NF, OF, motivo…"><span id="dvCount" class="small"></span><button class="btn secondary" type="button" onclick="devCsv()">⬇ Exportar CSV</button><button class="btn secondary" type="button" onclick="devBackup()">💾 Backup JSON</button><label class="btn secondary">📂 Restaurar backup<input type="file" accept=".json" hidden onchange="devRestaurar(this)"></label></div>
@@ -641,6 +643,8 @@ window.devAba=function(a){
   $('dvLancar').style.display=a==='lancar'?'':'none';
   $('dvPainel').style.display=a==='painel'?'':'none';
   $('dvLista').style.display=a==='lista'?'':'none';
+  $('dvRelatorio').style.display=a==='relatorio'?'':'none';
+  if(a==='relatorio'){if(window.relUiInit)window.relUiInit('dv');return}
   renderAba();
 };
 window.devInit=function(){

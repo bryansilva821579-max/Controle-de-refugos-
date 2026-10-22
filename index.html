@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Controle de Refugos 2026</title>
-<link rel="stylesheet" href="base.css?v=142">
+<link rel="stylesheet" href="base.css?v=143">
 
 <style id="dashboardPdfStyles">
 @page{size:A4 landscape;margin:8mm 8mm 9mm 8mm}
@@ -181,8 +181,8 @@ html[data-theme="dark"] .firebase-modal{background:#101a2a;color:#f3f4f6}.data-o
 [data-theme="dark"] .help-note{background:#172235;color:#e7edf5;border-left-color:var(--orange);border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
 @media (max-width:760px){.help-intro{grid-template-columns:1fr}.help-badge{justify-self:start}.help-grid{grid-template-columns:1fr}}
 </style>
-<link rel="stylesheet" href="graficos.css?v=142">
-<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=142">
+<link rel="stylesheet" href="graficos.css?v=143">
+<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=143">
 <script>
 /* ===== CONFIGURAÇÃO DO FIREBASE =====
    Preencha uma vez e todos os computadores conectam sozinhos. Deixe "" para não usar. */
@@ -194,7 +194,7 @@ window.EMBEDDED_FIREBASE_CONFIG={
   messagingSenderId:"894679339944",
   appId:"1:894679339944:web:fcf8fc0bf6f45439c7c39d"
 };
-window.APP_VERSION="v142";
+window.APP_VERSION="v143";
 /* Mostra erros de JavaScript na tela em vez de ficar em branco */
 window.addEventListener('error',function(ev){
   try{
@@ -710,7 +710,7 @@ service cloud.firestore {
 <section id="gestao" class="page"><div id="gestRoot"></div></section>
 <section id="retrabalho" class="page">
 <div id="rtSync" class="hint" style="margin:0 0 10px"></div>
-<div class="rt-tabs"><button class="rt-tab on" data-rt="lancar" onclick="rtTab('lancar')">➕ Lançar</button><button class="rt-tab" data-rt="painel" onclick="rtTab('painel')">📊 Painel</button><button class="rt-tab" data-rt="lista" onclick="rtTab('lista')">📋 Etiquetas</button></div>
+<div class="rt-tabs"><button class="rt-tab on" data-rt="lancar" onclick="rtTab('lancar')">➕ Lançar</button><button class="rt-tab" data-rt="painel" onclick="rtTab('painel')">📊 Painel</button><button class="rt-tab" data-rt="lista" onclick="rtTab('lista')">📋 Etiquetas</button><button class="rt-tab" data-rt="relatorio" onclick="rtTab('relatorio')">📄 Relatório</button></div>
 <div id="rtLancar" class="rt-pane panel"><h3>🔧 Lançar etiqueta de retrabalho <span class="hint" style="font-weight:400">(FQ 099 rev01)</span></h3>
 <input type="hidden" id="rtId"><div class="rt-grid"><div class="field "><label>Data de emissão</label><input id="rtDt" type="date"></div><div class="field "><label>Cód. do sistema</label><input id="rtCod" inputmode="numeric" oninput="rtBusca()" placeholder="mesmo código do refugo"></div><div class="field "><label>Cliente</label><input id="rtCli" list="rtCliList" onchange="rtBusca()"></div><div class="field "><label>Desc. do produto</label><input id="rtProd"></div><div class="field "><label>Cód. do produto (cliente)</label><input id="rtCodCli"></div><div class="field "><label>OF</label><input id="rtOf" placeholder="ex.: 910/26"></div><div class="field "><label>Quantidade</label><input id="rtQtd" type="number" min="0" step="1" inputmode="numeric"></div><div class="field "><label>Material</label><select id="rtMat"></select></div><div class="field "><label>Resp. (emissão)</label><input id="rtRespE" list="rtRespList"></div><div class="field "><label>Local / máquina (emissão)</label><input id="rtLocE" list="rtLocList" placeholder="ex.: TC16"></div><div class="field "><label>Setor do retrabalho *</label><select id="rtSetor"><option value="">Selecione</option></select></div><div class="field rt-wide"><label>Motivo</label><textarea id="rtMot" rows="2" placeholder="Ex.: peças fora de controle, realizar retrabalho na rebarba"></textarea></div></div>
 <div class="hint" id="rtHint" style="margin:8px 0"></div>
@@ -719,6 +719,7 @@ service cloud.firestore {
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" type="button" onclick="rtSave()">💾 Salvar etiqueta</button><button class="btn secondary" type="button" onclick="rtClear()">Limpar</button></div><div id="rtMsg" class="hint" style="margin-top:8px"></div>
 <datalist id="rtCliList"></datalist><datalist id="rtRespList"></datalist><datalist id="rtLocList"></datalist></div>
 <div id="rtPainel" class="rt-pane" style="display:none"><div class="panel"><div class="help-chips" style="margin:0 0 12px"><button type="button" class="help-chip" onclick="rtPreset('7')">7 dias</button><button type="button" class="help-chip" onclick="rtPreset('30')">30 dias</button><button type="button" class="help-chip" onclick="rtPreset('mes')">Mês atual</button><button type="button" class="help-chip" onclick="rtPreset('ant')">Mês anterior</button><button type="button" class="help-chip" onclick="rtPreset('ano')">Ano</button><button type="button" class="help-chip" onclick="rtPreset('tudo')">Tudo</button><button type="button" class="help-chip" onclick="rtLimpar()">✖ Limpar filtros</button></div><div class="rt-grid"><div class="field "><label>De</label><input id="rtPa" type="date" onchange="rtPainel()"></div><div class="field "><label>Até</label><input id="rtPb" type="date" onchange="rtPainel()"></div><div class="field "><label>Material</label><select id="rtFm" onchange="rtPainel()"></select></div><div class="field "><label>Máquina / local</label><select id="rtFl" onchange="rtPainel()"></select></div><div class="field "><label>Cliente</label><select id="rtFc" onchange="rtPainel()"></select></div><div class="field "><label>Setor</label><select id="rtFsetor" onchange="rtPainel()"></select></div><div class="field "><label>Status</label><select id="rtFst" onchange="rtPainel()"><option value="">Todos</option><option>Aguardando retrabalho</option><option>Em retrabalho</option><option>Retrabalho concluído</option></select></div><div class="field "><label>Medir por</label><select id="rtMet" onchange="rtPainel()"><option value="q">Peças</option><option value="n">Etiquetas</option></select></div></div></div><div id="rtKpis"></div><div id="rtIns"></div><div id="rtCharts" class="rt-grid" style="margin-top:14px"></div></div>
+<div id="rtRelatorio" class="rt-pane" style="display:none"></div>
 <div id="rtLista" class="rt-pane panel" style="display:none"><h3>Etiquetas lançadas</h3><div class="rt-grid"><div class="field"><label>Buscar</label><input id="rtQ" oninput="rtLista()" placeholder="cliente, código, OF, produto, motivo"></div><div class="field"><label>Status</label><select id="rtFs" onchange="rtLista()"><option value="">Todos</option><option>Aguardando retrabalho</option><option>Em retrabalho</option><option>Retrabalho concluído</option></select></div></div><div style="margin:10px 0"><button class="btn primary" type="button" onclick="rtPdf()">📄 PDF do período</button> <button class="btn secondary" type="button" onclick="rtCsv()">⬇ Exportar CSV</button></div><div id="rtTbl" class="tablewrap"></div></div>
 </section>
 
@@ -981,15 +982,16 @@ service cloud.firestore {
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script src="dados-iniciais.js?v=142"></script>
-<script src="analises.js?v=142"></script>
-<script src="filtros.js?v=142"></script>
-<script src="retrabalhos.js?v=142"></script>
-<script src="app.js?v=142"></script>
-<script src="devolucoes.js?v=142"></script>
-<script src="gestao.js?v=142"></script>
-<script src="reuniao.js?v=142"></script>
-<script src="auditoria.js?v=142"></script>
-<script src="versao.js?v=142"></script>
+<script src="dados-iniciais.js?v=143"></script>
+<script src="analises.js?v=143"></script>
+<script src="filtros.js?v=143"></script>
+<script src="retrabalhos.js?v=143"></script>
+<script src="app.js?v=143"></script>
+<script src="devolucoes.js?v=143"></script>
+<script src="gestao.js?v=143"></script>
+<script src="relatorios.js?v=143"></script>
+<script src="reuniao.js?v=143"></script>
+<script src="auditoria.js?v=143"></script>
+<script src="versao.js?v=143"></script>
 </body>
 </html>

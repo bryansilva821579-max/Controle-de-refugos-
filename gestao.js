@@ -701,7 +701,7 @@ window.pecaSemPesoAbrir=function(){
 };
 
 /* para testes */
-window.__gestao={sugerirCausa,relCompleto,REPCSS,calcAlertas,relatorio,cruzar,xlsxBlob,relSheets,metricasMes,crc32};
+window.__gestao={imgBar,imgStack,topo,baixar,limparHtml,addM,lblM,mesExt,pc1,cut,mkKey,sugerirCausa,relCompleto,REPCSS,calcAlertas,relatorio,cruzar,xlsxBlob,relSheets,metricasMes,crc32};
 css();
 setTimeout(badge,3000);
 window.addEventListener('resize',()=>{if(built&&(aba==='comp')&&$('gestao')?.classList.contains('active'))compUi()});
