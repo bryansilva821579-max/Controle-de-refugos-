@@ -255,7 +255,7 @@ function vgSheets(k){
   const g=G(),R=g.refAll(),D=g.devAll().filter(r=>!np(r.raw)),RT=rtDados(),ms=mesesDe(k);
   return [{name:'Evolução',rows:[['Mês','Refugo (kg)','Refugo Fundição %','Retrabalho (peças)','Devolução procedente (kg)'],...ms.map(m=>{const x=g.metricasMes(m,R,D);return[m,Math.round(x.kg*100)/100,x.perc==null?'':Math.round(x.perc*100)/100,sum(RT.filter(r=>isoMes(r.dt)===m),r=>N(r.qtd)),Math.round(sum(D.filter(r=>r.k===m),r=>r.kg)*100)/100]})]}];
 }
-CFG.vg={titulo:'Visão geral da qualidade',sec:vgSecoes,sheets:vgSheets,arq:'visao-geral-qualidade'};
+CFG.vg={titulo:'Visão geral da qualidade',sec:k=>{const s=vgSecoes(k);try{return window.__vgPatch?window.__vgPatch(s,k):s}catch(e){console.error(e);return s}},sheets:vgSheets,arq:'visao-geral-qualidade'};
 const EDK=c=>'controle_refugos_2026_reltxt_'+c;
 function lerEd(c){try{const o=JSON.parse(localStorage.getItem(EDK(c))||'{}');return o&&typeof o==='object'?o:{}}catch(e){return{}}}
 function gravarEd(c,k,n,html){const o=lerEd(c);o[k]=o[k]||{};if(html===null)delete o[k][n];else o[k][n]=html;try{localStorage.setItem(EDK(c),JSON.stringify(o))}catch(e){}}
@@ -312,5 +312,6 @@ window.relXlsx=function(c){
   const k=$(c+'RelMes').value||mesAtual();
   G().baixar(G().xlsxBlob(CFG[c].sheets(k)),CFG[c].arq+'-'+k+'.xlsx');
 };
+window.__relRefresh=function(){if($('vgRelPrev'))ui('vg')};
 window.__relatorios={vgSecoes,vgSheets,rtSecoes,dvSecoes,rtSheets,dvSheets,montar};
 })();
