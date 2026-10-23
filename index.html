@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Refugos">
 <title>Controle de Refugos 2026</title>
-<link rel="stylesheet" href="base.css?v=150">
+<link rel="stylesheet" href="base.css?v=151">
 
 <style id="dashboardPdfStyles">
 @page{size:A4 landscape;margin:8mm 8mm 9mm 8mm}
@@ -189,8 +189,8 @@ html[data-theme="dark"] .firebase-modal{background:#101a2a;color:#f3f4f6}.data-o
 @media (max-width:760px){.help-intro{grid-template-columns:1fr}.help-badge{justify-self:start}.help-grid{grid-template-columns:1fr}}
 </style>
 <style id="logoIndi">.sidebar .brand img,#gateLogo{width:auto!important;height:48px!important;max-width:64px;object-fit:contain!important;border-radius:8px;background:#fff;padding:3px}#gateLogo{height:90px!important;max-width:none;margin:0 auto 10px;display:block}.pdf-only-title .pdf-brand img{width:auto!important;object-fit:contain!important;border-radius:0}</style>
-<link rel="stylesheet" href="graficos.css?v=150">
-<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=150">
+<link rel="stylesheet" href="graficos.css?v=151">
+<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=151">
 <script>
 /* ===== CONFIGURAÇÃO DO FIREBASE =====
    Preencha uma vez e todos os computadores conectam sozinhos. Deixe "" para não usar. */
@@ -202,7 +202,7 @@ window.EMBEDDED_FIREBASE_CONFIG={
   messagingSenderId:"894679339944",
   appId:"1:894679339944:web:fcf8fc0bf6f45439c7c39d"
 };
-window.APP_VERSION="v150";
+window.APP_VERSION="v151";
 /* Mostra erros de JavaScript na tela em vez de ficar em branco */
 window.addEventListener('error',function(ev){
   try{
@@ -233,7 +233,7 @@ html[data-theme="dark"] .prodcal .dia span.ref,html[data-theme="dark"] .prodcal 
 .prodcal .vazio{min-height:66px}
 html[data-theme="dark"] .sidebar{background:linear-gradient(180deg,#1a2c47,#142238);border-right:1px solid var(--border)}
 </style>
-<link rel="stylesheet" href="mobile.css?v=150">
+<link rel="stylesheet" href="mobile.css?v=151">
 </head>
 <body>
 <div id="siteGate"><div class="gbox"><img id="gateLogo" alt=""><h2>Controle de Perdas, Refugos e Retrabalhos</h2><p>Digite a senha para acessar o sistema.</p><input id="gatePw" type="password" autocomplete="current-password" placeholder="Senha" aria-label="Senha"><button type="button" id="gateBtn">Entrar</button><div class="gerr" id="gateErr"></div></div></div>
@@ -969,7 +969,8 @@ service cloud.firestore {
     <button id="selectVisibleBtn" class="btn secondary" type="button" onclick="toggleSelectAllVisible()">☑ Selecionar todos</button>
     <button id="clearSelectedBtn" class="btn secondary" type="button" onclick="clearHistorySelection()">☐ Limpar seleção</button>
     <button id="deleteSelectedBtn" class="btn danger" type="button" onclick="removeSelectedRows()" disabled>🗑 Excluir selecionados (0)</button>
-    <button class="btn secondary" onclick="exportCSV()">⬇ Exportar CSV</button>
+    <button class="btn secondary" onclick="exportCSV()" title="Exporta só o que está filtrado na tela">⬇ Exportar CSV (filtrado)</button>
+    <button class="btn secondary" onclick="exportXlsxHistorico()" title="Excel com os lançamentos filtrados e uma aba com as peças sem peso">📊 Excel (filtrado + peças sem peso)</button>
   </div>
 </div>
 <div id="historyInlineLoading" class="history-inline-loading" aria-live="polite"><div class="mini-spinner" aria-hidden="true"></div><div class="loading-copy"><strong>Carregando histórico...</strong><span>Organizando os lançamentos do mais recente para o mais antigo.</span></div></div>
@@ -992,18 +993,18 @@ service cloud.firestore {
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script src="dados-iniciais.js?v=150"></script>
-<script src="analises.js?v=150"></script>
-<script src="filtros.js?v=150"></script>
-<script src="retrabalhos.js?v=150"></script>
-<script src="app.js?v=150"></script>
-<script src="devolucoes.js?v=150"></script>
-<script src="gestao.js?v=150"></script>
-<script src="relatorios.js?v=150"></script>
-<script src="previsao.js?v=150"></script>
-<script src="reuniao.js?v=150"></script>
-<script src="auditoria.js?v=150"></script>
-<script src="versao.js?v=150"></script>
+<script src="dados-iniciais.js?v=151"></script>
+<script src="analises.js?v=151"></script>
+<script src="filtros.js?v=151"></script>
+<script src="retrabalhos.js?v=151"></script>
+<script src="app.js?v=151"></script>
+<script src="devolucoes.js?v=151"></script>
+<script src="gestao.js?v=151"></script>
+<script src="relatorios.js?v=151"></script>
+<script src="previsao.js?v=151"></script>
+<script src="reuniao.js?v=151"></script>
+<script src="auditoria.js?v=151"></script>
+<script src="versao.js?v=151"></script>
 <script>
 /* aviso automático quando algum arquivo do site está desatualizado (cache ou envio incompleto) */
 window.addEventListener('load',function(){setTimeout(function(){try{

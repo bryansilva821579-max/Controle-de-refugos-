@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v150';
+window.__V=window.__V||{};window.__V.app='v151';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -2809,7 +2809,33 @@ async function importExcel(mode){
 }
 function backup(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-refugos-2026.json';a.click()}
 document.querySelectorAll('input[id="restore"]').forEach(function(__r){__r.addEventListener('change',e=>{let f=e.target.files[0];if(!f)return;let rd=new FileReader();rd.onload=()=>{try{data=JSON.parse(rd.result);save();refresh();alert('Backup restaurado.')}catch{alert('Arquivo inválido.')}};rd.readAsText(f)})});
-function exportCSV(){let headers=Object.values(cols);let lines=[headers,...data.map(r=>headers.map(h=>String(r[h]??'').replaceAll('"','""')))];let csv=lines.map(row=>row.map(x=>`"${x}"`).join(';')).join('\\n');let blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='refugos-2026.csv';a.click()}
+function historyLinhasFiltradas(){
+  const q=String(document.getElementById('search')?.value||'').toLowerCase();historyFiltrosOpcoes();const f=historyFiltros();
+  const rows=[];for(let i=0;i<data.length;i++){const r=data[i];if(historyMatch(r,q,f))rows.push({r,i,t:historyDateMs(r)})}
+  rows.sort((a,b)=>b.t-a.t||b.i-a.i);return rows.map(x=>x.r);
+}
+function historyExportTabela(){
+  const L=historyLinhasFiltradas(),pt=pesoTipo();
+  const cab=['Data do refugo','Lançamento','Cliente','Código','Produto','OF','Qtd.','Peso bruto fracionado (kg)','Peso líq. Fund. / bruto Usin. (kg)','Peso usinado (kg)','Motivo','6M do motivo','Planta','Setor / máquina','Responsável','Observação'];
+  const rn=v=>Math.round(v*1000)/1000;
+  const rows=L.map(r=>[val(r,'data')||'',val(r,'dataLancamento')||'',val(r,'cliente')||'',val(r,'codigo')||'',val(r,'produto')||'',val(r,'of')||'',qty(r),rn(kgTipo(r,'bruto')),rn(kgTipo(r,'liquido')),rn(kgTipo(r,'usinado')),motivoCompleto(r)||'',causaPeloMotivo(r)||'',val(r,'planta')||'',setorTxt(val(r,'setor'))||'',val(r,'responsavel')||'',val(r,'observacao')||'']);
+  /* peças cujo peso (do tipo escolhido) está zerado */
+  const m=new Map();
+  L.forEach(r=>{if(kgTipo(r,pt)>0)return;const cod=String(val(r,'codigo')||'').trim(),k=cod||String(val(r,'produto')||'').trim();if(!k)return;const e=m.get(k)||{cod,prod:val(r,'produto')||'',pla:val(r,'planta')||'',cli:val(r,'cliente')||'',n:0,q:0};e.n++;e.q+=qty(r);m.set(k,e)});
+  const sem=[...m.values()].sort((a,b)=>b.q-a.q).map(e=>{const p=__pecaCad(e.cod)||{};const f=v=>(v==null||v===''||!(n(v)>0))?0:n(v);return[e.cod,e.prod,e.pla,e.cli,e.n,e.q,f(p.pesoPrincipal),f(p.pesoFundUsin),f(p.pesoUsinado)]});
+  return{cab,rows,pt,semCab:['Código','Produto','Planta','Cliente','Lançamentos','Qtd. total','Peso bruto fracionado cadastrado (kg)','Peso líq. Fund./bruto Usin. cadastrado (kg)','Peso usinado cadastrado (kg)'],sem};
+}
+function exportCSV(){
+  const t=historyExportTabela();
+  const cel=v=>{let x=typeof v==='number'?String(v).replace('.',','):String(v??'');if(/^[=+@]/.test(x))x="'"+x;return '"'+x.replaceAll('"','""').replace(/\r?\n/g,' ')+'"'};
+  const csv='﻿'+[t.cab,...t.rows].map(r=>r.map(cel).join(';')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='refugos-2026-filtrado.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
+}
+function exportXlsxHistorico(){
+  const g=window.__gestao;if(!g||!g.xlsxBlob){alert('Exportação em Excel indisponível (gestao.js não carregou).');return}
+  const t=historyExportTabela(),sheets=[{name:'Lançamentos filtrados',rows:[t.cab,...t.rows]},{name:'Peças sem peso',rows:[['Tipo de peso verificado: '+PESO_CURTO[t.pt]],t.semCab,...(t.sem.length?t.sem:[['Nenhuma peça sem peso neste filtro.']])]}];
+  g.baixar(g.xlsxBlob(sheets),'historico-refugos-filtrado.xlsx');
+}
 
 // Integração do modo online ao salvamento local existente.
 const __saveOriginal=save;
