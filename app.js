@@ -1,3 +1,4 @@
+window.__V=window.__V||{};window.__V.app='v150';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -439,7 +440,7 @@ if(localStorage.getItem(KEY+'_auto_cadastro_version')!==AUTO_CADASTRO_VERSION){ 
 
   cadastros.motivos=cadastros.motivos.filter(x=>x && (x.codigo||x.descricao));
   {const L=cadastros.setores;if(!Array.isArray(L)||!L.length||L.every(x=>typeof x==='string'))cadastros.setores=SETORES_SEED();else cadastros.setores=L.filter(x=>x&&typeof x==='object'&&x.codigo)}
-  cadastros.motivos.forEach(x=>{if(x.causa==='Metalúrgica')x.causa='Processos';else if(x.causa==='Falha de maquinário')x.causa='Maquinários'});
+  {const MG={'Metalúrgica':'Método','Processos':'Método','Projetos':'Método','Erro humano':'Mão de obra','Laboratório':'Medição','Maquinários':'Máquina','Falha de maquinário':'Máquina','Ferramental':'Máquina'};cadastros.motivos.forEach(x=>{if(x&&MG[x.causa])x.causa=MG[x.causa]})}
   {const __seenM=new Set();cadastros.motivos=cadastros.motivos.filter(x=>{const k=motivoCodeKey(x.codigo);if(__seenM.has(k))return false;__seenM.add(k);return true});}
   cadastros.pecas=cadastros.pecas.map(x=>({
     ...x,
@@ -574,7 +575,7 @@ function removeSetor(i){
   cadastros.setores.splice(i,1);afterSetorChange();
 }
 
-function saveCad(){localStorage.setItem(CADKEY,JSON.stringify(cadastros));}
+function saveCad(){try{__pesoCacheReset()}catch(e){}localStorage.setItem(CADKEY,JSON.stringify(cadastros));}
 /* Lista só o necessário (busca + limite) para não travar/estourar memória com milhares de cadastros. */
 window.__cadTot={};
 function cadLim(arr,key){
@@ -596,7 +597,7 @@ function renderCadastro(){
  if(!cadastros || typeof cadastros!=='object') cadastros={motivos:[],pecas:[],clientes:[],responsaveis:[]};
  const mv=document.getElementById('motivosListView'),pv=document.getElementById('pecasListView'),cv=document.getElementById('clientesListView'),rv=document.getElementById('responsaveisListView');
  try{renderCustosPlanta()}catch(e){}
- if(mv)mv.innerHTML=cadLim(cadastros.motivos,'motivos').map(([x,i])=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.codigo||'—')} — ${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Planta: ${esc(x.planta||'—')} • Causa: <select onchange="setMotivoCausa(${i},this.value)" style="padding:3px 6px;border-radius:8px;font-weight:700"><option value="">— selecionar —</option>${CAUSAS_MOTIVO.map(c=>`<option value="${c}"${x.causa===c?' selected':''}>${c}</option>`).join('')}</select></div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editMotivo(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeMotivo(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum motivo cadastrado.</div>';
+ if(mv)mv.innerHTML=cadLim(cadastros.motivos,'motivos').map(([x,i])=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.codigo||'—')} — ${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Planta: ${esc(x.planta||'—')} • 6M: <select onchange="setMotivoCausa(${i},this.value)" style="padding:3px 6px;border-radius:8px;font-weight:700"><option value="">— selecionar —</option>${CAUSAS_MOTIVO.map(c=>`<option value="${c}"${x.causa===c?' selected':''}>${c}</option>`).join('')}</select></div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editMotivo(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeMotivo(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum motivo cadastrado.</div>';
  if(pv)pv.innerHTML=cadLim(cadastros.pecas,'pecas').map(([x,i])=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Cliente: ${esc(x.cliente||'—')} • Código: ${esc(x.codigo||'—')} • Planta: ${esc(x.planta||'—')}</div><div class="product-card-weight">Peso principal / bruto fracionado: ${x.pesoPrincipal!==''&&x.pesoPrincipal!=null?fmt(x.pesoPrincipal)+' kg':'Não informado'}</div><div class="product-card-other"><b>Pesos:</b> Árvore ${x.pesoArvore!==''&&x.pesoArvore!=null?fmt(x.pesoArvore)+' kg':'—'} • Líquido Fund./Bruto Usin. ${x.pesoFundUsin!==''&&x.pesoFundUsin!=null?fmt(x.pesoFundUsin)+' kg':'—'} • Usinado ${x.pesoUsinado!==''&&x.pesoUsinado!=null?fmt(x.pesoUsinado)+' kg':'—'}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editPeca(${i})">Editar</button><button class="btn danger cad-delete" onclick="removePeca(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhuma peça cadastrada.</div>';
  if(cv)cv.innerHTML=cadastros.clientes.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x)}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editCliente(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeCliente(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum cliente cadastrado.</div>';
  if(rv)rv.innerHTML=cadastros.responsaveis.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x)}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editResponsavel(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeResponsavel(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum responsável cadastrado.</div>';
@@ -723,7 +724,7 @@ function editMotivo(i){
  if(!code&&!desc)return alert('Informe o código ou a descrição do motivo.');
  const duplicate=cadastros.motivos.some((x,idx)=>idx!==i&&motivoCodeKey(x.codigo)===motivoCodeKey(code)&&String(x.descricao??'').trim().toUpperCase()===desc.toUpperCase());
  if(duplicate)return alert('Esse motivo já está cadastrado.');
- const cs=prompt('Causa do motivo:\n1 = Processos\n2 = Projetos\n3 = Erro humano\n4 = Laboratório\n5 = Maquinários\n6 = Ferramental\n7 = Outros\n(deixe em branco para manter)',''); if(cs===null)return;
+ const cs=prompt('Classificação 6M do motivo:\n1 = Mão de obra\n2 = Máquina\n3 = Método\n4 = Material\n5 = Meio ambiente\n6 = Medição\n7 = Outros\n(deixe em branco para manter)',''); if(cs===null)return;
  const causa=CAUSAS_MOTIVO[Number(cs.trim())-1]||item.causa||'';
  cadastros.motivos[i]={...item,codigo:code,descricao:desc}; if(causa)cadastros.motivos[i].causa=causa; __causaVer++; saveCad(); renderCadastro();
 }
@@ -770,7 +771,7 @@ function editCliente(i){
  cadastros.clientes[i]=novo; cadastros.clientes.sort((a,b)=>a.localeCompare(b,'pt-BR')); saveCad(); renderCadastro();
 }
 
-function addMotivo(){const c=document.getElementById('cadMotivoCode').value.trim(),d=document.getElementById('cadMotivoDesc').value.trim();if(!c&&!d)return alert('Informe o código ou a descrição do motivo.');if(cadastros.motivos.some(x=>String(x.codigo)===c&&String(x.descricao).toUpperCase()===d.toUpperCase()))return alert('Esse motivo já está cadastrado.');const pl=(document.getElementById('cadMotivoPlanta')?.value||'').trim(),ca=(document.getElementById('cadMotivoCausa')?.value||'').trim();if(!ca)return alert('Selecione a causa do motivo (Processos, Projetos, Erro humano, Laboratório, Maquinários, Ferramental ou Outros).');const novo={codigo:c,descricao:d};if(pl)novo.planta=pl;novo.causa=ca;cadastros.motivos.push(novo);__causaVer++;saveCad();document.getElementById('cadMotivoCode').value='';document.getElementById('cadMotivoDesc').value='';['cadMotivoPlanta','cadMotivoCausa'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});renderCadastro();}
+function addMotivo(){const c=document.getElementById('cadMotivoCode').value.trim(),d=document.getElementById('cadMotivoDesc').value.trim();if(!c&&!d)return alert('Informe o código ou a descrição do motivo.');if(cadastros.motivos.some(x=>String(x.codigo)===c&&String(x.descricao).toUpperCase()===d.toUpperCase()))return alert('Esse motivo já está cadastrado.');const pl=(document.getElementById('cadMotivoPlanta')?.value||'').trim(),ca=(document.getElementById('cadMotivoCausa')?.value||'').trim();if(!ca)return alert('Selecione a classificação 6M do motivo (Mão de obra, Máquina, Método, Material, Meio ambiente, Medição ou Outros).');const novo={codigo:c,descricao:d};if(pl)novo.planta=pl;novo.causa=ca;cadastros.motivos.push(novo);__causaVer++;saveCad();document.getElementById('cadMotivoCode').value='';document.getElementById('cadMotivoDesc').value='';['cadMotivoPlanta','cadMotivoCausa'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});renderCadastro();}
 function addPeca(){
  const editRaw=document.getElementById('cadPecaEditIndex')?.value??'';
  const editIndex=editRaw!==''?Number(editRaw):null;
@@ -936,7 +937,7 @@ function removerCustoPeriodo(tag,desde){
   if(!confirm('Excluir a mudança de valores com vigência a partir de '+desde.split('-').reverse().join('/')+'?'))return;
   cadastros[c.hist]=(cadastros[c.hist]||[]).filter(x=>x.desde!==desde);saveCad();posCusto();
 }
-function cost(r){const pl=custoKgPlanta(r);if(pl!==null)return kg(r)*pl;const direct=directRefugoCostRate(r);return kg(r)*(direct!==null?direct:monthlyRefugoCost(r))}
+function cost(r){const kb=kgBruto(r),pl=custoKgPlanta(r);if(pl!==null)return kb*pl;const direct=directRefugoCostRate(r);return kb*(direct!==null?direct:monthlyRefugoCost(r))}
 function n(v){return Number(v)||0}
 const DATA_OLD_HEADER='DATA DO REFUGO/ DATA DA APROVAÇÃO';/* Planta do refugo = planta do MOTIVO (cadastro de motivos), não a planta da peça. Ex.: motivo 209 => USINAGEM.
    Só vale para FUNDICAO, FUNDICAO NA USINAGEM e USINAGEM; motivos GERAL/SISTEMA ou sem cadastro mantêm a planta gravada. */
@@ -950,7 +951,7 @@ function __motPlantaMaps(){
   arr.forEach(x=>{const pl=okPl[norm(x.planta)];if(!pl)return;const c=String(x.codigo??'').trim().replace(/^0+(?=\d)/,'');if(c)byCode.set(c,pl);const d=norm(x.descricao);if(d&&!byDesc.has(d))byDesc.set(d,pl)});
   __motPlantaCache={byCode,byDesc,norm};__motPlantaRef=arr;__motPlantaLen=arr.length;return __motPlantaCache;
 }
-const CAUSAS_MOTIVO=['Processos','Projetos','Erro humano','Laboratório','Maquinários','Ferramental','Outros'];
+const CAUSAS_MOTIVO=['Mão de obra','Máquina','Método','Material','Meio ambiente','Medição','Outros'];
 let __causaCache=null,__causaRef=null,__causaLen=-1,__causaVer=0;
 function causaMaps(){
   const arr=(typeof cadastros!=='undefined'&&cadastros&&Array.isArray(cadastros.motivos))?cadastros.motivos:[];
@@ -981,7 +982,37 @@ function plantaPeloMotivo(r){
   return '';
 }
 function val(r,k){if(!r||typeof r!=='object')return '';if(k==='planta'){const pm=plantaPeloMotivo(r);if(pm)return pm}const primary=cols[k];if(primary && r[primary]!==undefined && r[primary]!==null && r[primary]!=='')return r[primary];if(k==='data' && r[DATA_OLD_HEADER]!==undefined && r[DATA_OLD_HEADER]!==null)return r[DATA_OLD_HEADER];return ''}
-function kg(r){return n(val(r,'kgRefugo'))}
+const PESO_KEY='controle_refugos_2026_pesotipo';
+const PESO_TIPOS={bruto:'Peso bruto fracionado (refugo gerado)',liquido:'Peso líquido Fundição / bruto Usinagem',usinado:'Peso usinado'};
+const PESO_CURTO={bruto:'Peso bruto fracionado',liquido:'Peso líquido Fund. / bruto Usin.',usinado:'Peso usinado'};
+let __pt=null,__pcMap=null,__pcSrc=null;
+function pesoTipo(){if(__pt===null){try{const t=localStorage.getItem(PESO_KEY);__pt=PESO_TIPOS[t]?t:'bruto'}catch(e){__pt='bruto'}}return __pt}
+function __pesoCacheReset(){__pcMap=null}
+function __pecaCad(cod){
+  const L=(typeof cadastros!=='undefined'&&cadastros&&Array.isArray(cadastros.pecas))?cadastros.pecas:[];
+  if(!__pcMap||__pcSrc!==L){__pcMap=new Map();L.forEach(p=>{const k=String(p.codigo??'').trim().toUpperCase();if(!k)return;const o=__pcMap.get(k);if(!o||(!(n(o.pesoUsinado)>0)&&n(p.pesoUsinado)>0))__pcMap.set(k,p)});__pcSrc=L}
+  return __pcMap.get(String(cod??'').trim().toUpperCase())||null;
+}
+function kgTipo(r,t){
+  if(t==='liquido'){const v=n(val(r,'kgFundUsin'));if(v>0)return v;const p=__pecaCad(val(r,'codigo'));return p?qty(r)*n(p.pesoFundUsin):0}
+  if(t==='usinado'){let u=n(r.PESO_USINADO_CADASTRO);if(!(u>0)){const p=__pecaCad(val(r,'codigo'));u=p?n(p.pesoUsinado):0}return qty(r)*u}
+  return n(val(r,'kgRefugo'));
+}
+function kgBruto(r){return kgTipo(r,'bruto')}
+function kg(r){return kgTipo(r,pesoTipo())}
+function syncPesoSelects(){
+  const t=pesoTipo();['filterPeso','hfPeso','prPs'].forEach(id=>{const e=document.getElementById(id);if(e&&e.value!==t)e.value=t});
+  let aviso='';
+  if(t!=='bruto'&&Array.isArray(data)){let c=0;for(const r of data){if(kgBruto(r)>0&&!(kgTipo(r,t)>0))c++}if(c)aviso='⚠ '+c.toLocaleString('pt-BR')+' lançamento(s) sem este peso no cadastro (contam como 0 kg).'}
+  document.querySelectorAll('.pesoAviso').forEach(e=>{e.textContent=aviso;e.style.display=aviso?'':'none'});
+}
+function setPesoTipo(v){
+  if(!PESO_TIPOS[v])v='bruto';__pt=v;try{localStorage.setItem(PESO_KEY,v)}catch(e){}
+  syncPesoSelects();
+  try{dashboardDirty=true;dashboardQtdDirty=true}catch(e){}
+  try{refresh()}catch(e){console.error(e)}
+  try{window.dispatchEvent(new Event('pesotipo'))}catch(e){}
+}
 function qty(r){return n(val(r,'quantidade'))}
 function normalizeText(v){return String(v??'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ')} function date(r){let x=val(r,'data'); if(x===null||x===undefined||x==='')return null; if(x instanceof Date)return isNaN(x.getTime())?null:x; if(typeof x==='number'&&isFinite(x)){let d=new Date(Date.UTC(1899,11,30)+x*86400000);return isNaN(d.getTime())?null:d;} let s=String(x).trim(); let m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/); if(m){let d=new Date(+m[3],+m[2]-1,+m[1]);return isNaN(d.getTime())?null:d;} m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/); if(m){let d=new Date(+m[1],+m[2]-1,+m[3]);return isNaN(d.getTime())?null:d;} let d=new Date(s);return isNaN(d.getTime())?null:d;}
 function fmt(v){return n(v).toLocaleString('pt-BR',{maximumFractionDigits:2})}
@@ -1600,15 +1631,15 @@ else rows.sort((a,b)=>b.t-a.t||b.i-a.i);
    <td>${esc(val(r,'produto'))}</td>
    <td>${esc(val(r,'of'))}</td>
    <td>${fmt(qty(r))}</td>
-   <td>${fmt(kg(r))}</td>
+   ${['bruto','liquido','usinado'].map(t=>{const v=kgTipo(r,t);return pesoTipo()===t?`<td><strong>${fmt(v)}</strong></td>`:`<td style="opacity:.75">${v>0?fmt(v):'—'}</td>`}).join('')}
    <td><strong>${esc(motivoCompleto(r))}</strong></td>
    <td>${esc(val(r,'planta'))}</td>
    <td>${esc(setorTxt(val(r,'setor')))}</td>
    <td>${esc(val(r,'responsavel'))}</td>
    <td>${Array.isArray(r.FOTOS)&&r.FOTOS.length?`<button class="btn secondary" title="Ver fotos e observação" onclick="verFotos(${i})">📷 ${r.FOTOS.length}</button> `:''}<button class="btn secondary" onclick="edit(${i})">Editar</button> <button class="btn danger" onclick="removeRow(${i})">Excluir</button></td>
  </tr>`).join('');
-  const more=rows.length>shown.length?`<tr><td colspan="14" style="text-align:center;padding:14px"><button class="btn secondary" onclick="historyShowMore()">Mostrar mais ${HISTORY_PAGE} (exibindo ${shown.length.toLocaleString('pt-BR')} de ${rows.length.toLocaleString('pt-BR')})</button></td></tr>`:'';
-  body.innerHTML=(html+more)||'<tr><td colspan="14" style="text-align:center" class="small">Nenhum lançamento encontrado.</td></tr>';
+  const more=rows.length>shown.length?`<tr><td colspan="16" style="text-align:center;padding:14px"><button class="btn secondary" onclick="historyShowMore()">Mostrar mais ${HISTORY_PAGE} (exibindo ${shown.length.toLocaleString('pt-BR')} de ${rows.length.toLocaleString('pt-BR')})</button></td></tr>`:'';
+  body.innerHTML=(html+more)||'<tr><td colspan="16" style="text-align:center" class="small">Nenhum lançamento encontrado.</td></tr>';
  }
  updateHistorySelectionUI(rows.map(x=>x.i));
 }
@@ -2397,7 +2428,7 @@ function gerarPdfDashboard(pageId){
   const filtroPlantaTxt=filtroPlanta||'Todas as plantas';
   const filtroMesTxt=filtroMes==='Todos'?'Todos os meses':filtroMes;
   const dataGeracao=new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
-  title.innerHTML='<div class="pdf-brand">'+(logoSrc?'<img src="'+logoSrc+'" alt="Logo">':'')+'<div><div class="pdf-title-main">CONTROLE DE REFUGOS — '+(pageId==='dashboardQtd'?'DASHBOARD QUANTIDADE':'DASHBOARD')+'</div><div class="pdf-sub">Relatório para impressão • A4 paisagem • Gerado em '+esc(dataGeracao)+'</div></div></div><div class="pdf-filters"><b>Filtros aplicados</b><br>Ano: '+esc(filtroAnoTxt)+' • Planta: '+esc(filtroPlantaTxt)+' • Mês: '+esc(filtroMesTxt)+'</div>';
+  title.innerHTML='<div class="pdf-brand">'+(logoSrc?'<img src="'+logoSrc+'" alt="Logo">':'')+'<div><div class="pdf-title-main">CONTROLE DE REFUGOS — '+(pageId==='dashboardQtd'?'DASHBOARD QUANTIDADE':'DASHBOARD')+(pageId==='dashboardQtd'?'':' • '+esc(PESO_CURTO[pesoTipo()]))+'</div><div class="pdf-sub">Relatório para impressão • A4 paisagem • Gerado em '+esc(dataGeracao)+'</div></div></div><div class="pdf-filters"><b>Filtros aplicados</b><br>Ano: '+esc(filtroAnoTxt)+' • Planta: '+esc(filtroPlantaTxt)+' • Mês: '+esc(filtroMesTxt)+'</div>';
   page.insertBefore(title,page.firstChild);
   const cleanup=()=>{title.remove();page.classList.remove('pdf-print-target');document.title=oldTitle;window.removeEventListener('afterprint',cleanup);if(pageId==='dashboard'){dashboardDirty=true;dashboard();}else if(pageId==='dashboardQtd'){dashboardQtdDirty=true;dashboardQtd();}};
   window.addEventListener('afterprint',cleanup);
@@ -2405,7 +2436,7 @@ function gerarPdfDashboard(pageId){
 }
 
 function initTheme(){const t=localStorage.getItem('controle_refugos_2026_theme')||'light';document.documentElement.setAttribute('data-theme',t);const b=document.getElementById('themeToggle');if(b)b.innerHTML=t==='dark'?'☀️ <span>Modo claro</span>':'🌙 <span>Modo escuro</span>';if(document.querySelector('.page.active')){dashboardDirty=true;dashboardQtdDirty=true;}}
-function refresh(){window.__limpaVazios&&window.__limpaVazios();
+function refresh(){window.__limpaVazios&&window.__limpaVazios();try{syncPesoSelects()}catch(e){}
  normalizeCad();saveCad();options();populateQtyFilters();populateAnalysisFilters();popularCamposLancamento();
  dashboardDirty=true;dashboardQtdDirty=true;
  const active=document.querySelector('.page.active')?.id||'dashboard';

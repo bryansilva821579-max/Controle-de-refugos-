@@ -1,3 +1,4 @@
+window.__V=window.__V||{};window.__V.previsao='v150';
 /* ==================================================================
    VISÃO GERAL: filtro por período + PREVISÃO + APRESENTAÇÃO animada
    Lê os mesmos dados dos módulos (refugo, retrabalho, devolução).
@@ -88,7 +89,7 @@ function collect(a,b,pl){
   const fc={},H=3;
   fc.refKg=prever(S.refKg,H);fc.refPerc=prever(S.refPerc,H,metaP);fc.rtQ=prever(S.rtQ,H);fc.dvKg=prever(S.dvKg,H);fc.dvPerc=prever(S.dvPerc,H);if(okCusto())fc.custo=prever(S.custo,H);
   const fl=[1,2,3].map(i=>g.lblM(g.addM(bb,i)));
-  return{pl,mt,un,plNome:plNome(pl),a,b:bb,aa,ms,lab,fl,S,fc,tot,prev,causa,motivo,clientes,rec,metaP,semCausa,pend,rtAb,mpp,notaParcial,ext,nPer:mPer.length,custo:okCusto()};
+  return{pl,mt,un,pesoTxt:(mt==='kg'&&typeof PESO_CURTO!=='undefined')?PESO_CURTO[pesoTipo()]:'',plNome:plNome(pl),a,b:bb,aa,ms,lab,fl,S,fc,tot,prev,causa,motivo,clientes,rec,metaP,semCausa,pend,rtAb,mpp,notaParcial,ext,nPer:mPer.length,custo:okCusto()};
 }
 
 /* ---------- textos automáticos ---------- */
@@ -198,15 +199,15 @@ function lineSpec(d,key,name,cor,f,meta,fcKey){
 /* ---------- slides ---------- */
 const fK=v=>F(Math.round(v*10)/10),f2=v=>String(Math.round(v*100)/100).replace('.',','),fP=v=>f2(v)+'%',fR=v=>'R$ '+F(Math.round(v));
 function slides(d){
-  const U=d.un,fU=d.mt==='qtd'?(v=>F(Math.round(v))):fK,tit=d.mt==='qtd'?'Quantidade no período (peças)':'Peso no período (kg)';
+  const U=d.un,fU=d.mt==='qtd'?(v=>F(Math.round(v))):fK,tit=d.mt==='qtd'?'Quantidade no período (peças)':(d.pesoTxt||'Peso')+' no período (kg)';
   const g=G(),per=g.lblM(d.a)+' a '+g.lblM(d.b),S=[];
   const logo=(document.querySelector('.sidebar .brand img')||{}).src||'';
-  S.push({k:'capa',logo,t:'Reunião de resultados — Qualidade',st:'Refugo • Retrabalho • Devolução • '+d.plNome,per,nota:d.notaParcial+(d.ext?(d.notaParcial?' · ':'')+'período ampliado para 6 meses para permitir a previsão':'')});
+  S.push({k:'capa',logo,t:'Reunião de resultados — Qualidade',st:'Refugo • Retrabalho • Devolução • '+d.plNome+(d.pesoTxt?' • '+d.pesoTxt:''),per,nota:d.notaParcial+(d.ext?(d.notaParcial?' · ':'')+'período ampliado para 6 meses para permitir a previsão':'')});
   /* resumo */
   const kp=[['Refugo no período ('+U+')',d.tot.refKg,d.prev.refKg,U,fU,'up'],...(d.pl.f&&d.mt==='kg'?[['Refugo Fundição (% da produção)',d.tot.perc,d.prev.perc,'%',fP,'up']]:[]),['Retrabalho (peças)',d.tot.rtQ,d.prev.rtQ,'peças',v=>F(Math.round(v)),'up'],['Devoluções procedentes ('+U+')',d.tot.dvKg,d.prev.dvKg,U,fU,'up']];
   if(d.custo)kp.push(['Custo da não qualidade',d.tot.rs,d.prev.rs,'R$',fR,'up']);
   const at=atencao(d);
-  S.push({k:'kpi',t:'Resumo executivo',st:per+' • '+d.plNome+' • comparado ao período anterior equivalente',kpis:kp.map(x=>({n:x[0],v:x[1],f:x[4],d:x[2]!=null&&x[2]>0&&x[1]!=null?seta(x[1],x[2],x[5]):'<span class="mut">sem base anterior</span>'})),
+  S.push({k:'kpi',t:'Resumo executivo',st:per+' • '+d.plNome+(d.pesoTxt?' • '+d.pesoTxt:'')+' • comparado ao período anterior equivalente',kpis:kp.map(x=>({n:x[0],v:x[1],f:x[4],d:x[2]!=null&&x[2]>0&&x[1]!=null?seta(x[1],x[2],x[5]):'<span class="mut">sem base anterior</span>'})),
     txt:'<p>No período foram <b>'+fU(d.tot.refKg)+' '+U+'</b> de refugo'+(d.tot.perc!=null?' ('+fP(d.tot.perc)+' da produção da Fundição'+(d.metaP?(d.tot.perc>d.metaP?', <b style="color:'+RD+'">acima</b> da meta de '+fP(d.metaP):', dentro da meta de '+fP(d.metaP)):'')+')':'')+', <b>'+F(d.tot.rtQ)+' peças</b> em retrabalho'+(d.mpp!=null?' (média de '+f2(d.mpp)+' min/peça)':'')+' e <b>'+fU(d.tot.dvKg)+' '+U+'</b> de devoluções procedentes.</p>'});
   if(d.S.refPerc.some(v=>v!=null))S.push({k:'chart',t:'Refugo da Fundição — % da produção',st:'Evolução mensal e previsão para os próximos 3 meses',ch:[lineSpec(d,'refPerc','Refugo Fundição (%)',OR,fP,d.metaP)],txt:trendTxt('Refugo da Fundição',d.S.refPerc,d.fc.refPerc,'%',f2)+(d.fc.refPerc&&d.metaP?'<p>Risco de ultrapassar a meta: '+d.fc.refPerc.pts.map((x,i)=>d.fl[i]+' <b>'+Math.round(x.pAbove*100)+'%</b>').join(' • ')+'.</p>':'')});
   S.push({k:'chart',t:'Refugo total ('+U+')',st:d.plNome+' • evolução e previsão',ch:[lineSpec(d,'refKg','Refugo ('+U+')',INK,fU)],txt:trendTxt('Refugo',d.S.refKg,d.fc.refKg,U,fU)});
@@ -315,12 +316,12 @@ function painel(){
   let box=$('prPan');
   if(!box){box=document.createElement('div');box.id='prPan';host.insertBefore(box,host.firstChild);
     const p=perLer();
-    box.innerHTML='<div class="pp"><div class="bar2"><strong>📅 Período da análise</strong><label>De <input type="month" id="prA"></label><label>Até <input type="month" id="prB"></label><label><strong>Planta</strong> <select id="prPl"><option value="fu">Fundição + Usinagem</option><option value="f">Fundição</option><option value="u">Usinagem</option></select></label><label><strong>Medir por</strong> <select id="prMt"><option value="kg">Peso (kg)</option><option value="qtd">Quantidade (peças)</option></select></label>'+
+    box.innerHTML='<div class="pp"><div class="bar2"><strong>📅 Período da análise</strong><label>De <input type="month" id="prA"></label><label>Até <input type="month" id="prB"></label><label><strong>Planta</strong> <select id="prPl"><option value="fu">Fundição + Usinagem</option><option value="f">Fundição</option><option value="u">Usinagem</option></select></label><label><strong>Medir por</strong> <select id="prMt"><option value="kg">Peso (kg)</option><option value="qtd">Quantidade (peças)</option></select></label><label><strong>Tipo de peso</strong> <select id="prPs" onchange="setPesoTipo(this.value)"><option value="bruto">Bruto fracionado</option><option value="liquido">Líquido Fund. / bruto Usin.</option><option value="usinado">Usinado</option></select></label><span class="pesoAviso small" style="display:none;color:#d97706"></span>'+
     '<button class="btn secondary" type="button" data-pr="3">3 meses</button><button class="btn secondary" type="button" data-pr="6">6 meses</button><button class="btn secondary" type="button" data-pr="12">12 meses</button><button class="btn secondary" type="button" data-pr="ano">Ano</button>'+
     '<span style="flex:1"></span><button class="btn primary" type="button" id="prGo">🎬 Apresentar</button><button class="btn secondary" type="button" id="prPdf">📄 PDF da apresentação</button></div>'+
     '<div class="hint" style="margin-top:8px">O período vale para a <b>previsão</b> e para a <b>apresentação animada</b> (←/→ para navegar, F tela cheia, R repete a animação, A avança sozinho). O relatório mensal abaixo continua por mês. Para prever, o sistema precisa de pelo menos 4 meses e ignora o mês em andamento.</div></div>'+
     '<div class="pp" id="prFc"></div>';
-    $('prA').value=p.a;$('prB').value=p.b;$('prPl').value=(p.f!==false&&p.u!==false)?'fu':(p.f!==false?'f':'u');$('prMt').value=p.mt==='qtd'?'qtd':'kg';
+    $('prA').value=p.a;$('prB').value=p.b;try{$('prPs').value=pesoTipo()}catch(e){}$('prPl').value=(p.f!==false&&p.u!==false)?'fu':(p.f!==false?'f':'u');$('prMt').value=p.mt==='qtd'?'qtd':'kg';
     const lerUI=lerUIg;
     const mud=()=>{const o=lerUI();if(o.a&&o.b&&o.a<=o.b){perGravar(o);prev();try{if(window.__relRefresh)window.__relRefresh()}catch(e){}}};
     $('prPl').addEventListener('change',mud);$('prMt').addEventListener('change',mud);
@@ -344,6 +345,7 @@ function prev(){
   const run=()=>{const w=cv.parentElement;if(!w.clientWidth)return;setup(cv,w.clientWidth,w.clientHeight);const t0=performance.now(),st=now=>{const p=Math.min(1,(now-t0)/6000);draw(cv,sp,p);if(p<1&&document.body.contains(cv))requestAnimationFrame(st)};requestAnimationFrame(st)};
   run();$('prRe').addEventListener('click',e=>{e.preventDefault();run()});
 }
+window.addEventListener('pesotipo',()=>{try{if($('prPan')){const e=$('prPs');if(e)e.value=pesoTipo();prev();if(window.__relRefresh)window.__relRefresh()}}catch(x){console.error(x)}});
 window.__vgPatch=function(secs,k){
   const p=perLer(),d=collect(p.a,p.b,p),g=G(),per=g.lblM(d.a)+' a '+g.lblM(d.b),pla=(p.f!==false&&p.u!==false)?'Fundição + Usinagem':(p.f!==false?'Fundição':'Usinagem'),fU=d.mt==='qtd'?(v=>F(Math.round(v))):fK;
   const kp=[['Refugo ('+d.un+')',d.tot.refKg,d.prev.refKg,fU],...(d.mt==='kg'?[['Refugo Fundição (% da produção)',d.tot.perc,d.prev.perc,f2]]:[]),['Retrabalho (peças)',d.tot.rtQ,d.prev.rtQ,v=>F(Math.round(v))],['Devoluções procedentes ('+d.un+')',d.tot.dvKg,d.prev.dvKg,fU]];
