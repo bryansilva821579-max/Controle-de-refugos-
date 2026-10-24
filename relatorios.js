@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.relatorios='v151';
+window.__V=window.__V||{};window.__V.relatorios='v154';
 /* ==================================================================
    RELATÓRIOS MENSAIS — Retrabalhos e Devoluções
    Mesmo formato do relatório mensal de refugos: gráficos com análise
@@ -56,7 +56,7 @@ function rtSecoes(k){
   const secs=[];
   /* 1 evolução + resumo */
   const ms=mesesDe(k),ev=ms.map(m=>({nome:G().lblM(m),v:sum(A.filter(r=>isoMes(r.dt)===m),q)}));
-  let t1='<p>Em '+mes+' foram emitidas <b>'+fmt(rows.length)+'</b> etiqueta(s) de retrabalho, somando <b>'+fmt(tq)+'</b> peças.'+varTxt(tq,pq,mesP,'peças');
+  let t1='<p>Em '+mes+' foram emitidas <b>'+fmt(rows.length)+'</b> etiqueta(s) de retrabalho, somando <b>'+fmt(tq)+'</b> peças ('+fmt(sum(rows,r=>rtKg(r)))+' kg, peso '+({bruto:'bruto fracionado',liquido:'líquido Fund. / bruto Usin.',usinado:'usinado'})[rtPT()]+').'+varTxt(tq,pq,mesP,'peças');
   if(ok+rf>0)t1+=' Das peças com resultado informado, <b>'+pc(ok/(ok+rf)*100)+'</b> foram recuperadas ('+fmt(ok)+') e '+pc(rf/(ok+rf)*100)+' foram refugadas no retrabalho ('+fmt(rf)+').';
   if(dp.length)t1+=' O tempo médio de retrabalho foi de <b>'+fmt(dMin/dPc)+' min por peça</b> ('+dp.length+' etiqueta(s) com horário, '+hm(dMin)+' no total).';
   if(abertas.length)t1+=' '+abertas.length+' etiqueta(s) seguem abertas'+(atras.length?', sendo '+atras.length+' com mais de 3 dias':'')+'.';
@@ -102,8 +102,8 @@ function rtSheets(k){
   const mpp=r=>rtMpp(r)==null?'':Math.round(rtMpp(r)*100)/100;
   const ag=(key)=>[['Item','Peças','Etiquetas'],...rank(rows,key,q).map(e=>[e.nome,e.v,rows.filter(r=>(String(key(r)||'').trim()||'Não informado')===e.nome).length])];
   return [
-    {name:'Resumo',rows:[['Indicador','Valor'],['Mês',k],['Etiquetas',rows.length],['Peças em retrabalho',sum(rows,q)],['Peças OK',sum(rows,r=>N(r.qOk))],['Peças refugadas no retrabalho',sum(rows,r=>N(r.qRef))],['Tempo total com horário (min)',sum(rows.filter(r=>rtDur(r)!=null),r=>rtDur(r))],['Etiquetas abertas',rows.filter(r=>r.st!==RT_ST[2]).length]]},
-    {name:'Etiquetas',rows:[['Emissão','Cód. sistema','Cliente','Produto','OF','Qtd','Material','Setor','Tipo de máquina','Local/máquina','Motivo','Status','Início','Fim','Duração (min)','Min/peça','Peças OK','Peças refugadas'],...rows.map(r=>[r.dt,r.cod||'',r.cli||'',r.prod||'',r.of||'',q(r),rtMatOf(r),r.setor||'',r.setor?(setorTipo(r.setor)||''):'',rtLocOf(r),r.mot||'',r.st,(r.di||'')+' '+(r.hi||''),(r.df||'')+' '+(r.hf||''),rtDur(r)==null?'':rtDur(r),mpp(r),N(r.qOk),N(r.qRef)])]},
+    {name:'Resumo',rows:[['Indicador','Valor'],['Mês',k],['Etiquetas',rows.length],['Peças em retrabalho',sum(rows,q)],['Peso bruto fracionado (kg)',Math.round(sum(rows,r=>rtKg(r,'bruto'))*100)/100],['Peso líquido (kg)',Math.round(sum(rows,r=>rtKg(r,'liquido'))*100)/100],['Peso usinado (kg)',Math.round(sum(rows,r=>rtKg(r,'usinado'))*100)/100],['Peças OK',sum(rows,r=>N(r.qOk))],['Peças refugadas no retrabalho',sum(rows,r=>N(r.qRef))],['Tempo total com horário (min)',sum(rows.filter(r=>rtDur(r)!=null),r=>rtDur(r))],['Etiquetas abertas',rows.filter(r=>r.st!==RT_ST[2]).length]]},
+    {name:'Etiquetas',rows:[['Emissão','Cód. sistema','Cliente','Produto','OF','Qtd','Material','Setor','Tipo de máquina','Local/máquina','Motivo','Status','Início','Fim','Duração (min)','Min/peça','Peças OK','Peças refugadas','Kg bruto fracionado','Kg líquido','Kg usinado'],...rows.map(r=>[r.dt,r.cod||'',r.cli||'',r.prod||'',r.of||'',q(r),rtMatOf(r),r.setor||'',r.setor?(setorTipo(r.setor)||''):'',rtLocOf(r),r.mot||'',r.st,(r.di||'')+' '+(r.hi||''),(r.df||'')+' '+(r.hf||''),rtDur(r)==null?'':rtDur(r),mpp(r),N(r.qOk),N(r.qRef),rtKg(r,'bruto'),rtKg(r,'liquido'),rtKg(r,'usinado')])]},
     {name:'Por setor',rows:ag(r=>r.setor?setorTxt(r.setor):'Não informado')},
     {name:'Por item',rows:ag(r=>(r.cod?r.cod+' - ':'')+(r.prod||''))},
     {name:'Por motivo',rows:ag(r=>r.mot||'')},

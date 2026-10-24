@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v151';
+window.__V=window.__V||{};window.__V.app='v154';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -598,7 +598,8 @@ function renderCadastro(){
  const mv=document.getElementById('motivosListView'),pv=document.getElementById('pecasListView'),cv=document.getElementById('clientesListView'),rv=document.getElementById('responsaveisListView');
  try{renderCustosPlanta()}catch(e){}
  if(mv)mv.innerHTML=cadLim(cadastros.motivos,'motivos').map(([x,i])=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.codigo||'—')} — ${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Planta: ${esc(x.planta||'—')} • 6M: <select onchange="setMotivoCausa(${i},this.value)" style="padding:3px 6px;border-radius:8px;font-weight:700"><option value="">— selecionar —</option>${CAUSAS_MOTIVO.map(c=>`<option value="${c}"${x.causa===c?' selected':''}>${c}</option>`).join('')}</select></div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editMotivo(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeMotivo(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum motivo cadastrado.</div>';
- if(pv)pv.innerHTML=cadLim(cadastros.pecas,'pecas').map(([x,i])=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Cliente: ${esc(x.cliente||'—')} • Código: ${esc(x.codigo||'—')} • Planta: ${esc(x.planta||'—')}</div><div class="product-card-weight">Peso principal / bruto fracionado: ${x.pesoPrincipal!==''&&x.pesoPrincipal!=null?fmt(x.pesoPrincipal)+' kg':'Não informado'}</div><div class="product-card-other"><b>Pesos:</b> Árvore ${x.pesoArvore!==''&&x.pesoArvore!=null?fmt(x.pesoArvore)+' kg':'—'} • Líquido Fund./Bruto Usin. ${x.pesoFundUsin!==''&&x.pesoFundUsin!=null?fmt(x.pesoFundUsin)+' kg':'—'} • Usinado ${x.pesoUsinado!==''&&x.pesoUsinado!=null?fmt(x.pesoUsinado)+' kg':'—'}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editPeca(${i})">Editar</button><button class="btn danger cad-delete" onclick="removePeca(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhuma peça cadastrada.</div>';
+ try{compResumo();cadPecaCompToggle()}catch(e){}
+ if(pv)pv.innerHTML=cadLim(cadastros.pecas,'pecas').map(([x,i])=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x.descricao||'Sem descrição')}</div><div class="cad-sub">Cliente: ${esc(x.cliente||'—')} • Código: ${esc(x.codigo||'—')} • Planta: ${esc(x.planta||'—')}</div><div class="product-card-weight">Peso principal / bruto fracionado: ${x.pesoPrincipal!==''&&x.pesoPrincipal!=null?fmt(x.pesoPrincipal)+' kg':'Não informado'}</div>${compLinha(x)}<div class="product-card-other"><b>Pesos:</b> Árvore ${x.pesoArvore!==''&&x.pesoArvore!=null?fmt(x.pesoArvore)+' kg':'—'} • Líquido Fund./Bruto Usin. ${x.pesoFundUsin!==''&&x.pesoFundUsin!=null?fmt(x.pesoFundUsin)+' kg':'—'} • Usinado ${x.pesoUsinado!==''&&x.pesoUsinado!=null?fmt(x.pesoUsinado)+' kg':'—'}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editPeca(${i})">Editar</button><button class="btn danger cad-delete" onclick="removePeca(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhuma peça cadastrada.</div>';
  if(cv)cv.innerHTML=cadastros.clientes.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x)}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editCliente(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeCliente(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum cliente cadastrado.</div>';
  if(rv)rv.innerHTML=cadastros.responsaveis.map((x,i)=>`<div class="cad-item"><div class="cad-main"><div class="cad-title">${esc(x)}</div></div><div class="cad-actions"><button class="btn secondary cad-edit" onclick="editResponsavel(${i})">Editar</button><button class="btn danger cad-delete" onclick="removeResponsavel(${i})">Excluir</button></div></div>`).join('')||'<div class="small">Nenhum responsável cadastrado.</div>';
  cadMaisBtn('motivos',mv);cadMaisBtn('pecas',pv);
@@ -741,18 +742,22 @@ function editPeca(i){
    cadPecaPesoPrincipal:item.pesoPrincipal??'',
    cadPecaPesoArvore:item.pesoArvore??'',
    cadPecaPesoFundUsin:item.pesoFundUsin??'',
-   cadPecaPesoUsinado:item.pesoUsinado??''
+   cadPecaPesoUsinado:item.pesoUsinado??'',
+   cadPecaOrigem:compRotulo(item.origemCod),
+   cadPecaOrigemQtd:item.origemQtd??''
  };
  Object.entries(fields).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.value=val});
  const saveBtn=document.getElementById('cadPecaSaveBtn');if(saveBtn)saveBtn.textContent='✓ Atualizar produto';
  const cancelBtn=document.getElementById('cadPecaCancelBtn');if(cancelBtn)cancelBtn.style.display='block';
+ try{cadPecaCompToggle()}catch(e){}
  const form=document.getElementById('cadPecaCliente');form?.scrollIntoView({behavior:'smooth',block:'center'});
 }
 function cancelEditPeca(){
- const ids=['cadPecaEditIndex','cadPecaCliente','cadPecaCode','cadPecaPlanta','cadPecaDesc','cadPecaPesoPrincipal','cadPecaPesoArvore','cadPecaPesoFundUsin','cadPecaPesoUsinado'];
+ const ids=['cadPecaEditIndex','cadPecaCliente','cadPecaCode','cadPecaPlanta','cadPecaDesc','cadPecaPesoPrincipal','cadPecaPesoArvore','cadPecaPesoFundUsin','cadPecaPesoUsinado','cadPecaOrigem','cadPecaOrigemQtd'];
  ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
  const saveBtn=document.getElementById('cadPecaSaveBtn');if(saveBtn)saveBtn.textContent='+ Adicionar produto';
  const cancelBtn=document.getElementById('cadPecaCancelBtn');if(cancelBtn)cancelBtn.style.display='none';
+ try{cadPecaCompToggle()}catch(e){}
 }
 function editResponsavel(i){
  const atual=String(cadastros.responsaveis[i]??''); if(!atual)return;
@@ -789,7 +794,9 @@ function addPeca(){
  if(principal===null||arvore===null||fundUsin===null||usinado===null)return alert('Preencha os 4 pesos com valores válidos.');
  const normalizeClient=x=>canonicalClientName(x||'').trim();
  const cliente=normalizeClient(cli);
- const registro={cliente,codigo:c,planta,descricao:d,pesoPrincipal:principal,pesoArvore:arvore,pesoFundUsin:fundUsin,pesoUsinado:usinado,_editado:true};
+ let origemCod='',origemQtd='';
+ if(planta==='USINAGEM'){const ro=String(document.getElementById('cadPecaOrigem')?.value||'').trim();if(ro){const oc=ro.split(' — ')[0].trim();const of=__pecaCad(oc);if(!of&&!confirm('A peça fundida "'+oc+'" não está no cadastro de produtos. Salvar a composição mesmo assim?'))return;if(oc===c)return alert('A peça de origem não pode ser o próprio item.');const qn=Number(String(document.getElementById('cadPecaOrigemQtd')?.value||'').replace(',','.'));origemCod=oc;origemQtd=(Number.isFinite(qn)&&qn>0)?qn:1}}
+ const registro={cliente,codigo:c,planta,descricao:d,pesoPrincipal:principal,pesoArvore:arvore,pesoFundUsin:fundUsin,pesoUsinado:usinado,origemCod,origemQtd,_editado:true};
  if(editIndex!==null && Number.isInteger(editIndex) && cadastros.pecas[editIndex]){
    const duplicate=cadastros.pecas.some((x,idx)=>idx!==editIndex&&String(x.codigo??'').trim()===c&&String(x.cliente??'').trim().toUpperCase()===cliente.toUpperCase());
    if(duplicate)return alert('Essa combinação de cliente + código já está cadastrada em outro produto.');
@@ -1870,6 +1877,15 @@ function calcularPesosLancamento(){
   // Peso bruto fracionado / refugo: quantidade × Peso Principal.
   if(Number.isFinite(q)&&q>0&&Number.isFinite(pp)&&pp>=0) setFieldValue('kgRefugo',(q*pp).toFixed(3));
   else setFieldValue('kgRefugo','');
+  avisoSemPesoBruto();
+}
+function avisoSemPesoBruto(){
+  const el=document.getElementById('avisoSemPeso');if(!el)return;
+  const cod=String(document.getElementById('codigo')?.value||'').trim();
+  const pp=n(document.getElementById('pesoPrincipal')?.value);
+  const sem=!!cod&&!(pp>0);
+  el.style.display=sem?'':'none';
+  el.textContent=sem?'⚠ Esta peça não tem peso bruto fracionado cadastrado: o refugo será salvo com 0 kg. Cadastre o peso em Cadastros › Peças.':'';
 }
 
 function formatDataCurtaBR(iso){
@@ -2044,6 +2060,7 @@ refugoForm?.addEventListener('submit',async e=>{
     if(quantidade==='' || !Number.isFinite(Number(String(quantidade).replace(',','.'))) || Number(quantidade)<0){
       alert('Informe uma quantidade válida.'); return;
     }
+    if(!(n(p.pesoPrincipal)>0)&&!confirm('⚠ A peça '+cod+' não tem PESO BRUTO FRACIONADO cadastrado.\n\nO refugo será lançado com 0 kg. Deseja lançar mesmo assim?')) return;
 
     let r={};
     Object.entries(cols).forEach(([k,c])=>{
@@ -2809,6 +2826,33 @@ async function importExcel(mode){
 }
 function backup(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-refugos-2026.json';a.click()}
 document.querySelectorAll('input[id="restore"]').forEach(function(__r){__r.addEventListener('change',e=>{let f=e.target.files[0];if(!f)return;let rd=new FileReader();rd.onload=()=>{try{data=JSON.parse(rd.result);save();refresh();alert('Backup restaurado.')}catch{alert('Arquivo inválido.')}};rd.readAsText(f)})});
+
+/* ---------- composição: peça fundida → itens usinados ---------- */
+function compRotulo(cod){const c=String(cod??'').trim();if(!c)return '';const f=__pecaCad(c);return f&&f.descricao?c+' — '+f.descricao:c}
+function compFilhos(cod){const c=String(cod??'').trim();return c?(cadastros.pecas||[]).filter(x=>String(x.origemCod??'').trim()===c):[]}
+function compLinha(x){
+  const pl=String(x.planta||'').toUpperCase();
+  if(pl==='USINAGEM'){const c=String(x.origemCod??'').trim();return c?`<div class="small" style="margin:4px 0">🔗 <b>Origem:</b> ${esc(compRotulo(c))} • ${fmt(x.origemQtd||1)} peça(s) usinada(s) por peça fundida</div>`:`<div class="small" style="margin:4px 0;opacity:.7">🔗 Origem (peça fundida): não definida</div>`}
+  const f=compFilhos(x.codigo);if(f.length)return `<div class="small" style="margin:4px 0">🔗 <b>Gera na usinagem:</b> ${f.map(y=>esc(y.codigo)+' — '+esc(y.descricao||'')+' ('+fmt(y.origemQtd||1)+'×)').join(' • ')}</div>`;
+  return '';
+}
+function cadPecaCompToggle(){
+  const pl=String(document.getElementById('cadPecaPlanta')?.value||'').toUpperCase(),on=pl==='USINAGEM';
+  ['cadPecaCompTitle','cadPecaCompGrid'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=on?'':'none'});
+  const dl=document.getElementById('cadFundList');
+  if(on&&dl){const seen=new Set(),L=[];(cadastros.pecas||[]).forEach(p=>{const pp=String(p.planta||'').toUpperCase();if(!pp.includes('FUND'))return;const c=String(p.codigo??'').trim();if(!c||seen.has(c))return;seen.add(c);L.push(c+' — '+(p.descricao||''))});dl.innerHTML=L.slice(0,3000).map(v=>'<option value="'+esc(v)+'"></option>').join('')}
+}
+function compResumo(){
+  const el=document.getElementById('compResumo');if(!el)return;
+  const us=(cadastros.pecas||[]).filter(p=>String(p.planta||'').toUpperCase()==='USINAGEM'),ok=us.filter(p=>String(p.origemCod??'').trim());
+  el.textContent=us.length?`🔗 Composição: ${ok.length.toLocaleString('pt-BR')} de ${us.length.toLocaleString('pt-BR')} itens da usinagem com peça fundida de origem definida.`:'';
+}
+function exportComposicaoXlsx(){
+  const g=window.__gestao;if(!g||!g.xlsxBlob){alert('Exportação em Excel indisponível (gestao.js não carregou).');return}
+  const us=(cadastros.pecas||[]).filter(p=>String(p.planta||'').toUpperCase()==='USINAGEM');
+  const rows=[['Código usinado','Descrição usinado','Cliente','Código fundida (origem)','Descrição fundida','Peças usinadas por peça fundida'],...us.map(p=>{const c=String(p.origemCod??'').trim(),f=c?__pecaCad(c):null;return[p.codigo||'',p.descricao||'',p.cliente||'',c,f?f.descricao||'':'',c?(Number(p.origemQtd)||1):'']})];
+  g.baixar(g.xlsxBlob([{name:'Composição',rows}]),'composicao-usinagem-fundida.xlsx');
+}
 function historyLinhasFiltradas(){
   const q=String(document.getElementById('search')?.value||'').toLowerCase();historyFiltrosOpcoes();const f=historyFiltros();
   const rows=[];for(let i=0;i<data.length;i++){const r=data[i];if(historyMatch(r,q,f))rows.push({r,i,t:historyDateMs(r)})}
@@ -2816,9 +2860,9 @@ function historyLinhasFiltradas(){
 }
 function historyExportTabela(){
   const L=historyLinhasFiltradas(),pt=pesoTipo();
-  const cab=['Data do refugo','Lançamento','Cliente','Código','Produto','OF','Qtd.','Peso bruto fracionado (kg)','Peso líq. Fund. / bruto Usin. (kg)','Peso usinado (kg)','Motivo','6M do motivo','Planta','Setor / máquina','Responsável','Observação'];
+  const cab=['Data do refugo','Lançamento','Cliente','Código','Produto','OF','Qtd.','Peso bruto fracionado (kg)','Peso líq. Fund. / bruto Usin. (kg)','Peso usinado (kg)','Motivo','6M do motivo','Planta','Setor / máquina','Responsável','Observação','Fundida de origem','Peças por fundida'];
   const rn=v=>Math.round(v*1000)/1000;
-  const rows=L.map(r=>[val(r,'data')||'',val(r,'dataLancamento')||'',val(r,'cliente')||'',val(r,'codigo')||'',val(r,'produto')||'',val(r,'of')||'',qty(r),rn(kgTipo(r,'bruto')),rn(kgTipo(r,'liquido')),rn(kgTipo(r,'usinado')),motivoCompleto(r)||'',causaPeloMotivo(r)||'',val(r,'planta')||'',setorTxt(val(r,'setor'))||'',val(r,'responsavel')||'',val(r,'observacao')||'']);
+  const rows=L.map(r=>[val(r,'data')||'',val(r,'dataLancamento')||'',val(r,'cliente')||'',val(r,'codigo')||'',val(r,'produto')||'',val(r,'of')||'',qty(r),rn(kgTipo(r,'bruto')),rn(kgTipo(r,'liquido')),rn(kgTipo(r,'usinado')),motivoCompleto(r)||'',causaPeloMotivo(r)||'',val(r,'planta')||'',setorTxt(val(r,'setor'))||'',val(r,'responsavel')||'',val(r,'observacao')||'',...(()=>{const p=__pecaCad(val(r,'codigo'));const c=p&&String(p.origemCod??'').trim();return c?[c,Number(p.origemQtd)||1]:['','']})()]);
   /* peças cujo peso (do tipo escolhido) está zerado */
   const m=new Map();
   L.forEach(r=>{if(kgTipo(r,pt)>0)return;const cod=String(val(r,'codigo')||'').trim(),k=cod||String(val(r,'produto')||'').trim();if(!k)return;const e=m.get(k)||{cod,prod:val(r,'produto')||'',pla:val(r,'planta')||'',cli:val(r,'cliente')||'',n:0,q:0};e.n++;e.q+=qty(r);m.set(k,e)});
@@ -2847,3 +2891,4 @@ saveProducao=function(){__saveProducaoOriginal();scheduleFirebasePush()};
 document.getElementById('data')?.addEventListener('input',atualizarDataDisplay);document.getElementById('data')?.addEventListener('change',atualizarDataDisplay);document.getElementById('data')?.addEventListener('blur',atualizarDataDisplay);
 
 let resizeTimer;window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{const active=document.querySelector('.page.active')?.id;if(active==='dashboard')dashboard();else if(active==='dashboardQtd')dashboardQtd();},140)});clearProducaoForm();clearForm();atualizarDataDisplay();initTheme();bindGlobalPopoverClose();bindQMotivoPopoverGlobal();refresh();
+;(function(){['input','change'].forEach(ev=>document.addEventListener(ev,e=>{const t=e.target&&e.target.id;if(t==='codigo'||t==='quantidade'||t==='cliente')setTimeout(()=>{try{avisoSemPesoBruto()}catch(x){}},150)}));setInterval(()=>{try{avisoSemPesoBruto()}catch(x){}},1500)})();

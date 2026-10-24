@@ -17,7 +17,11 @@ const $=id=>document.getElementById(id);
 const num=v=>{const x=Number(String(v??'').replace(',','.'));return Number.isFinite(x)?x:0};
 const naoProcede=r=>r.procede==='Não'||r.disp==='Reclamação não procede';
 let viewRaw=false,tabPl=0;
-const totalKg=r=>(naoProcede(r)&&!viewRaw)?0:num(r.qtd)*num(r.pesoUn);
+const dvPT=()=>{try{return pesoTipo()}catch(e){return 'bruto'}};
+const dvCad=r=>{try{return __pecaCad(r.codigo)||{}}catch(e){return {}}};
+const dvUn=(r,t)=>{const c=dvCad(r);if(t==='liquido')return num(c.pesoFundUsin);if(t==='usinado')return num(c.pesoUsinado);const u=num(r.pesoUn);return u>0?u:num(c.pesoPrincipal)};
+const dvKgT=(r,t)=>num(r.qtd)*dvUn(r,t);
+const totalKg=r=>(naoProcede(r)&&!viewRaw)?0:dvKgT(r,dvPT());
 const okCusto=()=>{try{return costAccessAllowed()}catch(e){return false}};
 const valorR=r=>{try{return totalKg(r)*window.custoDevKg(tipoDe(r),r.data)}catch(e){return 0}};
 const tipoPl=pl=>normalizeText(pl||'').indexOf('USINAGEM')===0?'Usinagem':'Fundição';
@@ -120,6 +124,8 @@ function build(){
       <select id="dvFm"><option value="">Todos os meses</option>${meses}</select>
       <select id="dvFc"><option value="">Todos os clientes</option></select>
       <select id="dvFp" title="Filtrar por procedência"><option value="proc">Só as que procedem</option><option value="nao">Só as que NÃO procedem</option><option value="todas">Todas (procede + não procede)</option></select>
+      <select id="dvFpeso" title="Tipo de peso usado nos kg"><option value="bruto">Peso bruto fracionado</option><option value="liquido">Peso líquido Fund. / bruto Usin.</option><option value="usinado">Peso usinado</option></select>
+      <span id="dvAviso" class="small" style="display:none;color:#b45309"></span>
       <button class="btn secondary" type="button" onclick="devLimparFiltros()">Limpar</button>
       <button class="btn primary" type="button" onclick="devPdf()">📄 PDF do período</button>
     </div>
@@ -148,7 +154,7 @@ function build(){
   <div id="dvLista" class="panel" style="display:none">
     <h3>Devoluções lançadas</h3>
     <div class="toolbar"><input id="dvBusca" placeholder="Buscar cliente, código, peça, NF, OF, motivo…"><span id="dvCount" class="small"></span><button class="btn secondary" type="button" onclick="devCsv()">⬇ Exportar CSV</button><button class="btn secondary" type="button" onclick="devBackup()">💾 Backup JSON</button><label class="btn secondary">📂 Restaurar backup<input type="file" accept=".json" hidden onchange="devRestaurar(this)"></label></div>
-    <div class="tablewrap"><table><thead><tr><th>Tipo</th><th>FQ</th><th>Data</th><th>Cliente</th><th>Código</th><th>Peça</th><th>NF</th><th>Qtd.</th><th>Kg</th><th>Motivo</th><th>Procede</th><th>Destino</th><th>Ações</th></tr></thead><tbody id="dvTbody"></tbody></table></div>
+    <div class="tablewrap"><table><thead><tr><th>Tipo</th><th>FQ</th><th>Data</th><th>Cliente</th><th>Código</th><th>Peça</th><th>NF</th><th>Qtd.</th><th>Kg bruto frac.</th><th>Kg líquido</th><th>Kg usinado</th><th>Motivo</th><th>Procede</th><th>Destino</th><th>Ações</th></tr></thead><tbody id="dvTbody"></tbody></table></div>
   </div>`;
 
   $('dvForm').addEventListener('submit',salvar);
@@ -158,6 +164,7 @@ function build(){
   it.addEventListener('input',ev=>{const f=ev.target.dataset&&ev.target.dataset.f,row=ev.target.closest('.dv-item');if(!row)return;if(f==='cod')buscarRow(row);else if(f==='qtd'||f==='peso')calcRow(row)});
   it.addEventListener('focusout',ev=>{if(ev.target.dataset&&ev.target.dataset.f==='cod')buscarRow(ev.target.closest('.dv-item'))});
   ['dvFa','dvFm','dvFc','dvFp'].forEach(id=>$(id).addEventListener('change',painel));
+  $('dvFpeso').value=dvPT();$('dvFpeso').addEventListener('change',e=>setPesoTipo(e.target.value));
   $('dvBusca').addEventListener('input',tabela);
   $('dvData').value=hoje();
   built=true;
@@ -403,13 +410,14 @@ window.devFotos=function(id){
 /* ---------- lista ---------- */
 function dispCls(d){return d==='Reclamação não procede'?'no':(d==='Aguardando análise'?'':'ok')}
 function tabela(){
+  dvAvisoUp();
   const q=String($('dvBusca')?.value||'').toLowerCase();
   const rows=lista.filter(r=>!q||JSON.stringify(r).toLowerCase().includes(q)).sort((a,b)=>String(b.data).localeCompare(String(a.data))||String(b.numFq||'').localeCompare(String(a.numFq||''))||(a.ts||0)-(b.ts||0));
   $('dvCount').textContent=rows.length.toLocaleString('pt-BR')+' de '+lista.length.toLocaleString('pt-BR')+' itens devolvidos';
   const mostra=rows.slice(0,300);
-  $('dvTbody').innerHTML=mostra.map(r=>`<tr><td>${esc(tipoDe(r))}</td><td>${esc(r.numFq||'')}</td><td>${esc(brDate(r.data))}</td><td>${esc(r.cliente)}</td><td>${esc(r.codigo)}</td><td style="white-space:normal;min-width:160px">${esc(r.produto)}</td><td>${esc(r.nf||'')}</td><td>${fmt(r.qtd)}</td><td>${fmt(totalKg(r))}</td><td style="white-space:normal;min-width:120px">${esc(r.motivo||'')}</td><td>${esc(r.procede||'')}</td><td><span class="dev-disp ${dispCls(r.disp)}">${esc(r.disp||'')}</span></td><td><button class="btn secondary" type="button" onclick="devEdit('${r.id}')">Editar</button> <button class="btn secondary" type="button" onclick="devMaisItem('${r.id}')" title="Adicionar outro item a este registro">+ Item</button> <button class="btn secondary" type="button" onclick="devRegPdf('${r.id}')" title="PDF do registro (FQ051)">🖨 PDF</button> <button class="btn secondary" type="button" onclick="devFotos('${r.id}')" title="Fotos da etiqueta">📷${r.nFotos?' '+r.nFotos:''}</button> <button class="btn danger" type="button" onclick="devDel('${r.id}')">Excluir</button></td></tr>`).join('')
-    ||'<tr><td colspan="12" class="small" style="text-align:center">Nenhuma devolução lançada.</td></tr>';
-  if(rows.length>mostra.length)$('dvTbody').innerHTML+=`<tr><td colspan="12" class="small" style="text-align:center">Exibindo as 300 mais recentes. Use a busca para localizar as demais.</td></tr>`;
+  $('dvTbody').innerHTML=mostra.map(r=>`<tr><td>${esc(tipoDe(r))}</td><td>${esc(r.numFq||'')}</td><td>${esc(brDate(r.data))}</td><td>${esc(r.cliente)}</td><td>${esc(r.codigo)}</td><td style="white-space:normal;min-width:160px">${esc(r.produto)}</td><td>${esc(r.nf||'')}</td><td>${fmt(r.qtd)}</td>${['bruto','liquido','usinado'].map(t=>{const v=naoProcede(r)?0:dvKgT(r,t);return dvPT()===t?`<td><strong>${fmt(v)}</strong></td>`:`<td style="opacity:.75">${v>0?fmt(v):'—'}</td>`}).join('')}<td style="white-space:normal;min-width:120px">${esc(r.motivo||'')}</td><td>${esc(r.procede||'')}</td><td><span class="dev-disp ${dispCls(r.disp)}">${esc(r.disp||'')}</span></td><td><button class="btn secondary" type="button" onclick="devEdit('${r.id}')">Editar</button> <button class="btn secondary" type="button" onclick="devMaisItem('${r.id}')" title="Adicionar outro item a este registro">+ Item</button> <button class="btn secondary" type="button" onclick="devRegPdf('${r.id}')" title="PDF do registro (FQ051)">🖨 PDF</button> <button class="btn secondary" type="button" onclick="devFotos('${r.id}')" title="Fotos da etiqueta">📷${r.nFotos?' '+r.nFotos:''}</button> <button class="btn danger" type="button" onclick="devDel('${r.id}')">Excluir</button></td></tr>`).join('')
+    ||'<tr><td colspan="15" class="small" style="text-align:center">Nenhuma devolução lançada.</td></tr>';
+  if(rows.length>mostra.length)$('dvTbody').innerHTML+=`<tr><td colspan="15" class="small" style="text-align:center">Exibindo as 300 mais recentes. Use a busca para localizar as demais.</td></tr>`;
 }
 window.devBackup=function(){
   const dados=lista.map(limpo);
@@ -440,8 +448,8 @@ window.devRestaurar=function(inp){
   rd.readAsText(f);
 };
 window.devCsv=function(){
-  const h=['Tipo','Nº FQ','Recebido por','Origem','Procede','S.A.','Inspetor','Vendas','Data','Cliente','Código','Peça','Planta','NF','OF','Quantidade','Peso unitário (kg)','Peso total (kg)','Motivo','Destino','Observação'];
-  const rows=[...lista].sort((a,b)=>String(b.data).localeCompare(String(a.data))).map(r=>[tipoDe(r),r.numFq,r.recebPor,r.origem,r.procede,r.sa,r.inspetor,r.vendas,brDate(r.data),r.cliente,r.codigo,r.produto,r.planta,r.nf,r.of,r.qtd,r.pesoUn,totalKg(r),r.motivo,r.disp,r.obs]);
+  const h=['Tipo','Nº FQ','Recebido por','Origem','Procede','S.A.','Inspetor','Vendas','Data','Cliente','Código','Peça','Planta','NF','OF','Quantidade','Peso unit. bruto fracionado (kg)','Peso unit. líquido (kg)','Peso unit. usinado (kg)','Peso total bruto fracionado (kg)','Peso total líquido (kg)','Peso total usinado (kg)','Motivo','Destino','Observação'];
+  const rows=[...lista].sort((a,b)=>String(b.data).localeCompare(String(a.data))).map(r=>[tipoDe(r),r.numFq,r.recebPor,r.origem,r.procede,r.sa,r.inspetor,r.vendas,brDate(r.data),r.cliente,r.codigo,r.produto,r.planta,r.nf,r.of,r.qtd,dvUn(r,'bruto'),dvUn(r,'liquido'),dvUn(r,'usinado'),dvKgT(r,'bruto'),dvKgT(r,'liquido'),dvKgT(r,'usinado'),r.motivo,r.disp,r.obs]);
   const csv=[h,...rows].map(l=>l.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));a.download='devolucoes.csv';a.click();
 };
@@ -595,7 +603,7 @@ function painel(){
 window.devRefresh=function(){if(built&&aba==='painel'&&$('devolucoes')?.classList.contains('active'))painel()};
 window.devDados=function(){return lista.map(limpo)};
 const semRaw=f=>function(){const s=viewRaw;viewRaw=false;try{return f.apply(null,arguments)}finally{viewRaw=s}};
-window.devKg=semRaw(totalKg);window.devValor=semRaw(valorR);window.devTipo=tipoDe;
+window.devUn=dvUn;window.devKgT=dvKgT;window.devKg=semRaw(totalKg);window.devValor=semRaw(valorR);window.devTipo=tipoDe;
 window.devLimparFiltros=function(){['dvFa','dvFm','dvFc'].forEach(id=>$(id).value='');$('dvFp').value='proc';painel()};
 function pdfCanvasImg(orig,clone){
   const a=[...orig.querySelectorAll('canvas')],b=[...clone.querySelectorAll('canvas')];
@@ -619,15 +627,17 @@ window.devRegPdf=function(id){
   const r0=lista.find(x=>x.id===id);if(!r0)return;
   const its=r0.regId?lista.filter(x=>x.regId===r0.regId):lista.filter(x=>x.numFq===r0.numFq&&x.data===r0.data&&x.cliente===r0.cliente);
   const c=(l,v,w)=>`<div${w?' class="w"':''}><b>${l}:</b> ${v==null||v===''?'—':esc(v)}</div>`;
-  const tq=its.reduce((a,r)=>a+num(r.qtd),0),tk=its.reduce((a,r)=>a+(naoProcede(r)?0:(num(r.qtd)*num(r.pesoUn))),0);
+  const tq=its.reduce((a,r)=>a+num(r.qtd),0),pt=dvPT(),tk=its.reduce((a,r)=>a+(naoProcede(r)?0:dvKgT(r,pt)),0),tB=its.reduce((a,r)=>a+(naoProcede(r)?0:dvKgT(r,'bruto')),0),tL=its.reduce((a,r)=>a+(naoProcede(r)?0:dvKgT(r,'liquido')),0),tU=its.reduce((a,r)=>a+(naoProcede(r)?0:dvKgT(r,'usinado')),0);
   const corpo=pdfCab('Registro de devolução — FQ051 nº '+(r0.numFq||'s/nº'),tipoDe(r0)+' · '+r0.cliente)+
    '<div class="pdf-grid">'+c('Planta',tipoDe(r0))+c('Data',brDate(r0.data))+c('Cliente',r0.cliente)+c('Recebido por',r0.recebPor)+c('Origem',r0.origem)+c('NF de devolução',r0.nf)+c('S.A. nº',r0.sa)+c('Inspetor',r0.inspetor)+c('Vendas',r0.vendas)+'</div>'+
-   '<h3 style="margin:12px 0 4px">Itens devolvidos</h3><table><thead><tr><th>Código</th><th>Peça</th><th>OF</th><th>Qtd.</th><th>Peso unit. (kg)</th><th>Peso total (kg)</th><th>Motivo</th><th>Procede?</th><th>Destino</th><th>Obs.</th></tr></thead><tbody>'+
-   its.map(r=>`<tr><td>${esc(r.codigo)}</td><td>${esc(r.produto||'')}</td><td>${esc(r.of||'')}</td><td>${fmt(r.qtd)}</td><td>${fmt(r.pesoUn)}</td><td>${naoProcede(r)?'—':fmt((num(r.qtd)*num(r.pesoUn)))}</td><td>${esc(r.motivo||'')}</td><td>${esc(r.procede||'')}</td><td>${esc(r.disp||'')}</td><td>${esc(r.obs||'')}</td></tr>`).join('')+
-   `<tr><th colspan="3">TOTAL</th><th>${fmt(tq)}</th><th></th><th>${fmt(tk)}</th><th colspan="4"></th></tr></tbody></table><div style="font-size:10px;color:#555;margin-top:4px">Itens "não procede" não entram no peso total.</div>`;
+   '<h3 style="margin:12px 0 4px">Itens devolvidos</h3><table><thead><tr><th>Código</th><th>Peça</th><th>OF</th><th>Qtd.</th><th>Bruto frac. unit. (kg)</th><th>Líquido unit. (kg)</th><th>Usinado unit. (kg)</th><th>Total bruto frac. (kg)</th><th>Total líquido (kg)</th><th>Total usinado (kg)</th><th>Motivo</th><th>Procede?</th><th>Destino</th><th>Obs.</th></tr></thead><tbody>'+
+   its.map(r=>`<tr><td>${esc(r.codigo)}</td><td>${esc(r.produto||'')}</td><td>${esc(r.of||'')}</td><td>${fmt(r.qtd)}</td><td>${fmt(dvUn(r,'bruto'))}</td><td>${fmt(dvUn(r,'liquido'))}</td><td>${fmt(dvUn(r,'usinado'))}</td>${['bruto','liquido','usinado'].map(t=>`<td>${naoProcede(r)?'—':fmt(dvKgT(r,t))}</td>`).join('')}<td>${esc(r.motivo||'')}</td><td>${esc(r.procede||'')}</td><td>${esc(r.disp||'')}</td><td>${esc(r.obs||'')}</td></tr>`).join('')+
+   `<tr><th colspan="3">TOTAL</th><th>${fmt(tq)}</th><th colspan="3"></th><th>${fmt(tB)}</th><th>${fmt(tL)}</th><th>${fmt(tU)}</th><th colspan="4"></th></tr></tbody></table><div style="font-size:10px;color:#555;margin-top:4px">Itens "não procede" não entram no peso total. Pesos líquido/usinado vêm do cadastro da peça (0 = não cadastrado).</div>`;
   pdfImprimir('Devolução '+(r0.numFq||''),corpo,false);
 };
 window.devTab=function(i){tabPl=i;painel()};
+function dvAvisoUp(){const t=dvPT(),e=$('dvAviso');if(!e)return;const sel=$('dvFpeso');if(sel&&sel.value!==t)sel.value=t;let c=0;if(t!=='bruto')for(const r of lista){if(!naoProcede(r)&&num(r.qtd)>0&&!(dvUn(r,t)>0))c++}e.textContent=c?'⚠ '+c+' item(ns) sem este peso no cadastro (contam 0 kg)':'';e.style.display=c?'':'none'}
+window.addEventListener('pesotipo',()=>{if(built){try{painel();tabela()}catch(e){}}dvAvisoUp()});
 
 /* ---------- abas ---------- */
 function renderAba(){
