@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Refugos">
 <title>Controle de Refugos 2026</title>
-<link rel="stylesheet" href="base.css?v=156">
+<link rel="stylesheet" href="base.css?v=158">
 
 <style id="dashboardPdfStyles">
 @page{size:A4 landscape;margin:8mm 8mm 9mm 8mm}
@@ -189,8 +189,8 @@ html[data-theme="dark"] .firebase-modal{background:#101a2a;color:#f3f4f6}.data-o
 @media (max-width:760px){.help-intro{grid-template-columns:1fr}.help-badge{justify-self:start}.help-grid{grid-template-columns:1fr}}
 </style>
 <style id="logoIndi">.sidebar .brand img,#gateLogo{width:auto!important;height:48px!important;max-width:64px;object-fit:contain!important;border-radius:8px;background:#fff;padding:3px}#gateLogo{height:90px!important;max-width:none;margin:0 auto 10px;display:block}.pdf-only-title .pdf-brand img{width:auto!important;object-fit:contain!important;border-radius:0}</style>
-<link rel="stylesheet" href="graficos.css?v=156">
-<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=156">
+<link rel="stylesheet" href="graficos.css?v=158">
+<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=158">
 <script>
 /* ===== CONFIGURAÇÃO DO FIREBASE =====
    Preencha uma vez e todos os computadores conectam sozinhos. Deixe "" para não usar. */
@@ -202,7 +202,7 @@ window.EMBEDDED_FIREBASE_CONFIG={
   messagingSenderId:"894679339944",
   appId:"1:894679339944:web:fcf8fc0bf6f45439c7c39d"
 };
-window.APP_VERSION="v156";
+window.APP_VERSION="v158";
 /* Mostra erros de JavaScript na tela em vez de ficar em branco */
 window.addEventListener('error',function(ev){
   try{
@@ -233,12 +233,12 @@ html[data-theme="dark"] .prodcal .dia span.ref,html[data-theme="dark"] .prodcal 
 .prodcal .vazio{min-height:66px}
 html[data-theme="dark"] .sidebar{background:linear-gradient(180deg,#1a2c47,#142238);border-right:1px solid var(--border)}
 </style>
-<link rel="stylesheet" href="mobile.css?v=156">
+<link rel="stylesheet" href="mobile.css?v=158">
 <style id="metalCss">
 /* ===== TEMA METAL LÍQUIDO (camada visual; só cores/efeitos, não altera layout) ===== */
 html.metal{--orange:#ff6a1f;--radius:16px;--mx:#ff6a1f}
-html.metal[data-theme="dark"]{--bg:#070b10;--card:#111922;--panel-2:#0c131a;--border:rgba(165,188,212,.2);--text:#e7eef6;--muted:#93a5b8;--shadow:0 10px 30px rgba(0,0,0,.55);--canvas-text:#e7eef6;--chrome:linear-gradient(135deg,#f4f8fc 0%,#9fb0c2 28%,#e9f0f7 46%,#6f8196 66%,#d5e0ea 100%)}
-html.metal:not([data-theme="dark"]){--bg:#d9e0e7;--card:#f4f7fa;--panel-2:#e6ecf1;--border:rgba(60,82,104,.26);--text:#141e28;--muted:#53657a;--shadow:0 8px 24px rgba(40,60,80,.22);--canvas-text:#141e28;--chrome:linear-gradient(135deg,#ffffff 0%,#aebccb 30%,#f2f6fa 48%,#8195aa 68%,#e3ebf3 100%)}
+html.metal[data-theme="dark"]{--bg:#070b10;--card:#111922;--panel-2:#0c131a;--border:rgba(165,188,212,.2);--text:#e7eef6;--muted:#93a5b8;--shadow:0 10px 30px rgba(0,0,0,.55);--canvas-text:#e7eef6;--canvas-grid:rgba(160,185,212,.14);--chrome:linear-gradient(135deg,#f4f8fc 0%,#9fb0c2 28%,#e9f0f7 46%,#6f8196 66%,#d5e0ea 100%)}
+html.metal:not([data-theme="dark"]){--bg:#d9e0e7;--card:#f4f7fa;--panel-2:#e6ecf1;--border:rgba(60,82,104,.26);--text:#141e28;--muted:#53657a;--shadow:0 8px 24px rgba(40,60,80,.22);--canvas-text:#141e28;--canvas-grid:rgba(60,82,104,.18);--chrome:linear-gradient(135deg,#ffffff 0%,#aebccb 30%,#f2f6fa 48%,#8195aa 68%,#e3ebf3 100%)}
 html.metal body{background:var(--bg);color:var(--text);position:relative}
 html.metal body::before{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none;
  background:radial-gradient(38% 32% at 18% 22%,rgba(190,210,230,.30),transparent 70%),radial-gradient(34% 30% at 82% 18%,rgba(255,106,31,.16),transparent 70%),radial-gradient(40% 34% at 70% 82%,rgba(140,170,205,.26),transparent 70%),radial-gradient(30% 26% at 25% 85%,rgba(220,232,244,.20),transparent 70%);
@@ -290,6 +290,21 @@ html.metal .tablewrap{border-radius:12px;border:1px solid var(--border)}
 html.metal .cad-tab,html.metal .rt-tab,html.metal .help-chip{border-radius:999px!important;border:1px solid var(--border)!important;background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.03))!important;color:var(--text)!important;transition:all .2s}
 html.metal .cad-tab.active,html.metal .rt-tab.active,html.metal .help-chip:hover{background:linear-gradient(180deg,#ff9a55,#ff6a1f 55%,#d94a08)!important;color:#fff!important;border-color:transparent!important;box-shadow:0 4px 14px rgba(255,106,31,.4)}
 html.metal .chartbox{border-radius:12px;background:radial-gradient(120% 90% at 50% 0%,rgba(255,255,255,.07),transparent 70%)}
+/* dashboards: seletores com id para vencer regras específicas do base.css */
+html.metal :is(#dashboard,#dashboardQtd) :is(.card,.panel,.meta-panel,.plant-motive,.top-summary,.mini){background:linear-gradient(150deg,rgba(255,255,255,.12) 0%,rgba(255,255,255,.02) 38%,rgba(0,0,0,.12) 100%),var(--card)!important;border:1px solid var(--border)!important;border-radius:var(--radius)!important;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(0,0,0,.18)!important;position:relative}
+html.metal:not([data-theme="dark"]) :is(#dashboard,#dashboardQtd) :is(.card,.panel,.meta-panel,.plant-motive,.top-summary,.mini){background:linear-gradient(150deg,rgba(255,255,255,.9) 0%,rgba(255,255,255,.3) 40%,rgba(120,140,160,.14) 100%),var(--card)!important}
+html.metal :is(#dashboard,#dashboardQtd) .card{overflow:hidden}
+html.metal :is(#dashboard,#dashboardQtd) .card::before{content:"";position:absolute;top:-60%;left:-40%;width:45%;height:220%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.16),transparent);transform:rotate(12deg);animation:mtGlint 7s ease-in-out infinite;pointer-events:none}
+@keyframes mtGlint{0%,55%{left:-50%}100%{left:140%}}
+html.metal :is(#dashboard,#dashboardQtd) .card .value{background:var(--chrome);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;font-weight:900;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+html.metal :is(#dashboard,#dashboardQtd) .card .label{text-transform:uppercase;letter-spacing:.8px;font-size:11px;color:var(--muted)}
+html.metal .kpi-accent{background:linear-gradient(180deg,#ffb27a,#ff6a1f 50%,#c93f05)!important;box-shadow:0 0 12px rgba(255,106,31,.7)}
+html.metal .meta-bar{background:rgba(0,0,0,.28)!important;border-radius:999px;box-shadow:inset 0 2px 4px rgba(0,0,0,.45)}
+html.metal .meta-bar i{background:linear-gradient(180deg,#d7e2ee,#8ea2b7 55%,#5d7087)!important;box-shadow:0 0 10px rgba(180,205,230,.55)}
+html.metal :is(#dashboard,#dashboardQtd) .panel h3{display:flex;align-items:center;gap:8px}
+html.metal :is(#dashboard,#dashboardQtd) .panel h3::before{content:"";width:5px;height:18px;border-radius:3px;background:linear-gradient(180deg,#ffb27a,#ff6a1f 55%,#b53a04);box-shadow:0 0 8px rgba(255,106,31,.6)}
+html.metal #anaResumo>*,html.metal #anaCusto>*{background:linear-gradient(150deg,rgba(255,255,255,.1),rgba(255,255,255,.02)),var(--card)!important;border:1px solid var(--border)!important;border-radius:var(--radius)!important;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.25)!important}
+html.metal .chartbox canvas{filter:drop-shadow(0 4px 8px rgba(0,0,0,.18))}
 /* barra de rolagem de aço */
 html.metal ::-webkit-scrollbar{width:11px;height:11px}html.metal ::-webkit-scrollbar-track{background:rgba(0,0,0,.18);border-radius:8px}html.metal ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#c8d4e0,#7d90a5);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
 html.metal ::selection{background:rgba(255,106,31,.45);color:#fff}
@@ -303,7 +318,7 @@ html.metal #prOv .ps .pt{background:var(--chrome);-webkit-background-clip:text;b
 html.metal #prOv.dk .ps .pcard,html.metal #prOv.dk .ps aside,html.metal #prOv.dk .ps .kpi{background:linear-gradient(150deg,rgba(255,255,255,.09),rgba(255,255,255,.01) 45%),#16202a!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)!important}
 html.metal #prOv .ps .kv{background:var(--chrome);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
 /* desempenho: celular e quem prefere menos movimento */
-@media(max-width:820px){html.metal body::before{animation:none;filter:none;opacity:.6}html.metal .panel::after,html.metal .card::after{display:none}html.metal .btn::before{display:none}html.metal .card .value,html.metal .pm-value{animation:none}}
+@media(max-width:820px){html.metal :is(#dashboard,#dashboardQtd) .card::before{display:none}html.metal body::before{animation:none;filter:none;opacity:.6}html.metal .panel::after,html.metal .card::after{display:none}html.metal .btn::before{display:none}html.metal .card .value,html.metal .pm-value{animation:none}}
 @media(prefers-reduced-motion:reduce){html.metal *,html.metal *::before,html.metal *::after{animation:none!important;transition:none!important}}
 #metalBtn{cursor:pointer}
 </style>
@@ -1077,18 +1092,18 @@ service cloud.firestore {
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script src="dados-iniciais.js?v=156"></script>
-<script src="analises.js?v=156"></script>
-<script src="filtros.js?v=156"></script>
-<script src="retrabalhos.js?v=156"></script>
-<script src="app.js?v=156"></script>
-<script src="devolucoes.js?v=156"></script>
-<script src="gestao.js?v=156"></script>
-<script src="relatorios.js?v=156"></script>
-<script src="previsao.js?v=156"></script>
-<script src="reuniao.js?v=156"></script>
-<script src="auditoria.js?v=156"></script>
-<script src="versao.js?v=156"></script>
+<script src="dados-iniciais.js?v=158"></script>
+<script src="analises.js?v=158"></script>
+<script src="filtros.js?v=158"></script>
+<script src="retrabalhos.js?v=158"></script>
+<script src="app.js?v=158"></script>
+<script src="devolucoes.js?v=158"></script>
+<script src="gestao.js?v=158"></script>
+<script src="relatorios.js?v=158"></script>
+<script src="previsao.js?v=158"></script>
+<script src="reuniao.js?v=158"></script>
+<script src="auditoria.js?v=158"></script>
+<script src="versao.js?v=158"></script>
 <script>
 /* aviso automático quando algum arquivo do site está desatualizado (cache ou envio incompleto) */
 window.addEventListener('load',function(){setTimeout(function(){try{
@@ -1100,6 +1115,6 @@ window.addEventListener('load',function(){setTimeout(function(){try{
   d.innerHTML='<b>⚠ Arquivos de versões diferentes ('+want+').</b> Itens fora de versão: '+bad.join(' • ')+'. Envie todos os arquivos juntos e force a atualização (Ctrl+Shift+R). <button style="margin-left:8px;border:0;border-radius:6px;padding:4px 10px;cursor:pointer" onclick="this.parentNode.remove()">fechar</button>';
   document.body.appendChild(d)}catch(e){}},2500)});
 </script>
-<script>function toggleMetal(){var c=document.documentElement.classList;c.toggle("metal");try{localStorage.setItem("controle_refugos_2026_metal",c.contains("metal")?"1":"0")}catch(e){}}</script>
+<script>function toggleMetal(){var c=document.documentElement.classList;c.toggle("metal");try{localStorage.setItem("controle_refugos_2026_metal",c.contains("metal")?"1":"0")}catch(e){}try{refresh()}catch(e){}}</script>
 </body>
 </html>

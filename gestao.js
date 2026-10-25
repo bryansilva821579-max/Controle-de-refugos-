@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.gestao='v156';
+window.__V=window.__V||{};window.__V.gestao='v158';
 /* ==================================================================
    GESTÃO — alertas e metas, comparativo de períodos, cruzamento
    refugo × devolução e relatório mensal (PDF / Excel .xlsx).
@@ -26,7 +26,8 @@ function refAll(){
   const out=[];
   (Array.isArray(data)?data:[]).forEach(r=>{
     const y=recordYear(r),m=recordMonth(r);if(!y||!m)return;
-    out.push({k:mkKey(y,m),kg:kg(r),rs:cost(r),qtd:qty(r),pl:recordPlant(r),
+    let dt='';try{const d0=date(r);if(d0)dt=d0.getFullYear()+'-'+String(d0.getMonth()+1).padStart(2,'0')+'-'+String(d0.getDate()).padStart(2,'0')}catch(e){}
+    out.push({k:mkKey(y,m),dt,kg:kg(r),rs:cost(r),qtd:qty(r),pl:recordPlant(r),
       cli:canonicalClientName(val(r,'cliente'))||'Não informado',
       mot:motivoDescricao(r)||'Não informado',causa:causaPeloMotivo(r),
       cod:String(val(r,'codigo')||'').trim(),pec:String(val(r,'produto')||'').trim(),of:String(val(r,'of')||'').trim()});
