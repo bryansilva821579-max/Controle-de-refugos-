@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.relatorios='v158';
+window.__V=window.__V||{};window.__V.relatorios='v159';
 /* ==================================================================
    RELATÓRIOS MENSAIS — Retrabalhos e Devoluções
    Mesmo formato do relatório mensal de refugos: gráficos com análise
@@ -410,7 +410,7 @@ function hbar(items,fmtv,tot,c){const mx=Math.max(1,...items.map(e=>e.v));return
 function delta(c,p,bad){if(p==null||!(p>0)||c==null)return '<small class="mu">sem base anterior</small>';const d=(c-p)/p*100;const up=d>0;return '<small class="'+((up===(bad!==false))?'up':'dn')+'">'+(up?'▲ +':'▼ ')+fm(Math.abs(d),0)+'% vs período anterior</small>'}
 
 /* ---------- abas ---------- */
-const TABS=[['exec','🏁 Executivo'],['pareto','📉 Pareto e causas'],['heat','🔥 Mapa de calor'],['pecas','🧩 Peças críticas'],['cli','👥 Clientes'],['cal','📅 Calendário']];
+const TABS=[['exec','🏁 Executivo'],['pareto','📉 Pareto e causas'],['heat','🔥 Mapa de calor'],['pecas','🧩 Peças críticas'],['cli','👥 Clientes'],['cal','📅 Calendário'],['peixe','🐟 Espinha 6M']];
 function kpi(l,v,sub,sp,c){return '<div class="p3k" style="--c:'+(c||OR)+'"><span>'+l+'</span><b>'+v+'</b>'+sub+'<div class="p3sk">'+(sp||'')+'</div></div>'}
 function tExec(d){
   const g=G(),lb=d.ms.map(g.lblM),U=d.un,mt=d.mt==='qtd';
@@ -496,6 +496,56 @@ function detPeca(d,cod){
   const rr=d.R.filter(r=>(r.cod||r.pec)===cod);
   det('<div class="p3dt"><h4>'+esc((e.cod?e.cod+' — ':'')+(e.nome||''))+'</h4>'+combo({labels:d.ms.map(G().lblM),bars:[{name:'Refugo',color:OR,values:e.ser}],unit:d.un,vals:true,h:220})+'<div class="p3g3"><div><h5>Motivos</h5>'+hbar(rank(rr,r=>r.mot,d.vv,6),v=>fm(v,0)+' '+d.un,e.ref,OR)+'</div></div></div>');
 }
+
+/* ---------- espinha de peixe (Ishikawa 6M) ---------- */
+const MS6=[['Mão de obra','#3b82f6'],['Método','#22c55e'],['Máquina','#ff6a1f'],['Material','#a855f7'],['Medição','#eab308'],['Meio ambiente','#14b8a6']];
+function fishSvg(o){
+  const dk=o.tema!=='lt',tx=dk?'#e8eef4':'#1d2733',mu=dk?'#9fb0c2':'#5b6b7c',bg=dk?'#16202a':'#ffffff',bd=dk?'#2f3f50':'#cfd8e2',rows=o.rows||[],cost=!!o.cost;
+  const vq=r=>N(r.qtd),vk=r=>N(r.kgB!=null?r.kgB:r.kg),vr=r=>N(r.rs);
+  const tq=sum(rows,vq),tk=sum(rows,vk),tr=sum(rows,vr),id='f'+(++_g);
+  const A=MS6.map(([nome,c])=>{const rr=rows.filter(r=>r.causa===nome);return{nome,c,q:sum(rr,vq),k:sum(rr,vk),r:sum(rr,vr),mot:rank(rr,r=>r.mot,vk,3),n:rr.length}});
+  const cls=A.reduce((s,a)=>s+a.k,0),sem=tk-cls,semQ=tq-sum(A,a=>a.q);
+  const W=1000,H=548,SY=262,money=v=>cost?'R$ '+fm(v):'🔒';
+  let s='<svg xmlns="http://www.w3.org/2000/svg" class="p3svg p3fs" viewBox="0 0 '+W+' '+H+'" font-family="Segoe UI,Arial,sans-serif"><defs><linearGradient id="'+id+'s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9f0f7"/><stop offset=".5" stop-color="#8da2b8"/><stop offset="1" stop-color="#4a5d72"/></linearGradient><linearGradient id="'+id+'h" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2c3b4b"/><stop offset=".55" stop-color="#121a23"/><stop offset="1" stop-color="#26323f"/></linearGradient>'+A.map((a,i)=>grad(id+i,a.c)).join('')+'</defs>';
+  /* cauda + espinha dorsal + cabeça */
+  s+='<polygon points="8,'+(SY-26)+' 52,'+SY+' 8,'+(SY+26)+'" fill="url(#'+id+'s)"/><rect x="40" y="'+(SY-5)+'" width="760" height="10" rx="5" fill="url(#'+id+'s)" stroke="'+bd+'"/>';
+  s+='<path d="M790,'+(SY-92)+' H936 Q992,'+(SY-92)+' 992,'+(SY-36)+' V'+(SY+36)+' Q992,'+(SY+92)+' 936,'+(SY+92)+' H790 Z" fill="url(#'+id+'h)" stroke="#ff6a1f" stroke-width="2.5"/>';
+  s+='<text x="891" y="'+(SY-60)+'" text-anchor="middle" font-size="13" font-weight="800" fill="#ff9a55" letter-spacing="1.5">PROBLEMA</text><text x="891" y="'+(SY-36)+'" text-anchor="middle" font-size="19" font-weight="900" fill="#f4f8fc">REFUGO</text>'+
+     '<text x="891" y="'+(SY-6)+'" text-anchor="middle" font-size="22" font-weight="900" fill="#ffffff">'+fm(tq)+' <tspan font-size="12" font-weight="700" fill="#aebccb">peças</tspan></text>'+
+     '<text x="891" y="'+(SY+22)+'" text-anchor="middle" font-size="19" font-weight="900" fill="#ffffff">'+fm(tk,1)+' <tspan font-size="12" font-weight="700" fill="#aebccb">kg</tspan></text><text x="891" y="'+(SY+37)+'" text-anchor="middle" font-size="10" fill="#aebccb">peso bruto fracionado</text>'+
+     '<text x="891" y="'+(SY+66)+'" text-anchor="middle" font-size="19" font-weight="900" fill="#ffb27a">'+money(tr)+'</text>';
+  /* ossos */
+  A.forEach((a,i)=>{
+    const top=i<3,col=i%3,cx=(top?150:150)+col*232,bx=cx-95,by=top?6:H-6-86,y0=top?by+86:by,y1=SY,x1=cx+112,sh=tk>0?a.k/tk:0,sw=(3+sh*13).toFixed(1);
+    const xAt=y=>cx+(y-y0)*(x1-cx)/(y1-y0);
+    s+='<g class="p3m" data-m="'+esc(a.nome)+'" style="cursor:pointer"><line x1="'+cx+'" y1="'+y0+'" x2="'+x1+'" y2="'+y1+'" stroke="url(#'+id+i+')" stroke-width="'+sw+'" stroke-linecap="round"/>';
+    a.mot.forEach((m,j)=>{const y=top?y0+34+j*40:y0-34-j*40,x=xAt(y),pc=a.k>0?m.v/a.k*100:0;
+      s+='<line x1="'+(x-26)+'" y1="'+y+'" x2="'+x+'" y2="'+y+'" stroke="'+a.c+'" stroke-width="2.2" opacity=".85"/><text x="'+(x-30)+'" y="'+(y-4)+'" text-anchor="end" font-size="11.5" font-weight="700" fill="'+tx+'">'+esc(String(m.nome).slice(0,24))+'</text><text x="'+(x-30)+'" y="'+(y+9)+'" text-anchor="end" font-size="10.5" fill="'+mu+'">'+fm(m.v,1)+' kg · '+fm(pc,0)+'%</text>'});
+    s+='<rect x="'+bx+'" y="'+by+'" width="190" height="86" rx="10" fill="'+bg+'" stroke="'+a.c+'" stroke-width="2"/><path d="M'+bx+','+(by+24)+' V'+(by+10)+' Q'+bx+','+by+' '+(bx+10)+','+by+' H'+(bx+180)+' Q'+(bx+190)+','+by+' '+(bx+190)+','+(by+10)+' V'+(by+24)+' Z" fill="url(#'+id+i+')"/>'+
+     '<text x="'+(bx+95)+'" y="'+(by+17)+'" text-anchor="middle" font-size="13.5" font-weight="900" fill="#fff" stroke="rgba(0,0,0,.25)" stroke-width=".4">'+esc(a.nome.toUpperCase())+'</text>'+
+     '<text x="'+(bx+95)+'" y="'+(by+44)+'" text-anchor="middle" font-size="13" font-weight="800" fill="'+tx+'">'+fm(a.q)+' pç · '+fm(a.k,1)+' kg</text>'+
+     '<text x="'+(bx+95)+'" y="'+(by+64)+'" text-anchor="middle" font-size="13" font-weight="800" fill="'+a.c+'">'+money(a.r)+'</text><text x="'+(bx+95)+'" y="'+(by+79)+'" text-anchor="middle" font-size="10.5" fill="'+mu+'">'+fm(sh*100,0)+'% do peso</text><title>'+esc(a.nome)+': '+fm(a.q)+' peças, '+fm(a.k,1)+' kg'+(cost?', R$ '+fm(a.r):'')+' — clique para detalhar</title></g>';
+  });
+  if(sem>0.0001||semQ>0)s+='<text x="12" y="'+(H-6)+'" font-size="11" fill="'+mu+'">Sem classificação 6M: '+fm(semQ)+' pç · '+fm(sem,1)+' kg ('+fm(tk>0?sem/tk*100:0,0)+'%) — classifique os motivos em Cadastro para completar o diagrama.</text>';
+  return s+'</svg>';
+}
+function fishRows(a,b,pl){const PF=pl!=='u',PU=pl!=='f',ms=range(a,b);return G().refAll().filter(r=>ms.includes(r.k)&&(plc(r.pl)==='F'?PF:plc(r.pl)==='U'?PU:(PF&&PU)))}
+function costOk(){try{return costAccessAllowed()}catch(e){return false}}
+function tPeixe(d){
+  const dk=document.documentElement.getAttribute('data-theme')==='dark';
+  return '<div class="p3c"><h4>Espinha de peixe — causa e efeito (6M)</h4><div class="p3hint">O problema é o refugo do período. Cada espinha é um dos 6M, com quantidade, peso bruto fracionado e valor. Nas espinhas menores ficam os principais motivos. Clique em um M para detalhar.</div><div class="p3fish">'+fishSvg({rows:d.R,tema:dk?'dk':'lt',cost:d.cu})+'</div><div class="p3bar" style="margin-top:8px"><button class="btn secondary" type="button" data-a="png">⬇ Baixar imagem (PNG)</button>'+(d.cu?'':'<button class="btn secondary" type="button" data-a="cost">🔐 Mostrar valores (R$)</button>')+'</div><div id="p3det"></div></div>';
+}
+function detM(d,nm){
+  const rr=d.R.filter(r=>r.causa===nm),tk=sum(rr,r=>N(r.kgB!=null?r.kgB:r.kg)),vk=r=>N(r.kgB!=null?r.kgB:r.kg);
+  const l=(t,a)=>'<div><h5>'+t+'</h5>'+hbar(a,v=>fm(v,1)+' kg',tk,OR)+'</div>';
+  det('<div class="p3dt"><h4>'+esc(nm)+' — '+fm(sum(rr,r=>N(r.qtd)))+' peças · '+fm(tk,1)+' kg'+(d.cu?' · R$ '+fm(sum(rr,r=>N(r.rs))):'')+'</h4><div class="p3g3">'+l('Todos os motivos',rank(rr,r=>r.mot,vk,8))+l('Peças',rank(rr,r=>(r.cod?r.cod+' - ':'')+(r.pec||''),vk,8))+l('Clientes',rank(rr,r=>r.cli,vk,8))+'</div></div>');
+}
+function pngFish(){
+  const sv=document.querySelector('#painel360 .p3fs');if(!sv)return;
+  const dk=document.documentElement.getAttribute('data-theme')==='dark',xml=new XMLSerializer().serializeToString(sv),im=new Image(),url=URL.createObjectURL(new Blob([xml],{type:'image/svg+xml'}));
+  im.onload=()=>{const c=document.createElement('canvas');c.width=2000;c.height=Math.round(2000*548/1000);const x=c.getContext('2d');x.fillStyle=dk?'#0f1720':'#ffffff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(url);c.toBlob(b=>G().baixar(b,'espinha-de-peixe-6M.png'),'image/png')};
+  im.onerror=()=>alert('Não foi possível gerar a imagem.');im.src=url;
+}
 /* ---------- página ---------- */
 const CSS='.p3{--o:#ff6a1f}.p3 .p3bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}.p3 .p3bar label{font-size:12px;font-weight:800;color:var(--muted)}.p3 .p3bar input,.p3 .p3bar select,.p3in{border:1px solid var(--border);border-radius:10px;padding:7px 10px;background:var(--card);color:var(--text);font:inherit}.p3in{width:100%;max-width:340px;margin:6px 0 10px}'+
 '.p3tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px}.p3tabs button{white-space:nowrap;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:8px 15px;font-weight:800;cursor:pointer}.p3tabs button.on{background:linear-gradient(180deg,#ff9a55,#ff6a1f 55%,#d94a08);color:#fff;border-color:transparent;box-shadow:0 4px 14px rgba(255,106,31,.4)}'+
@@ -508,7 +558,7 @@ const CSS='.p3{--o:#ff6a1f}.p3 .p3bar{display:flex;flex-wrap:wrap;gap:8px;align-
 '.p3ul{margin:0;padding-left:18px;line-height:1.7}.hb .hr{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:8px;align-items:center;margin:5px 0;font-size:12.5px;cursor:default}.hb .hn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hb .ht{height:14px;border-radius:7px;background:rgba(0,0,0,.2);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);overflow:hidden}.hb .ht i{display:block;height:100%;border-radius:7px;background:linear-gradient(180deg,var(--c),color-mix(in srgb,var(--c) 55%,#000));box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}.hb .hv{font-weight:800;white-space:nowrap}.hb small{color:var(--muted);font-weight:600}'+
 '.p3hm{overflow:auto}.p3hm table{border-collapse:separate;border-spacing:3px;font-size:11.5px;width:100%}.p3hm th{font-weight:800;text-align:left;padding:3px 6px;white-space:nowrap;color:var(--muted)}.p3hm thead th{text-align:center}.p3hm td{min-width:40px;height:30px;text-align:center;border-radius:6px;background:rgba(127,140,155,.1);cursor:default}.p3hm td.on{background:rgba(255,106,31,calc(.12 + var(--a)*.88));color:#fff;font-weight:800;cursor:pointer;text-shadow:0 1px 2px rgba(0,0,0,.4)}.p3hm td.on:hover{outline:2px solid #fff}.p3hm td.tt{background:none;font-weight:900;color:var(--text)}'+
 '.p3t{width:100%;border-collapse:collapse;font-size:12.5px}.p3t th{text-align:left;padding:8px;background:linear-gradient(180deg,#52657a,#26323f);color:#fff;border-bottom:2px solid #ff6a1f;white-space:nowrap}.p3t td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle}.p3t tbody tr{cursor:pointer}.p3t tbody tr:hover td{background:rgba(255,106,31,.1)}.ib{display:inline-block;width:60px;height:8px;border-radius:4px;background:rgba(0,0,0,.25);margin-right:6px;vertical-align:middle;overflow:hidden}.ib i{display:block;height:100%;background:linear-gradient(90deg,#ffb27a,#ff6a1f)}.p3t .p3sp{width:84px}'+
-'.p3dt{margin-top:12px;padding:12px;border:1px dashed var(--border);border-radius:12px;animation:p3in .3s both}@keyframes p3in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}@media(max-width:820px){.p3g2{grid-template-columns:1fr}.p3k b{font-size:21px}}';
+'.p3fish{overflow-x:auto}.p3fs{min-width:720px;max-width:1100px;margin:0 auto}.p3m:hover line{filter:brightness(1.2)}.p3dt{margin-top:12px;padding:12px;border:1px dashed var(--border);border-radius:12px;animation:p3in .3s both}@keyframes p3in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}@media(max-width:820px){.p3g2{grid-template-columns:1fr}.p3k b{font-size:21px}}';
 let built=false,SIG='';
 function build(){
   if(built||$('painel360'))return;built=true;
@@ -527,14 +577,15 @@ function render(force){
   const f=document.activeElement&&document.activeElement.id==='p3q';
   let h='<div class="p3bar"><label>De</label><input type="month" id="p3a" value="'+S.a+'"><label>até</label><input type="month" id="p3b" value="'+S.b+'"><select id="p3pl"><option value="ab"'+(S.pl==='ab'?' selected':'')+'>Fundição + Usinagem</option><option value="f"'+(S.pl==='f'?' selected':'')+'>Só Fundição</option><option value="u"'+(S.pl==='u'?' selected':'')+'>Só Usinagem</option></select><select id="p3mt"><option value="kg"'+(S.mt==='kg'?' selected':'')+'>Peso (kg)</option><option value="qtd"'+(S.mt==='qtd'?' selected':'')+'>Quantidade (peças)</option></select><select id="p3pe" title="Tipo de peso">'+pesoOpts+'</select><button class="btn secondary" type="button" data-a="m6">Últimos 6 meses</button><button class="btn secondary" type="button" data-a="m12">12 meses</button><button class="btn secondary" type="button" data-a="ano">Ano atual</button><button class="btn primary" type="button" data-a="pdf">🖨 Imprimir / PDF</button></div>';
   h+='<div class="p3tabs">'+TABS.map(t=>'<button type="button" data-t="'+t[0]+'" class="'+(S.tab===t[0]?'on':'')+'">'+t[1]+'</button>').join('')+'</div>';
-  h+={exec:tExec,pareto:tPareto,heat:tHeat,pecas:tPecas,cli:tCli,cal:tCal}[S.tab](d);
+  h+={exec:tExec,pareto:tPareto,heat:tHeat,pecas:tPecas,cli:tCli,cal:tCal,peixe:tPeixe}[S.tab](d);
   sec.innerHTML=h;sec._d=d;
   if(f){const q=$('p3q');if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length)}}
 }
 function onClick(e){
   const sec=$('painel360'),d=sec._d;
   const t=e.target.closest('[data-t]');if(t){S.tab=t.dataset.t;save();render(true);return}
-  const a=e.target.closest('[data-a]');if(a){const k=a.dataset.a,h=hk();if(k==='m6'){S.b=h;S.a=G().addM(h,-5)}else if(k==='m12'){S.b=h;S.a=G().addM(h,-11)}else if(k==='ano'){S.a=h.slice(0,4)+'-01';S.b=h}else if(k==='pdf'){window.print();return}save();render(true);return}
+  const a=e.target.closest('[data-a]');if(a){const k=a.dataset.a,h=hk();if(k==='m6'){S.b=h;S.a=G().addM(h,-5)}else if(k==='m12'){S.b=h;S.a=G().addM(h,-11)}else if(k==='ano'){S.a=h.slice(0,4)+'-01';S.b=h}else if(k==='pdf'){window.print();return}else if(k==='png'){pngFish();return}else if(k==='cost'){try{toggleCostAccess()}catch(x){}setTimeout(()=>render(true),400);return}save();render(true);return}
+  const mm=e.target.closest('.p3m');if(mm){detM(d,mm.dataset.m);return}
   const bar=e.target.closest('rect.bar');if(bar&&S.tab==='pareto'){const mot=rank(d.R,r=>r.mot,d.vv,14)[+bar.dataset.i];if(mot)detMotivo(d,mot.nome);return}
   const c=e.target.closest('.p3hm td.on');if(c){detCel(d,c.dataset.r,c.dataset.k,c.dataset.w);return}
   const r=e.target.closest('.p3t tbody tr[data-cod]');if(r){detPeca(d,r.dataset.cod)}
@@ -545,5 +596,5 @@ function ini(){try{build()}catch(e){console.error(e)}}
 ini();
 window.addEventListener('pesotipo',()=>setTimeout(()=>render(true),30));
 setInterval(()=>{try{render(false)}catch(e){}},1500);
-window.__painel360={dados,render};
+window.__painel360={dados,render,fishSvg,fishRows,costOk};
 })();
