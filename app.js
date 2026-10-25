@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v154';
+window.__V=window.__V||{};window.__V.app='v156';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -2418,7 +2418,7 @@ function applyTheme(theme){
  localStorage.setItem('controle_refugos_2026_theme',theme);
  const b=document.getElementById('themeToggle');
  if(b)b.innerHTML=theme==='dark'?'☀️ <span>Modo claro</span>':'🌙 <span>Modo escuro</span>';
- dashboardDirty=true;dashboardQtdDirty=true;
+ dashboardDirty=true;dashboardQtdDirty=true;try{window.__quadroRefresh&&setTimeout(window.__quadroRefresh,0)}catch(e){}
  const active=document.querySelector('.page.active')?.id||'dashboard';
  if(active==='dashboard')dashboard(); else if(active==='dashboardQtd')dashboardQtd();
  window.setTimeout(()=>body?.classList.remove('theme-transition'),520);
@@ -2453,7 +2453,7 @@ function gerarPdfDashboard(pageId){
 }
 
 function initTheme(){const t=localStorage.getItem('controle_refugos_2026_theme')||'light';document.documentElement.setAttribute('data-theme',t);const b=document.getElementById('themeToggle');if(b)b.innerHTML=t==='dark'?'☀️ <span>Modo claro</span>':'🌙 <span>Modo escuro</span>';if(document.querySelector('.page.active')){dashboardDirty=true;dashboardQtdDirty=true;}}
-function refresh(){window.__limpaVazios&&window.__limpaVazios();try{syncPesoSelects()}catch(e){}
+function refresh(){window.__limpaVazios&&window.__limpaVazios();try{window.__quadroRefresh&&setTimeout(window.__quadroRefresh,0)}catch(e){}try{syncPesoSelects()}catch(e){}
  normalizeCad();saveCad();options();populateQtyFilters();populateAnalysisFilters();popularCamposLancamento();
  dashboardDirty=true;dashboardQtdDirty=true;
  const active=document.querySelector('.page.active')?.id||'dashboard';

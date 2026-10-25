@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.previsao='v154';
+window.__V=window.__V||{};window.__V.previsao='v156';
 /* ==================================================================
    VISÃO GERAL: filtro por período + PREVISÃO + APRESENTAÇÃO animada
    Lê os mesmos dados dos módulos (refugo, retrabalho, devolução).
@@ -209,6 +209,7 @@ function slides(d){
   const at=atencao(d);
   S.push({k:'kpi',t:'Resumo executivo',st:per+' • '+d.plNome+(d.pesoTxt?' • '+d.pesoTxt:'')+' • comparado ao período anterior equivalente',kpis:kp.map(x=>({n:x[0],v:x[1],f:x[4],d:x[2]!=null&&x[2]>0&&x[1]!=null?seta(x[1],x[2],x[5]):'<span class="mut">sem base anterior</span>'})),
     txt:'<p>No período foram <b>'+fU(d.tot.refKg)+' '+U+'</b> de refugo'+(d.tot.perc!=null?' ('+fP(d.tot.perc)+' da produção da Fundição'+(d.metaP?(d.tot.perc>d.metaP?', <b style="color:'+RD+'">acima</b> da meta de '+fP(d.metaP):', dentro da meta de '+fP(d.metaP)):'')+')':'')+', <b>'+F(d.tot.rtQ)+' peças</b> em retrabalho'+(d.mpp!=null?' (média de '+f2(d.mpp)+' min/peça)':'')+' e <b>'+fU(d.tot.dvKg)+' '+U+'</b> de devoluções procedentes.</p>'});
+  S.push({k:'quadro',t:'Quadro mensal',st:d.plNome+' • '+(d.mt==='qtd'?'quantidade':(d.pesoTxt||'peso'))+' • clique em um mês para ver os valores',ms:d.ms.slice(),mt:d.mt,f:d.pl.f,u:d.pl.u});
   if(d.S.refPerc.some(v=>v!=null))S.push({k:'chart',t:'Refugo da Fundição — % da produção',st:'Evolução mensal e previsão para os próximos 3 meses',ch:[lineSpec(d,'refPerc','Refugo Fundição (%)',OR,fP,d.metaP)],txt:trendTxt('Refugo da Fundição',d.S.refPerc,d.fc.refPerc,'%',f2)+(d.fc.refPerc&&d.metaP?'<p>Risco de ultrapassar a meta: '+d.fc.refPerc.pts.map((x,i)=>d.fl[i]+' <b>'+Math.round(x.pAbove*100)+'%</b>').join(' • ')+'.</p>':'')});
   S.push({k:'chart',t:'Refugo total ('+U+')',st:d.plNome+' • evolução e previsão',ch:[lineSpec(d,'refKg','Refugo ('+U+')',INK,fU)],txt:trendTxt('Refugo',d.S.refKg,d.fc.refKg,U,fU)});
   S.push({k:'chart',t:'Retrabalho (peças)',st:'Peças em retrabalho por mês',ch:[lineSpec(d,'rtQ','Retrabalho (peças)',BL,v=>F(Math.round(v)))],txt:trendTxt('Retrabalho',d.S.rtQ,d.fc.rtQ,'peças',v=>F(Math.round(v)))+(d.mpp!=null?'<p>Tempo médio de retrabalho no período: <b>'+f2(d.mpp)+' min por peça</b>.</p>':'')});
@@ -252,6 +253,7 @@ function slideHtml(s,i,n,per,static_){
   if(s.k==='kpi')body='<div class="kpis">'+s.kpis.map((x,q)=>'<div class="kpi"><div class="kn">'+esc(x.n)+'</div><div class="kv" data-kv="'+q+'">'+(x.v==null?'—':x.f(x.v))+'</div><div class="kd">'+x.d+'</div></div>').join('')+'</div><aside>'+s.txt+'</aside>';
   else if(s.k==='chart')body='<div class="pcard"><div class="cvw">%%CH0%%</div></div><aside>'+s.txt+'</aside>';
   else if(s.k==='tabela')body='<div class="pcard" style="overflow:auto"><table class="tb"><thead><tr>'+s.cab.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+s.rows.map(r=>'<tr>'+r.map((c,q)=>'<td'+(q>0&&typeof c==='number'?' class="n"':'')+'>'+(typeof c==='number'?F(c):esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div><aside>'+s.txt+'</aside>';
+  else if(s.k==='quadro')body='<div class="pcard qdc" style="overflow:auto;flex:1">'+(static_==='pdf'?'%%QD%%':'<div class="qdHost" data-i="'+i+'"></div>')+'</div>';
   else if(s.k==='lista')body='<div class="pcard" style="overflow:auto;font-size:clamp(13px,1.4vw,20px);line-height:1.5"><h3>⚠ Pontos de atenção</h3>'+(s.a.length?'<ul>'+s.a.map(x=>'<li>'+x+'</li>').join('')+'</ul>':'<p>Nenhum ponto crítico identificado automaticamente.</p>')+'</div><aside><h3>✔ Ações sugeridas</h3>'+(s.b.length?'<ul>'+s.b.map(x=>'<li>'+x+'</li>').join('')+'</ul>':'<p>Sem sugestões.</p>')+'<p class="mut">Sugestões automáticas a partir dos dados; valide em reunião.</p></aside>';
   return'<section class="ps">'+hd+'<div class="pb">'+body+'</div>'+ft+'</section>';
 }
@@ -274,11 +276,13 @@ function abrir(a,b){
   ov.querySelector('.stage').addEventListener('click',e=>{if(e.target.closest('aside,.pcard,.kpi'))return;ir(cur.i+1)});
   document.addEventListener('keydown',tecla,true);window.addEventListener('resize',redim);
   ir(0);
+  qdMontar();
 }
-function tecla(e){if(!cur)return;const k=e.key;if(k==='ArrowRight'||k==='PageDown'||k===' '||k==='Enter'){e.preventDefault();ir(cur.i+1)}else if(k==='ArrowLeft'||k==='PageUp'||k==='Backspace'){e.preventDefault();ir(cur.i-1)}else if(k==='Home')ir(0);else if(k==='End')ir(cur.S.length-1);else if(k==='Escape'){e.preventDefault();e.stopPropagation();fechar()}else if(k==='f'||k==='F')tela();else if(k==='r'||k==='R')anim();else if(k==='t'||k==='T')tema2();else if(k==='a'||k==='A')auto()}
+function qdMontar(){if(!cur)return;cur.ov.querySelectorAll('.qdHost').forEach(h=>{const s=cur.S[+h.dataset.i];try{G().quadroMontar(h,{ms:s.ms,mt:s.mt,f:s.f,u:s.u,tema:cur.tema==='dk'?'dk':'lt',scroll:false})}catch(e){console.error(e)}})}
+function tecla(e){if(!cur)return;const k=e.key;if((k==='Enter'||k===' ')&&e.target&&e.target.closest&&e.target.closest('.qd'))return;if(k==='ArrowRight'||k==='PageDown'||k===' '||k==='Enter'){e.preventDefault();ir(cur.i+1)}else if(k==='ArrowLeft'||k==='PageUp'||k==='Backspace'){e.preventDefault();ir(cur.i-1)}else if(k==='Home')ir(0);else if(k==='End')ir(cur.S.length-1);else if(k==='Escape'){e.preventDefault();e.stopPropagation();fechar()}else if(k==='f'||k==='F')tela();else if(k==='r'||k==='R')anim();else if(k==='t'||k==='T')tema2();else if(k==='a'||k==='A')auto()}
 const VEL=[[4000,'Normal'],[7000,'Lenta'],[11000,'Muito lenta']];
 function velo(){const q=VEL.findIndex(x=>x[0]===cur.vel),n=VEL[(q+1)%VEL.length];cur.vel=n[0];try{localStorage.setItem('controle_refugos_2026_prvel',n[0])}catch(e){}cur.ov.querySelector('[data-a=vel]').textContent='⏱ '+n[1];anim()}
-function tema2(){cur.tema=cur.tema==='dk'?'lt':'dk';cur.ov.classList.toggle('dk',cur.tema==='dk');setTH(cur.tema==='dk');try{localStorage.setItem('controle_refugos_2026_prtema',cur.tema)}catch(e){}anim()}
+function tema2(){cur.tema=cur.tema==='dk'?'lt':'dk';cur.ov.classList.toggle('dk',cur.tema==='dk');setTH(cur.tema==='dk');try{localStorage.setItem('controle_refugos_2026_prtema',cur.tema)}catch(e){}cur.ov.querySelectorAll('.qd').forEach(h=>{h.classList.toggle('dk',cur.tema==='dk');h.classList.toggle('lt',cur.tema!=='dk')});anim()}
 function tela(){const el=cur&&cur.ov;if(!el)return;try{if(document.fullscreenElement)document.exitFullscreen();else el.requestFullscreen&&el.requestFullscreen()}catch(e){}}
 function auto(){if(!cur)return;if(cur.auto){clearInterval(cur.auto);cur.auto=0}else cur.auto=setInterval(()=>{if(cur.i>=cur.S.length-1){clearInterval(cur.auto);cur.auto=0}else ir(cur.i+1)},12000);const bt=cur.ov.querySelector('[data-a=auto]');bt.textContent=cur.auto?'⏸ Auto':'⏵ Auto'}
 function redim(){if(!cur)return;const el=cur.ov.querySelectorAll('.ps')[cur.i];if(el)ajusta(el,1)}
@@ -291,6 +295,7 @@ function ir(i){
 }
 function anim(){
   if(!cur)return;cancelAnimationFrame(cur.raf);const el=cur.ov.querySelectorAll('.ps')[cur.i],s=cur.S[cur.i];if(!el)return;
+  el.querySelectorAll('.qt').forEach(t=>{t.style.animation='none';void t.offsetWidth;t.style.animation=''});
   const cvs=[...el.querySelectorAll('canvas.pc')],kv=[...el.querySelectorAll('[data-kv]')];
   cvs.forEach(cv=>{const w=cv.parentElement;setup(cv,Math.max(50,w.clientWidth),Math.max(50,w.clientHeight))});
   const dur=(s.k==='chart'?cur.vel:cur.vel*0.55),t0=performance.now(),myI=cur.i;
@@ -302,10 +307,10 @@ function fechar(){if(!cur)return;cancelAnimationFrame(cur.raf);clearInterval(cur
 function pdf(){
   const c=cur&&cur.d?cur:null;let d,S,per;if(c){d=c.d;S=c.S;per=c.per}else{const p=perLer();d=collect(p.a,p.b);S=slides(d);per=G().lblM(d.a)+' a '+G().lblM(d.b)}
   ensureCss();const th0=TH;setTH(false);
-  const pages=S.map((s,i)=>{let h=slideHtml(s,i,S.length,per);if(s.k==='chart'){const cv=document.createElement('canvas');setup(cv,900,500);draw(cv,s.ch[0],1);h=h.replace('%%CH0%%','<img src="'+cv.toDataURL('image/png')+'" style="width:100%;height:100%;object-fit:contain">')}return h.replace('class="ps','class="ps on pdfp').replace('class="ps on pdfp capa','class="ps on pdfp capa')});
+  const pages=S.map((s,i)=>{let h=slideHtml(s,i,S.length,per,'pdf');if(s.k==='quadro')h=h.replace('%%QD%%',()=>{try{return G().quadroEstatico(s,'lt')}catch(e){return ''}});if(s.k==='chart'){const cv=document.createElement('canvas');setup(cv,900,500);draw(cv,s.ch[0],1);h=h.replace('%%CH0%%','<img src="'+cv.toDataURL('image/png')+'" style="width:100%;height:100%;object-fit:contain">')}return h.replace('class="ps','class="ps on pdfp').replace('class="ps on pdfp capa','class="ps on pdfp capa')});
   TH=th0;
   const f=document.createElement('iframe');f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';document.body.appendChild(f);
-  const w=f.contentWindow.document;w.open();w.write('<!doctype html><html><head><meta charset="utf-8"><title>Reunião de resultados '+esc(per)+'</title><style>@page{size:A4 landscape;margin:0}html,body{margin:0}body{font-family:Arial,sans-serif;color:'+INK+';-webkit-print-color-adjust:exact;print-color-adjust:exact}.ps{position:relative!important;inset:auto!important;opacity:1!important;transform:none!important;width:297mm;height:209mm;page-break-after:always;break-after:page;overflow:hidden}.ps.capa .line{width:30vw!important}'+CSS.replace(/#prOv /g,'').replace(/#prPan[^}]*}/g,'')+'.ps .pcard .cvw{position:absolute;inset:12px}.ps header img{height:30px}.ps aside{font-size:12px!important}</style></head><body>'+pages.join('')+'</body></html>');w.close();
+  const w=f.contentWindow.document;w.open();w.write('<!doctype html><html><head><meta charset="utf-8"><title>Reunião de resultados '+esc(per)+'</title><style>@page{size:A4 landscape;margin:0}html,body{margin:0}body{font-family:Arial,sans-serif;color:'+INK+';-webkit-print-color-adjust:exact;print-color-adjust:exact}.ps{position:relative!important;inset:auto!important;opacity:1!important;transform:none!important;width:297mm;height:209mm;page-break-after:always;break-after:page;overflow:hidden}.ps.capa .line{width:30vw!important}'+CSS.replace(/#prOv /g,'').replace(/#prPan[^}]*}/g,'')+'.ps .pcard .cvw{position:absolute;inset:12px}.ps header img{height:30px}.ps aside{font-size:12px!important}'+((document.getElementById('qdCss')||{}).textContent||'')+'.qd .qg{grid-template-columns:repeat(6,1fr)!important}.qd .qt{animation:none!important}</style></head><body>'+pages.join('')+'</body></html>');w.close();
   Promise.all([...w.images].map(im=>im.complete?Promise.resolve():new Promise(r=>{im.onload=im.onerror=r}))).then(()=>setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.print()}catch(e){alert('Não foi possível abrir a impressão.')}setTimeout(()=>f.remove(),60000)},400));
 }
 
