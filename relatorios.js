@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.relatorios='v159';
+window.__V=window.__V||{};window.__V.relatorios='v163';
 /* ==================================================================
    RELATÓRIOS MENSAIS — Retrabalhos e Devoluções
    Mesmo formato do relatório mensal de refugos: gráficos com análise
@@ -575,7 +575,7 @@ function render(force){
   const g=G();let d;try{d=dados()}catch(e){console.error(e);sec.innerHTML='<div class="p3c">Não foi possível montar o painel.</div>';return}
   const pesoOpts=['bruto','liquido','usinado'].map(t=>'<option value="'+t+'"'+(pesoTipo()===t?' selected':'')+'>'+((typeof PESO_CURTO!=='undefined'&&PESO_CURTO[t])||t)+'</option>').join('');
   const f=document.activeElement&&document.activeElement.id==='p3q';
-  let h='<div class="p3bar"><label>De</label><input type="month" id="p3a" value="'+S.a+'"><label>até</label><input type="month" id="p3b" value="'+S.b+'"><select id="p3pl"><option value="ab"'+(S.pl==='ab'?' selected':'')+'>Fundição + Usinagem</option><option value="f"'+(S.pl==='f'?' selected':'')+'>Só Fundição</option><option value="u"'+(S.pl==='u'?' selected':'')+'>Só Usinagem</option></select><select id="p3mt"><option value="kg"'+(S.mt==='kg'?' selected':'')+'>Peso (kg)</option><option value="qtd"'+(S.mt==='qtd'?' selected':'')+'>Quantidade (peças)</option></select><select id="p3pe" title="Tipo de peso">'+pesoOpts+'</select><button class="btn secondary" type="button" data-a="m6">Últimos 6 meses</button><button class="btn secondary" type="button" data-a="m12">12 meses</button><button class="btn secondary" type="button" data-a="ano">Ano atual</button><button class="btn primary" type="button" data-a="pdf">🖨 Imprimir / PDF</button></div>';
+  let h=(window.__dbSubHtml?window.__dbSubHtml('painel360'):'')+'<div class="p3bar"><label>De</label><input type="month" id="p3a" value="'+S.a+'"><label>até</label><input type="month" id="p3b" value="'+S.b+'"><select id="p3pl"><option value="ab"'+(S.pl==='ab'?' selected':'')+'>Fundição + Usinagem</option><option value="f"'+(S.pl==='f'?' selected':'')+'>Só Fundição</option><option value="u"'+(S.pl==='u'?' selected':'')+'>Só Usinagem</option></select><select id="p3mt"><option value="kg"'+(S.mt==='kg'?' selected':'')+'>Peso (kg)</option><option value="qtd"'+(S.mt==='qtd'?' selected':'')+'>Quantidade (peças)</option></select><select id="p3pe" title="Tipo de peso">'+pesoOpts+'</select><button class="btn secondary" type="button" data-a="m6">Últimos 6 meses</button><button class="btn secondary" type="button" data-a="m12">12 meses</button><button class="btn secondary" type="button" data-a="ano">Ano atual</button><button class="btn primary" type="button" data-a="pdf">🖨 Imprimir / PDF</button></div>';
   h+='<div class="p3tabs">'+TABS.map(t=>'<button type="button" data-t="'+t[0]+'" class="'+(S.tab===t[0]?'on':'')+'">'+t[1]+'</button>').join('')+'</div>';
   h+={exec:tExec,pareto:tPareto,heat:tHeat,pecas:tPecas,cli:tCli,cal:tCal,peixe:tPeixe}[S.tab](d);
   sec.innerHTML=h;sec._d=d;
@@ -597,4 +597,32 @@ ini();
 window.addEventListener('pesotipo',()=>setTimeout(()=>render(true),30));
 setInterval(()=>{try{render(false)}catch(e){}},1500);
 window.__painel360={dados,render,fishSvg,fishRows,costOk};
+})();
+
+/* ==================================================================
+   MENUS AGRUPADOS: "Dashboards" (Peso + Quantidade + Painel 360) e
+   "Dados e auditoria" (Dados e backup + Auditoria) — menos abas.
+   ================================================================== */
+(function(){
+const GR=[{main:'dashboard',label:'Dashboards',icon:'▣',tip:'Peso, Quantidade e Painel 360',items:[['dashboard','⚖ Peso'],['dashboardQtd','🔢 Quantidade'],['painel360','📊 Painel 360']]},
+          {main:'dados',label:'Dados e auditoria',icon:'⚙',tip:'Dados e backup, e Auditoria',items:[['dados','💾 Dados e backup'],['auditoria','🗂 Auditoria']]}];
+const grOf=p=>GR.find(g=>g.items.some(x=>x[0]===p));
+const css=document.createElement('style');css.textContent='.dbSub{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}.dbSub button{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:8px 16px;cursor:pointer;font:inherit;font-weight:800;transition:all .2s}.dbSub button:hover{border-color:#ff6a1f}.dbSub button.on{background:linear-gradient(180deg,#ff9a55,#ff6a1f 55%,#d94a08);color:#fff;border-color:transparent;box-shadow:0 4px 14px rgba(255,106,31,.4)}@media print{.dbSub{display:none!important}}';document.head.appendChild(css);
+window.__dbSubHtml=cur=>{const g=grOf(cur);return g?'<div class="dbSub">'+g.items.map(p=>'<button type="button" data-dbp="'+p[0]+'" class="'+(p[0]===cur?'on':'')+'">'+p[1]+'</button>').join('')+'</div>':''};
+function rename(b,g){const sp=b.querySelector('span');if(sp)sp.textContent=g.label;else b.innerHTML=g.icon+' &nbsp; '+g.label;b.title=g.tip}
+function ini(){
+  GR.forEach(g=>{
+    g.items.slice(1).forEach(it=>document.querySelectorAll('.tab[data-page="'+it[0]+'"]').forEach(b=>{b.style.display='none'}));
+    document.querySelectorAll('.tab[data-page="'+g.main+'"]').forEach(b=>{if(b.dataset.grp!==g.label){rename(b,g);b.dataset.grp=g.label}});
+    g.items.forEach(it=>{const sec=document.getElementById(it[0]);if(it[0]==='painel360')return;if(sec&&!sec.querySelector(':scope>.dbSub'))sec.insertAdjacentHTML('afterbegin',window.__dbSubHtml(it[0]))});
+  });
+}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.dbSub button[data-dbp]');if(!b)return;e.preventDefault();navigate(b.dataset.dbp);if(b.dataset.dbp==='painel360')setTimeout(()=>{try{window.__painel360.render(true)}catch(x){}},80)});
+const nav0=window.navigate;
+if(typeof nav0==='function')window.navigate=function(page){
+  const r=nav0.apply(this,arguments),g=grOf(page);
+  if(g){document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.page===g.main));const t=document.querySelector('.top-title h1');if(t)t.textContent=g.label+' — '+g.items.find(p=>p[0]===page)[1].replace(/^\S+\s/,'');setTimeout(ini,50)}
+  return r;
+};
+ini();setInterval(ini,1200);
 })();

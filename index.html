@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Refugos">
 <title>Controle de Refugos 2026</title>
-<link rel="stylesheet" href="base.css?v=159">
+<link rel="stylesheet" href="base.css?v=163">
 
 <style id="dashboardPdfStyles">
 @page{size:A4 landscape;margin:8mm 8mm 9mm 8mm}
@@ -189,8 +189,8 @@ html[data-theme="dark"] .firebase-modal{background:#101a2a;color:#f3f4f6}.data-o
 @media (max-width:760px){.help-intro{grid-template-columns:1fr}.help-badge{justify-self:start}.help-grid{grid-template-columns:1fr}}
 </style>
 <style id="logoIndi">.sidebar .brand img,#gateLogo{width:auto!important;height:48px!important;max-width:64px;object-fit:contain!important;border-radius:8px;background:#fff;padding:3px}#gateLogo{height:90px!important;max-width:none;margin:0 auto 10px;display:block}.pdf-only-title .pdf-brand img{width:auto!important;object-fit:contain!important;border-radius:0}</style>
-<link rel="stylesheet" href="graficos.css?v=159">
-<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=159">
+<link rel="stylesheet" href="graficos.css?v=163">
+<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=163">
 <script>
 /* ===== CONFIGURAÇÃO DO FIREBASE =====
    Preencha uma vez e todos os computadores conectam sozinhos. Deixe "" para não usar. */
@@ -202,7 +202,7 @@ window.EMBEDDED_FIREBASE_CONFIG={
   messagingSenderId:"894679339944",
   appId:"1:894679339944:web:fcf8fc0bf6f45439c7c39d"
 };
-window.APP_VERSION="v159";
+window.APP_VERSION="v163";
 /* Mostra erros de JavaScript na tela em vez de ficar em branco */
 window.addEventListener('error',function(ev){
   try{
@@ -233,7 +233,7 @@ html[data-theme="dark"] .prodcal .dia span.ref,html[data-theme="dark"] .prodcal 
 .prodcal .vazio{min-height:66px}
 html[data-theme="dark"] .sidebar{background:linear-gradient(180deg,#1a2c47,#142238);border-right:1px solid var(--border)}
 </style>
-<link rel="stylesheet" href="mobile.css?v=159">
+<link rel="stylesheet" href="mobile.css?v=163">
 <style id="metalCss">
 /* ===== TEMA METAL LÍQUIDO (camada visual; só cores/efeitos, não altera layout) ===== */
 html.metal{--orange:#ff6a1f;--radius:16px;--mx:#ff6a1f}
@@ -850,22 +850,26 @@ service cloud.firestore {
   <div>
     <div class="help-kicker">❓ Central de ajuda</div>
     <h2 class="help-title">Como utilizar o Controle de Refugos</h2>
-    <p class="help-lead">Guia para registrar, acompanhar e analisar os refugos da Fundição e da Usinagem, e conduzir a reunião semanal. As informações têm como referência as <b>FQ103</b>, <b>FQ013</b> e a ata <b>FQ095</b>.</p>
+    <p class="help-lead">Guia para registrar, acompanhar e analisar refugos, retrabalhos e devoluções da Fundição e da Usinagem, e conduzir a reunião. Referências: <b>FQ103 Rev 01</b>, <b>FQ013 Rev 01</b>, <b>FQ051</b> (devolução), <b>FQ 099</b> (etiqueta de retrabalho) e a ata <b>FQ095</b>.</p>
     <div class="hint" id="helpVer" style="margin-top:6px"></div>
   </div>
-  <div class="help-badge">FQ103 + FQ013 + FQ095<br><span style="font-weight:700;color:var(--muted)">Fundição e Usinagem</span></div>
+  <div class="help-badge">FQ103 + FQ013 Rev 01<br><span style="font-weight:700;color:var(--muted)">Fundição e Usinagem</span></div>
 </div>
 
 <div class="panel help-tools">
-  <input id="helpSearch" type="search" placeholder="🔎 Pesquise sua dúvida (ex.: senha, meta, ata, PDF, importar)" oninput="helpFilter()" autocomplete="off">
+  <input id="helpSearch" type="search" placeholder="🔎 Pesquise sua dúvida (ex.: peso, 6M, composição, backup, espinha de peixe)" oninput="helpBusca()" autocomplete="off">
   <div class="help-chips">
-    <button type="button" class="help-chip" onclick="helpGo('hp-inicio')">🚀 Primeiros passos</button>
-    <button type="button" class="help-chip" onclick="helpGo('hp-dash')">📊 Dashboards</button>
-    <button type="button" class="help-chip" onclick="helpGo('hp-meta')">🎯 Meta</button>
-    <button type="button" class="help-chip" onclick="helpGo('hp-reuniao')">👥 Reunião e ata</button>
-    <button type="button" class="help-chip" onclick="helpGo('hp-seg')">🔐 Acessos</button>
-    <button type="button" class="help-chip" onclick="helpGo('hp-faq')">💬 Dúvidas frequentes</button>
-    <button type="button" class="help-chip" onclick="helpGo('hp-novo')">🆕 Novidades</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-inicio')">🚀 Primeiros passos</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-menu')">🧭 Menu</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-peso')">⚖ Tipos de peso</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-dash')">📊 Dashboards</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-360')">🔭 Painel 360</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-6m')">🐟 6M e espinha</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-apres')">🎬 Apresentação</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-reuniao')">👥 Reunião e ata</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-seg')">🔐 Acessos</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-faq')">💬 Dúvidas</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-novo')">🆕 Novidades</button>
   </div>
   <div id="helpEmpty" class="hint" style="display:none;margin-top:10px">Nada encontrado para essa busca. Tente outra palavra ou veja as dúvidas frequentes.</div>
 </div>
@@ -873,141 +877,276 @@ service cloud.firestore {
 <div class="help-grid">
   <div class="help-card wide" id="hp-inicio" data-h="primeiros passos fluxo rotina começar">
     <h3>🚀 Primeiros passos — a rotina recomendada</h3>
-    <div class="help-step"><span class="help-step-num">1</span><p><b>Cadastro em dia:</b> mantenha produtos, motivos e clientes atualizados. Eles preenchem os lançamentos automaticamente.</p></div>
-    <div class="help-step"><span class="help-step-num">2</span><p><b>Lançar:</b> registre cada refugo em <b>Lançamentos</b> no mesmo dia.</p></div>
-    <div class="help-step"><span class="help-step-num">3</span><p><b>Conferir:</b> use o <b>Histórico</b> para revisar e corrigir lançamentos.</p></div>
-    <div class="help-step"><span class="help-step-num">4</span><p><b>Acompanhar:</b> veja o resumo automático, a meta e os Pareto nos <b>Dashboards</b>.</p></div>
-    <div class="help-step"><span class="help-step-num">5</span><p><b>Decidir:</b> na <b>Reunião</b>, gere a ata, defina ações com alvo e prazo e acompanhe os resultados.</p></div>
+    <div class="help-step"><span class="help-step-num">1</span><p><b>Cadastro em dia:</b> mantenha produtos (com os pesos), motivos (com a causa 6M) e clientes atualizados. Eles preenchem os lançamentos automaticamente.</p></div>
+    <div class="help-step"><span class="help-step-num">2</span><p><b>Lançar:</b> registre cada refugo em <b>Lançamentos</b> no mesmo dia. Retrabalhos e devoluções têm telas próprias.</p></div>
+    <div class="help-step"><span class="help-step-num">3</span><p><b>Conferir:</b> use o <b>Histórico</b> para revisar e corrigir; atenção aos avisos de peça sem peso.</p></div>
+    <div class="help-step"><span class="help-step-num">4</span><p><b>Acompanhar:</b> veja a meta, o resumo automático, o quadro de meses e o Painel 360 em <b>Dashboards</b>.</p></div>
+    <div class="help-step"><span class="help-step-num">5</span><p><b>Decidir:</b> em <b>Gestão</b> gere a apresentação e, na <b>Reunião</b>, a ata com ações, alvo e prazo.</p></div>
   </div>
 
-  <div class="help-card" data-h="lançar novo refugo lançamento código produto cliente data peso">
+  <div class="help-card wide" id="hp-menu" data-h="menu abas lateral dashboards dados auditoria modo escuro claro metal celular navegação">
+    <h3>🧭 Menu e navegação</h3>
+    <ul>
+      <li><b>Dashboards</b> reúne três telas, escolhidas pelos botões no topo: <b>⚖ Peso</b>, <b>🔢 Quantidade</b> e <b>📊 Painel 360</b>.</li>
+      <li><b>Dados e auditoria</b> reúne <b>💾 Dados e backup</b> e <b>🗂 Auditoria</b>.</li>
+      <li>As demais abas: Lançamentos, Histórico, Cadastro, Reunião, Retrabalhos, Devoluções, Gestão e Ajuda.</li>
+      <li><b>🌙 Modo escuro / ☀️ claro</b> no topo. O botão <b>✨ Metal</b> liga ou desliga o visual de metal líquido (desligue se o aparelho ficar lento). A escolha fica lembrada.</li>
+      <li><b>Celular:</b> o menu abre pelo botão ☰. As tabelas rolam para o lado e os filtros se empilham; a apresentação aceita deslizar o dedo para trocar de slide.</li>
+      <li><b>● Online / Offline</b> (topo) mostra se o sistema está sincronizando com o Firebase.</li>
+    </ul>
+  </div>
+
+  <div class="help-card" data-h="lançar novo refugo lançamento código produto cliente data peso aviso sem peso">
     <h3>1. Lançar um novo refugo</h3>
-    <div class="help-step"><span class="help-step-num">1</span><p>Abra <b>Lançamentos</b>. A <b>data do refugo</b> vem com a data atual; use o calendário para escolher outra. A <b>data do lançamento</b> é gravada automaticamente.</p></div>
+    <div class="help-step"><span class="help-step-num">1</span><p>Abra <b>Lançamentos</b>. A <b>data do refugo</b> vem com a data atual; use o calendário para outra. A <b>data do lançamento</b> é gravada automaticamente.</p></div>
     <div class="help-step"><span class="help-step-num">2</span><p>Informe o <b>código do produto</b>. O sistema busca descrição, planta e pesos do cadastro.</p></div>
     <div class="help-step"><span class="help-step-num">3</span><p>Escolha o <b>cliente</b> (quando o código tiver mais de um) e preencha quantidade, motivo, OF, responsável e observação.</p></div>
-    <div class="help-step"><span class="help-step-num">4</span><p>Confira os pesos calculados e salve. O registro aparece no <b>Histórico</b> e nos <b>Dashboards</b>.</p></div>
+    <div class="help-step"><span class="help-step-num">4</span><p>Confira os pesos calculados e salve. <b>⚠ Se a peça não tiver peso bruto fracionado no cadastro</b>, aparece um aviso amarelo e o sistema pergunta se deseja lançar mesmo assim (ficaria com 0 kg). O ideal é cadastrar o peso antes.</p></div>
   </div>
 
-  <div class="help-card" data-h="cadastro produto motivos clientes responsáveis participantes excel atualizar importar peso sem peso">
+  <div class="help-card" data-h="cadastro produto motivos clientes responsáveis participantes materiais setores metas excel atualizar importar peso sem peso">
     <h3>2. Cadastros</h3>
-    <p>Em <b>Cadastro</b> ficam Motivos, Produto, Clientes, Responsável, Participantes e <b>Metas</b>. O acesso é protegido por senha.</p>
+    <p>Em <b>Cadastro</b> ficam Motivos, Produto, Clientes, Responsável, Participantes, Materiais, Setores e <b>Metas</b>. O acesso é protegido por senha.</p>
     <ul>
-      <li><b>Produto:</b> código, descrição, planta e pesos (bruto fracionado, árvore, líquido da Fundição/bruto da Usinagem e usinado).</li>
+      <li><b>Produto:</b> código, descrição, planta e pesos (bruto fracionado, árvore, líquido da Fundição/bruto da Usinagem e usinado). Para peças da <b>Usinagem</b> há também a composição (item 3).</li>
+      <li><b>Motivos:</b> cada motivo tem a planta e a <b>causa 6M</b> (veja “6M e espinha de peixe”).</li>
       <li><b>Atualizar pelo Excel:</b> lê a aba <b>CADASTRO</b> da planilha mestre. Campos vazios ou "SEM PESO" <b>não apagam</b> pesos já cadastrados.</li>
       <li><b>Participantes:</b> nomes e e-mails usados na ata e nos convites.</li>
     </ul>
-    <p style="margin-top:9px"><b>Importante:</b> alterar o peso no cadastro vale só para <b>novos lançamentos</b>; os refugos já lançados mantêm o peso gravado.</p>
+    <p style="margin-top:9px"><b>Importante:</b> alterar o peso no cadastro vale só para <b>novos lançamentos</b> de refugo; os já lançados mantêm o peso gravado. Devoluções e retrabalhos, por outro lado, buscam o peso no cadastro na hora de exibir.</p>
   </div>
 
-  <div class="help-card" data-h="histórico pesquisar editar exportar csv importar lançamentos planilha">
-    <h3>3. Histórico</h3>
-    <p>Use <b>Histórico</b> para localizar e conferir os lançamentos.</p>
+  <div class="help-card" id="hp-comp" data-h="composição usinagem fundida usinado peça origem quantidade por peça bucha anéis excel">
+    <h3>3. Composição: fundida → usinada</h3>
     <ul>
-      <li>Pesquise por cliente, código, OF, produto ou motivo.</li>
+      <li>Ao cadastrar ou editar uma peça da <b>Usinagem</b>, preencha a <b>peça fundida de origem</b> (escolha na lista) e <b>quantas peças usinadas saem de cada fundida</b>. Exemplo: uma bucha fundida (66666) gera 3 anéis usinados (66607).</li>
+      <li>A fundida precisa existir no cadastro; o sistema avisa se não existir e não deixa a peça apontar para si mesma.</li>
+      <li>No Cadastro de produtos, o resumo mostra quantas peças da Usinagem já têm composição, e o botão <b>Excel composição</b> baixa a lista (usinado, fundida, quantidade).</li>
+    </ul>
+  </div>
+
+  <div class="help-card wide" id="hp-peso" data-h="peso tipo bruto fracionado líquido usinado seletor filtro kg sem peso custo">
+    <h3>4. ⚖ Tipos de peso</h3>
+    <p>O sistema trabalha com três pesos. Escolha o que quer ver no seletor <b>PESO</b> (ele é único: ao mudar em uma tela, muda em todas):</p>
+    <ul>
+      <li><b>Peso bruto fracionado:</b> o refugo gerado (quantidade × peso principal do cadastro). É o peso gravado em cada lançamento.</li>
+      <li><b>Peso líquido Fundição / bruto Usinagem:</b> quantidade × o peso “líquido da Fundição / bruto da Usinagem” do cadastro.</li>
+      <li><b>Peso usinado:</b> quantidade × peso da peça usinada.</li>
+    </ul>
+    <p>O seletor vale para: Dashboards (Peso e Painel 360), Histórico (três colunas lado a lado), Devoluções, Retrabalhos, Visão geral e apresentação. A <b>quantidade</b> aparece sempre em paralelo.</p>
+    <ul>
+      <li>Peças sem o peso escolhido no cadastro contam <b>0 kg</b> e geram um aviso <b>⚠</b> com o número de itens afetados.</li>
+      <li>O <b>custo (R$)</b> é sempre calculado sobre o peso bruto fracionado, independente do seletor.</li>
+      <li>A <b>espinha de peixe</b> usa sempre o peso bruto fracionado.</li>
+    </ul>
+  </div>
+
+  <div class="help-card" data-h="histórico pesquisar editar exportar csv excel importar lançamentos planilha peças sem peso">
+    <h3>5. Histórico</h3>
+    <ul>
+      <li>Pesquise e filtre por cliente, código, OF, produto, motivo e tipo de peso.</li>
+      <li>A tabela mostra os <b>três pesos</b> (o selecionado em negrito) e a quantidade.</li>
       <li>Edite um lançamento para corrigir informações.</li>
-      <li>Exporte os dados em CSV.</li>
+      <li><b>Exportar CSV (filtrado)</b> e <b>Excel (filtrado + peças sem peso)</b>: o Excel traz uma segunda planilha com as peças filtradas que não têm peso cadastrado, para você completar o cadastro.</li>
       <li>Importe a aba <b>LANÇAMENTOS</b> de uma planilha Excel.</li>
     </ul>
   </div>
 
-  <div class="help-card wide" id="hp-dash" data-h="dashboard peso quantidade resumo automático pareto custo concentração reincidente filtros pdf projeção">
-    <h3>4. Dashboards</h3>
+  <div class="help-card wide" id="hp-dash" data-h="dashboard peso quantidade resumo automático pareto custo concentração reincidente filtros pdf projeção quadro de meses">
+    <h3>6. 📊 Dashboards (Peso e Quantidade)</h3>
     <ul>
-      <li><b>Dashboard peso:</b> visão em kg — indicadores, % de refugo, custo, meta, motivos e evolução mensal.</li>
-      <li><b>Dashboard quantidade:</b> visão em unidades (peças), por planta, motivo, cliente e item.</li>
-      <li><b>📌 Resumo automático</b> (topo): mês em andamento, <b>projeção de fechamento</b>, variação contra o mês anterior, principal motivo, maior alta e ações vencidas. No dashboard de peso compara também com a meta em kg/mês.</li>
-      <li><b>Pareto e concentração:</b> motivos e itens que mais pesam, com % acumulado. Mostra também os <b>itens reincidentes</b> (refugo em 3 ou mais datas). Em <b>R$</b> quando os custos estão liberados (botão <b>Mostrar custos</b>); sem liberação, em kg.</li>
-      <li>Use os filtros de <b>ano, planta e mês</b> (na planta dá para marcar mais de uma, por exemplo Fundição + Fundição na Usinagem). O resumo do topo considera sempre o mês corrente e respeita só a planta.</li>
-      <li><b>Gerar PDF A4</b> compartilha o dashboard.</li>
+      <li><b>Peso:</b> visão em kg — indicadores, % de refugo, custo, meta, motivos e evolução mensal. <b>Quantidade:</b> visão em peças, por planta, motivo, cliente e item.</li>
+      <li><b>📌 Resumo automático</b> (topo): mês em andamento, <b>projeção de fechamento</b>, variação contra o mês anterior, principal motivo e ações vencidas.</li>
+      <li><b>Pareto e concentração:</b> motivos e itens que mais pesam, com % acumulado e <b>itens reincidentes</b> (refugo em 3 ou mais datas). Em <b>R$</b> quando os custos estão liberados (botão <b>Mostrar custos</b>).</li>
+      <li><b>📅 Quadro de meses</b> (fim da página): um cartão por mês com o valor, a % da produção e a variação contra o mês anterior. <b>Clique em um mês</b> para ver refugo, peças, % da produção, Fundição/Usinagem, devolução, retrabalho, custo (se liberado) e os rankings de motivos, causas 6M, clientes e peças. Em anos diferentes, use os botões de ano.</li>
+      <li>Filtros de <b>ano, planta e mês</b> (na planta dá para marcar mais de uma). <b>Gerar PDF A4</b> compartilha o dashboard.</li>
+      <li>Clique nas barras e fatias dos gráficos para ver o detalhe.</li>
+    </ul>
+  </div>
+
+  <div class="help-card wide" id="hp-360" data-h="painel 360 executivo pareto mapa de calor peças críticas clientes calendário espinha análise avançada">
+    <h3>7. 🔭 Painel 360 — análise avançada</h3>
+    <p>Em <b>Dashboards → Painel 360</b>. No topo escolha o <b>período</b> (De/até ou atalhos 6 meses, 12 meses, ano atual), a <b>planta</b>, <b>kg ou peças</b> e o <b>tipo de peso</b>. As abas:</p>
+    <ul>
+      <li><b>🏁 Executivo:</b> indicadores com mini-gráfico e comparação com o período anterior (refugo, % Fundição vs meta, rendimento de qualidade, retrabalho, devolução, <b>PPM</b> e custo), gráficos mensais e uma <b>leitura automática</b> dos pontos principais.</li>
+      <li><b>📉 Pareto e causas:</b> Pareto dos motivos com a linha de 80% acumulado, causa 6M e planta. Clique numa barra para ver clientes e peças daquele motivo.</li>
+      <li><b>🔥 Mapa de calor:</b> motivo × mês e cliente × mês; quanto mais forte o laranja, maior o valor. Clique numa célula para detalhar.</li>
+      <li><b>🧩 Peças críticas:</b> ranking pelo <b>índice de criticidade</b> (média da participação da peça no refugo, na devolução e no retrabalho), com tendência e histórico. Há busca por código, peça ou cliente.</li>
+      <li><b>👥 Clientes:</b> refugo e devolução por cliente e % do total.</li>
+      <li><b>📅 Calendário:</b> refugo por dia da semana, semana do mês e dia do mês (usa a data do refugo).</li>
+      <li><b>🐟 Espinha 6M:</b> veja o próximo item.</li>
+    </ul>
+    <p class="hint">O mês em andamento entra como parcial. O botão <b>Imprimir / PDF</b> imprime a tela atual.</p>
+  </div>
+
+  <div class="help-card wide" id="hp-6m" data-h="6m espinha de peixe ishikawa causa mão de obra método máquina material medição meio ambiente classificação motivo">
+    <h3>8. 🐟 6M e espinha de peixe</h3>
+    <ul>
+      <li><b>6M:</b> Mão de obra, Método, Máquina, Material, Medição e Meio ambiente. Cada <b>motivo</b> do cadastro recebe uma causa 6M (Cadastro → Motivos). O sistema sugere a causa pelo nome do motivo; confirme ou ajuste.</li>
+      <li>Cadastros antigos foram convertidos: Processos/Projetos/Metalúrgica → Método; Erro humano → Mão de obra; Laboratório → Medição; Maquinários/Ferramental → Máquina.</li>
+      <li><b>Espinha de peixe</b> (Painel 360 → 🐟 Espinha 6M, e slide da apresentação): na cabeça está o problema (<b>refugo</b>: peças, kg bruto fracionado e R$). Cada espinha é um M, com <b>quantidade, peso e valor</b>, a % do peso e os 3 principais motivos. A espessura da espinha cresce com o peso.</li>
+      <li>Clique num M para ver todos os motivos, peças e clientes dele. <b>⬇ Baixar imagem (PNG)</b> salva o diagrama para anexar em relatórios.</li>
+      <li>O valor em R$ só aparece com os custos liberados (botão <b>🔐 Mostrar valores</b>). O rodapé informa o que ainda está <b>sem classificação 6M</b>.</li>
     </ul>
   </div>
 
   <div class="help-card" id="hp-meta" data-h="meta limite percentual kg mês cadastro metas barra">
-    <h3>5. 🎯 Meta</h3>
+    <h3>9. 🎯 Meta</h3>
     <ul>
       <li>Defina em <b>Cadastro → 🎯 Metas</b> (exige a senha do Cadastro): <b>Meta %</b> de refugo e <b>Meta kg/mês</b>.</li>
-      <li>No Dashboard peso, o <b>card laranja da Meta</b> mostra ✔ Dentro ou ▲ Acima, a barra de consumo do limite e uma mensagem de apoio (folga ou quanto falta corrigir).</li>
-      <li>A <b>Meta kg/mês</b> aparece como linha no gráfico mensal e alimenta a projeção do resumo.</li>
+      <li>No Dashboard peso, o <b>card da Meta</b> mostra ✔ Dentro ou ▲ Acima, a barra de consumo do limite e uma mensagem de apoio.</li>
+      <li>A meta aparece como linha nos gráficos (inclusive no Painel 360) e alimenta a projeção.</li>
     </ul>
   </div>
 
-  <div class="help-card" data-h="análises relatórios cliente peça of imprimir">
-    <h3>6. Análises e relatórios</h3>
-    <p>A aba <b>Análises</b> organiza os dados por cliente, peça e OF. A aba <b>Relatórios</b> reúne o relatório de refugo para impressão ou exportação.</p>
+  <div class="help-card" data-h="devolução devoluções fq051 procede não procede cliente peso nf pdf relatório destino">
+    <h3>10. ↩ Devoluções</h3>
+    <ul>
+      <li>Registre cada devolução (FQ051) com cliente, itens, quantidade, motivo, <b>procede ou não</b> e destino. Dá para anexar fotos da etiqueta e gerar o <b>PDF do registro</b>.</li>
+      <li><b>Reclamações “não procede”</b> não entram nos kg nem nos custos (use o filtro de procedência para vê-las).</li>
+      <li>O peso segue o <b>seletor de peso</b>: a lista mostra bruto fracionado, líquido e usinado, e o CSV traz os três. O bruto usa o peso digitado no lançamento; se estiver vazio, o do cadastro.</li>
+      <li>Painéis por planta com produção × devolução (% devolvido), por cliente e por motivo; aba <b>Relatório</b> mensal em PDF/Excel.</li>
+    </ul>
+  </div>
+
+  <div class="help-card" data-h="retrabalho retrabalhos etiqueta fq 099 status aguardando concluir foto antes depois material máquina peso kg">
+    <h3>11. 🔧 Retrabalhos (etiqueta FQ 099)</h3>
+    <ul>
+      <li><b>Lançar:</b> o <b>código do sistema é o mesmo do refugo</b>: descrição, material, cliente e planta vêm do cadastro.</li>
+      <li><b>Fotos:</b> até 4 <b>antes</b> e 4 <b>depois</b>; veja pelo botão 📷 na lista.</li>
+      <li><b>Andamento:</b> status, data de início e de conclusão, peças que deram certo e refugadas. Na lista, ▶ Iniciar e ✔ Concluir.</li>
+      <li><b>Painel:</b> atalhos de período e filtros de material, máquina, cliente e status; clique nas barras para filtrar. A métrica pode ser <b>Peças, Peso (kg) ou Etiquetas</b>, e há o indicador <b>Peso em retrabalho</b> conforme o seletor de peso.</li>
+      <li>A lista e o CSV trazem a quantidade e os três pesos (bruto fracionado, líquido, usinado) pelo cadastro do código.</li>
+      <li><b>Relatório</b> mensal em PDF/Excel. Materiais (GG25, GG30…) são cadastrados em <b>Cadastro → Materiais</b>.</li>
+      <li>Com o sistema <b>conectado online</b>, etiquetas e fotos aparecem em todos os computadores; sem conexão, ficam no aparelho e sobem quando reconectar.</li>
+    </ul>
+  </div>
+
+  <div class="help-card wide" id="hp-gestao" data-h="gestão visão geral alertas comparativo cruzamento refugo devolução relatório mensal análises relatórios previsão filtro período">
+    <h3>12. 📈 Gestão</h3>
+    <ul>
+      <li><b>🧭 Visão geral:</b> filtro de <b>período</b>, indicadores consolidados, <b>previsão</b> dos próximos meses (tendência dos meses completos, com nível de confiança) e o botão para a <b>apresentação</b>.</li>
+      <li><b>🔔 Alertas e metas:</b> avisos automáticos (variação, itens reincidentes, devoluções pendentes). A sensibilidade é ajustável.</li>
+      <li><b>⚖ Comparativo:</b> compara dois períodos.</li>
+      <li><b>🔗 Refugo × Devolução:</b> cruza o que foi refugado com o que voltou do cliente.</li>
+      <li><b>📑 Relatório mensal:</b> relatório completo em PDF ou Excel (.xlsx). Há também relatórios mensais em Retrabalhos e Devoluções.</li>
+      <li><b>⌕ Análises</b> e <b>▤ Relatórios:</b> consultas por cliente, peça e OF, e relatório de refugo para impressão.</li>
+    </ul>
+  </div>
+
+  <div class="help-card wide" id="hp-apres" data-h="apresentação reunião slides animação planta peso quantidade tema velocidade pdf teclado atalhos celular deslizar">
+    <h3>13. 🎬 Apresentação para reunião</h3>
+    <ul>
+      <li>Em <b>Gestão → Visão geral</b>, escolha <b>período</b>, <b>planta</b> (Fundição, Usinagem ou ambas), <b>Peso ou Quantidade</b> e o <b>tipo de peso</b>, e abra a apresentação.</li>
+      <li>Os slides têm gráficos animados (as linhas “andam”), previsão, resumo executivo, <b>quadro mensal clicável</b>, causas 6M, <b>espinha de peixe</b>, motivos, clientes, itens recorrentes, custo (se liberado) e pontos de atenção com ações sugeridas. Os gráficos mostram a <b>% de cada barra</b>.</li>
+      <li><b>Teclado:</b> ← → (ou espaço) trocam de slide; <b>F</b> tela cheia; <b>R</b> repete a animação; <b>A</b> avanço automático; <b>T</b> tema escuro/claro; <b>Esc</b> fecha. Os botões da barra inferior fazem o mesmo, além de <b>⏱</b> (velocidade da animação) e <b>PDF</b>.</li>
+      <li><b>Celular:</b> deslize para o lado para trocar de slide; gire o aparelho para aproveitar a tela.</li>
+      <li>O mês em andamento fica fora da previsão. A previsão usa só o histórico lançado: trate-a como estimativa.</li>
+    </ul>
   </div>
 
   <div class="help-card wide" id="hp-reuniao" data-h="reunião ata fq095 convites e-mail pdf número participantes decisões ações alvo prazo eficácia data de lançamento imprimir apresentar">
-    <h3>7. 👥 Reunião e ata (FQ095)</h3>
-    <div class="help-step"><span class="help-step-num">1</span><p><b>Período:</b> escolha as datas (ou <i>7 dias / Mês atual / Mês anterior</i>) e clique <b>Gerar</b>. Use <b>Apresentar</b> para exibir em tela cheia. A Reunião filtra pela <b>data de lançamento</b> (lançamentos antes de 08/10/2026 usam a data do refugo).</p></div>
+    <h3>14. 👥 Reunião e ata (FQ095)</h3>
+    <div class="help-step"><span class="help-step-num">1</span><p><b>Período:</b> escolha as datas (ou <i>7 dias / Mês atual / Mês anterior</i>) e clique <b>Gerar</b>. A Reunião filtra pela <b>data de lançamento</b> (lançamentos antes de 08/10/2026 usam a data do refugo).</p></div>
     <div class="help-step"><span class="help-step-num">2</span><p><b>Convites:</b> marque os participantes com e-mail cadastrado. A seleção fica lembrada neste aparelho.</p></div>
-    <div class="help-step"><span class="help-step-num">3</span><p><b>Ata:</b> informe <b>Nº da ata</b> (a próxima é sugerida), participantes, decisões e as <b>ações</b> (responsável, prazo, status).</p></div>
-    <div class="help-step"><span class="help-step-num">4</span><p><b>Alvo da ação:</b> digite o motivo ou o item que a ação quer reduzir. O painel <b>Acompanhamento das ações</b> compara o refugo desse alvo nos dias antes e depois do prazo: <b>Eficaz</b> (queda de 10% ou mais), <b>Estável</b> ou <b>Piorou</b>.</p></div>
-    <div class="help-step"><span class="help-step-num">5</span><p><b>Imprimir ou enviar:</b> a ata sai no padrão <b>FQ095 rev01</b>. O botão <b>✉ Enviar por e-mail</b> gera o PDF: no celular abre o compartilhamento com o PDF anexado; no computador baixa o PDF e abre o e-mail para você anexar.</p></div>
+    <div class="help-step"><span class="help-step-num">3</span><p><b>Ata:</b> informe o <b>Nº da ata</b> (a próxima é sugerida), participantes, decisões e as <b>ações</b> (responsável, prazo, status).</p></div>
+    <div class="help-step"><span class="help-step-num">4</span><p><b>Alvo da ação:</b> digite o motivo ou item que a ação quer reduzir. O <b>Acompanhamento das ações</b> compara o refugo desse alvo antes e depois do prazo: <b>Eficaz</b> (queda de 10% ou mais), <b>Estável</b> ou <b>Piorou</b>.</p></div>
+    <div class="help-step"><span class="help-step-num">5</span><p><b>Imprimir ou enviar:</b> a ata sai no padrão <b>FQ095 rev01</b>. <b>✉ Enviar por e-mail</b> gera o PDF: no celular abre o compartilhamento com o PDF; no computador baixa o PDF e abre o e-mail para anexar.</p></div>
   </div>
 
-  <div class="help-card" id="hp-seg" data-h="senha acesso segurança custos cadastro bloquear">
-    <h3>8. 🔐 Acessos e senhas</h3>
+  <div class="help-card wide" id="hp-dados" data-h="dados backup json restaurar firebase online nuvem sincronizar auditoria lixeira histórico alterações aparelho nome">
+    <h3>15. 💾 Dados e auditoria</h3>
     <ul>
-      <li><b>Abertura do sistema:</b> pede a senha ao abrir e libera até fechar a aba.</li>
-      <li><b>Cadastro (inclui Metas):</b> senha própria. Use <b>Bloquear cadastro</b> ao terminar.</li>
-      <li><b>Custos (R$):</b> liberados pelo botão <b>Mostrar custos</b>, com senha própria.</li>
-      <li>Em caso de dúvida sobre as senhas, fale com o responsável pelo sistema. Não compartilhe as senhas em mensagens abertas.</li>
+      <li><b>Baixar / restaurar backup JSON:</b> o sistema também baixa um arquivo sozinho a cada 7 dias, quando aberto. Faça backup antes de importações ou alterações em massa.</li>
+      <li><b>Conectar online (Firebase):</b> compartilha os dados entre computadores e celulares. <b>Enviar dados locais</b> e <b>Baixar dados do Firebase</b> sincronizam conforme a configuração.</li>
+      <li><b>🗂 Auditoria — histórico:</b> quem criou, editou ou excluiu refugos, retrabalhos, atas, cadastros e metas, com data, hora e o <b>aparelho</b> (um número que identifica o computador/celular). Informe seu nome na primeira alteração; ele fica lembrado neste aparelho.</li>
+      <li><b>Lixeira (com senha):</b> o que for excluído fica 180 dias e pode ser restaurado. Fotos já apagadas não voltam.</li>
     </ul>
   </div>
 
-  <div class="help-card" data-h="retrabalho retrabalhos etiqueta fq 099 status aguardando concluir foto antes depois material máquina"><h3>10. 🔧 Retrabalhos (etiqueta FQ 099)</h3><ul><li><b>Lançar:</b> o <b>código do sistema é o mesmo do refugo</b>: descrição, material, cliente e planta vêm do cadastro.</li><li><b>Fotos:</b> anexe até 4 fotos <b>antes</b> e 4 <b>depois</b> do retrabalho. Veja na lista pelo botão 📷.</li><li><b>Andamento:</b> em "Andamento do retrabalho" ficam o status, a <b>data que iniciou</b>, a <b>data que concluiu</b>, as <b>peças que deram certo</b> e as <b>refugadas</b>. Na lista, ▶ Iniciar registra o início e ✔ Concluir pergunta quantas peças deram certo e quantas foram refugadas.</li><li><b>Painel:</b> use os atalhos de período (7 dias, 30 dias, mês…) e os filtros de material, máquina/local, cliente e status. Toque numa barra de material, máquina ou cliente para filtrar. Mostra peças recuperadas, retrabalho × refugo por mês, mapa de calor máquina × material, Pareto de motivos, tempo de execução por máquina e as etiquetas abertas mais antigas.</li><li><b>Materiais</b> (GG25, GG30…) são cadastrados em <b>Cadastro → 🧱 Materiais</b> e valem para refugos e retrabalhos.</li><li>Os retrabalhos ficam <b>separados dos refugos</b>. Com o sistema <b>conectado online</b> (Dados e backup), as etiquetas e fotos aparecem <b>em todos os computadores</b> em tempo real; sem conexão, ficam neste aparelho e são enviadas quando reconectar. Use <b>Exportar CSV</b> para guardar cópia.</li></ul></div>
-<div class="help-card" data-h="auditoria histórico alterações lixeira backup restaurar senha excluir"><h3>11. 🗂 Auditoria, lixeira e backup</h3><ul><li><b>Histórico:</b> mostra quem criou, editou ou excluiu refugos, retrabalhos, atas, cadastros e metas, com data e hora. Informe seu nome na primeira alteração.</li><li><b>Lixeira (com senha):</b> tudo o que for excluído vai para lá por 180 dias e pode ser restaurado. Fotos já apagadas não voltam.</li><li><b>Backup:</b> o sistema baixa sozinho um arquivo a cada 7 dias, quando aberto. Você também pode baixar na hora e restaurar um arquivo.</li></ul></div>
-<div class="help-card" data-h="dados backup json restaurar firebase online nuvem sincronizar">
-    <h3>9. Dados e backup</h3>
+  <div class="help-card" id="hp-seg" data-h="senha acesso segurança custos cadastro bloquear">
+    <h3>16. 🔐 Acessos e senhas</h3>
     <ul>
-      <li><b>Baixar backup JSON:</b> salva uma cópia dos lançamentos.</li>
-      <li><b>Restaurar JSON:</b> recupera os dados a partir de um backup.</li>
-      <li><b>Conectar online / Firebase:</b> compartilha os dados entre computadores e celulares.</li>
-      <li><b>Enviar dados locais / Baixar dados do Firebase:</b> sincroniza conforme a configuração online.</li>
+      <li><b>Abertura do sistema:</b> pede a senha ao abrir e libera até fechar a aba.</li>
+      <li><b>Cadastro (inclui Metas):</b> senha própria. Use <b>Bloquear cadastro</b> ao terminar.</li>
+      <li><b>Custos (R$):</b> liberados pelo botão <b>Mostrar custos</b>, com senha própria. Sem liberação, o sistema mostra 🔒 ou usa kg.</li>
+      <li>Não compartilhe as senhas em mensagens abertas; em caso de dúvida, fale com o responsável pelo sistema.</li>
     </ul>
   </div>
 </div>
 
 <div class="panel help-faq" id="hp-faq" style="margin-top:16px">
   <h3>💬 Dúvidas frequentes</h3>
-  <details data-h="peso zerado sem peso não preencheu cadastro"><summary>O lançamento não preencheu os pesos</summary><p>O produto pode não estar cadastrado ou estar com "SEM PESO". Atualize o cadastro (Cadastro → Produto) e lance novamente.</p></details>
+  <details data-h="peso zerado sem peso não preencheu cadastro aviso"><summary>O lançamento não preencheu os pesos / apareceu o aviso de peça sem peso</summary><p>O produto pode não estar cadastrado ou estar com "SEM PESO". Atualize o cadastro (Cadastro → Produto) e lance novamente. Para achar todas as peças sem peso, filtre no Histórico e use o <b>Excel (filtrado + peças sem peso)</b>.</p></details>
+  <details data-h="peso diferente dashboard histórico números mudaram tipo de peso seletor"><summary>Os números mudaram sozinhos</summary><p>Verifique o seletor <b>PESO</b>: bruto fracionado, líquido ou usinado dão totais diferentes. Ele é único para o sistema todo.</p></details>
   <details data-h="importar planilha excel não entrou cadastro erro"><summary>Importei a planilha e nada entrou</summary><p>Para o cadastro, use o arquivo com a aba <b>CADASTRO</b>; para lançamentos, a aba <b>LANÇAMENTOS</b>. Pesos que vêm de fórmulas ligadas a outras planilhas aparecem como "SEM PESO": abra o Excel com as planilhas de origem, atualize os vínculos, salve e importe de novo.</p></details>
-  <details data-h="alterei peso cadastro refugos antigos mudam histórico"><summary>Mudei o peso no cadastro. Os refugos antigos mudam?</summary><p>Não. O peso fica gravado no lançamento; só os novos lançamentos usam o valor atualizado.</p></details>
+  <details data-h="alterei peso cadastro refugos antigos mudam histórico"><summary>Mudei o peso no cadastro. Os refugos antigos mudam?</summary><p>Os <b>refugos</b> já lançados não: o peso bruto fracionado fica gravado (os pesos líquido e usinado usam o valor gravado quando existe; senão, o do cadastro). Já <b>devoluções e retrabalhos</b> consultam o cadastro e mudam.</p></details>
+  <details data-h="6m causa não classificado sem classificação espinha motivo"><summary>A espinha de peixe mostra “sem classificação 6M”</summary><p>Alguns motivos ainda não têm causa 6M. Vá em <b>Cadastro → Motivos</b> e escolha a causa de cada um.</p></details>
+  <details data-h="valor r$ cadeado custos espinha painel"><summary>O valor aparece como 🔒</summary><p>Os custos estão bloqueados. Use <b>Mostrar custos</b> (ou 🔐 Mostrar valores) e informe a senha.</p></details>
   <details data-h="meta mudar alterar onde"><summary>Como altero a meta?</summary><p>Somente em <b>Cadastro → 🎯 Metas</b>, com a senha do Cadastro liberada.</p></details>
-  <details data-h="reunião data lançamento refugo período filtra"><summary>Qual data a Reunião usa para filtrar?</summary><p>A partir de 08/10/2026, a <b>data do lançamento</b>. Registros anteriores usam a data do refugo. Assim, o que foi lançado na semana aparece na reunião da semana, mesmo que o refugo seja antigo.</p></details>
-  <details data-h="ata pdf e-mail anexo enviar celular"><summary>Como envio a ata com o PDF anexado?</summary><p>Na lista de reuniões salvas, clique em <b>✉ Enviar por e-mail</b>. No celular, escolha o aplicativo de e-mail na tela de compartilhamento. No computador, o PDF é baixado e o e-mail abre para você anexá-lo. É preciso estar com internet.</p></details>
+  <details data-h="reunião data lançamento refugo período filtra"><summary>Qual data a Reunião usa para filtrar?</summary><p>A partir de 08/10/2026, a <b>data do lançamento</b>; registros anteriores usam a data do refugo.</p></details>
+  <details data-h="ata pdf e-mail anexo enviar celular"><summary>Como envio a ata com o PDF anexado?</summary><p>Na lista de reuniões salvas, clique em <b>✉ Enviar por e-mail</b>. No celular, escolha o aplicativo de e-mail; no computador, o PDF é baixado e o e-mail abre para você anexá-lo. É preciso internet.</p></details>
   <details data-h="ação resultado aguardando dados eficácia alvo"><summary>O resultado da ação mostra "aguardando dados"</summary><p>A ação precisa ter um <b>alvo</b> e já ter passado pelo menos <b>7 dias do prazo</b>. Ações antigas sem alvo não são medidas: edite a ata e preencha o alvo.</p></details>
-  <details data-h="nova versão atualizar recarregar aviso"><summary>Apareceu o aviso de nova versão</summary><p>Atualize a página (ou feche e abra o sistema) para carregar a versão mais recente.</p></details>
-  <details data-h="celular tela lado rolagem"><summary>A tela do celular está cortada ou rolando para o lado</summary><p>Atualize a página para carregar a versão mais recente. Se continuar, avise o responsável informando a aba em que ocorreu.</p></details>
-  <details data-h="dois computadores online compartilhar dados sincronizar"><summary>Quero ver os mesmos dados em outro aparelho</summary><p>Use <b>Conectar online</b> (Firebase) em Dados e backup. Sem isso, os dados ficam salvos só no aparelho em uso — faça backup JSON com frequência.</p></details>
+  <details data-h="nova versão atualizar recarregar aviso faixa vermelha cache"><summary>Apareceu o aviso de nova versão ou uma faixa vermelha de versão</summary><p>Atualize a página (Ctrl+F5 no computador) ou feche e abra o sistema. A faixa vermelha indica que algum arquivo ficou em versão antiga: confira se todos os arquivos foram enviados para o site.</p></details>
+  <details data-h="visual metal lento travando desligar"><summary>O visual metal deixou o aparelho lento</summary><p>Desligue no botão <b>✨ Metal</b> (topo). O sistema volta ao visual simples e lembra sua escolha.</p></details>
+  <details data-h="celular tela lado rolagem"><summary>A tela do celular está cortada ou rolando para o lado</summary><p>Atualize a página para carregar a versão mais recente. Tabelas largas rolam para o lado de propósito. Se continuar, avise o responsável informando a aba.</p></details>
+  <details data-h="dois computadores online compartilhar dados sincronizar"><summary>Quero ver os mesmos dados em outro aparelho</summary><p>Use <b>Conectar online</b> (Firebase) em Dados e backup. Sem isso, os dados ficam só no aparelho em uso — faça backup JSON com frequência.</p></details>
+  <details data-h="aparelho número auditoria quem alterou nome"><summary>O que é o número do aparelho na Auditoria?</summary><p>É um código gerado para cada computador ou celular, usado junto com o nome para identificar de onde veio a alteração.</p></details>
 </div>
 
-<div class="panel help-faq" style="margin-top:16px" data-h="glossário termos pareto reincidente alvo fq095 fq103 fq013 refugo percentual">
+<div class="panel help-faq" style="margin-top:16px" data-h="glossário termos pareto reincidente alvo fq095 fq103 fq013 refugo percentual ppm criticidade 6m">
   <h3>📖 Glossário</h3>
   <ul>
-    <li><b>Refugo (kg):</b> peso s/ canal refugado, gravado em cada lançamento.</li>
-    <li><b>% de refugo:</b> refugo ÷ produção do período (produção cadastrada da Fundição).</li>
-    <li><b>Pareto:</b> ordena as causas da maior para a menor e mostra o % acumulado; poucas causas costumam explicar a maior parte da perda.</li>
+    <li><b>Refugo (kg):</b> peso do refugo conforme o tipo de peso escolhido. O gravado no lançamento é o <b>bruto fracionado</b>.</li>
+    <li><b>% de refugo:</b> refugo da Fundição ÷ produção da Fundição no período.</li>
+    <li><b>Rendimento de qualidade:</b> 100% − % de refugo (parte da produção que não virou refugo).</li>
+    <li><b>PPM de devolução:</b> kg devolvidos por milhão de kg produzidos (Fundição).</li>
+    <li><b>Pareto:</b> ordena as causas da maior para a menor e mostra o % acumulado; poucas causas explicam a maior parte da perda (regra 80/20).</li>
+    <li><b>Índice de criticidade:</b> média da participação de uma peça no refugo, na devolução e no retrabalho.</li>
+    <li><b>6M:</b> Mão de obra, Método, Máquina, Material, Medição e Meio ambiente — as seis famílias de causa do diagrama de espinha de peixe (Ishikawa).</li>
+    <li><b>Composição:</b> relação entre a peça fundida de origem e as peças usinadas que saem dela.</li>
     <li><b>Item reincidente:</b> item com refugo em 3 ou mais datas diferentes no período.</li>
     <li><b>Alvo da ação:</b> motivo ou item que a ação pretende reduzir.</li>
-    <li><b>FQ103 / FQ013:</b> formulários de referência dos lançamentos. <b>FQ095:</b> ata de reunião.</li>
+    <li><b>FQ103 / FQ013 Rev 01:</b> formulários de referência dos lançamentos. <b>FQ051:</b> devolução. <b>FQ 099:</b> etiqueta de retrabalho. <b>FQ095:</b> ata de reunião.</li>
   </ul>
 </div>
 
 <div class="panel help-faq" id="hp-novo" style="margin-top:16px" data-h="novidades atualizações versão">
   <h3>🆕 Novidades</h3>
   <ul>
-    <li><b>Resumo automático, Pareto por custo/quantidade e acompanhamento das ações</b> nos dashboards e na Reunião.</li>
-    <li><b>Card da Meta</b> com barra de consumo e mensagens; meta editável só no Cadastro.</li>
-    <li><b>Ata FQ095 rev01</b>, nº da ata, convites lembrados e envio por e-mail com PDF.</li>
-    <li>Reunião filtrando pela <b>data de lançamento</b>; senha de acesso ao sistema; ajustes para celular.</li>
+    <li><b>Menu enxuto:</b> Dashboards (Peso, Quantidade e Painel 360) e Dados e auditoria em abas únicas.</li>
+    <li><b>Painel 360</b> com análise executiva, Pareto, mapa de calor, peças críticas, clientes e calendário; <b>espinha de peixe 6M</b> com quantidade, peso e valor.</li>
+    <li><b>Quadro de meses</b> clicável nos dashboards e na apresentação.</li>
+    <li><b>Tipos de peso</b> (bruto fracionado, líquido, usinado) em dashboards, histórico, devoluções, retrabalhos e apresentação; aviso de peça sem peso ao lançar.</li>
+    <li><b>Composição</b> fundida → usinada no cadastro de peças.</li>
+    <li><b>Apresentação animada</b> para reunião, com previsão, filtro de planta, peso/quantidade e modo celular.</li>
+    <li>Visual <b>metal líquido</b> (botão ✨ Metal), FQ103/FQ013 <b>Rev 01</b> e identificação do aparelho na auditoria.</li>
   </ul>
 </div>
 
 <div class="panel help-note">
-  <b>Recomendação de uso:</b> antes de importações ou alterações em massa, faça um <b>backup JSON</b>. Mantenha o cadastro de produtos atualizado, pois ele é a referência para o preenchimento automático do lançamento.
+  <b>Recomendação de uso:</b> antes de importações ou alterações em massa, faça um <b>backup JSON</b>. Mantenha o cadastro de produtos (com os pesos) e de motivos (com a causa 6M) atualizado: ele é a base de todos os cálculos e análises.
 </div>
-<script>(function(){var e=document.getElementById('helpVer');if(e)e.textContent='Versão do sistema: '+(window.APP_VERSION||'—')})();</script>
+<script>(function(){
+var e=document.getElementById('helpVer');if(e)e.textContent='Versão do sistema: '+(window.APP_VERSION||'—');
+function nz(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()}
+window.helpBusca=function(){
+  var q=nz((document.getElementById('helpSearch')||{}).value).trim(),root=document.getElementById('ajuda'),n=0;
+  root.querySelectorAll('.help-card,.help-faq details,.help-faq[data-h],.help-intro~.help-faq').forEach(function(el){
+    var ok=!q||nz((el.getAttribute('data-h')||'')+' '+el.textContent).indexOf(q)>=0;
+    if(el.tagName==='DETAILS'){el.style.display=ok?'':'none';if(q&&ok)el.open=true;else if(!q)el.open=false}
+    else el.style.display=ok?'':'none';
+    if(ok)n++;
+  });
+  var faq=document.getElementById('hp-faq');if(faq){var vis=faq.querySelectorAll('details');var any=[].some.call(vis,function(d){return d.style.display!=='none'});faq.style.display=(!q||any)?'':'none'}
+  var em=document.getElementById('helpEmpty');if(em)em.style.display=(q&&!n)?'':'none';
+};
+window.helpIr=function(id){
+  var s=document.getElementById('helpSearch');if(s&&s.value){s.value='';helpBusca()}
+  var el=document.getElementById(id);if(!el)return;el.scrollIntoView({behavior:'smooth',block:'start'});
+  el.style.transition='box-shadow .3s';el.style.boxShadow='0 0 0 3px #ff6a1f';setTimeout(function(){el.style.boxShadow=''},1400);
+};
+})();</script>
 </section>
 
 <section id="relatorio" class="page">
@@ -1081,8 +1220,6 @@ service cloud.firestore {
 <div class="grid">
 <div class="panel"><h3>Backup</h3><p class="small">Os lançamentos ficam salvos neste navegador. Faça backup para não perder os dados.</p>
 <div class="toolbar"><button class="btn primary" onclick="backup()">💾 Baixar backup JSON</button><label class="btn secondary">📂 Restaurar JSON<input type="file" id="restore" accept=".json" hidden></label></div></div>
-<div class="panel"><h3>Backup</h3><p class="small">Os lançamentos ficam salvos neste navegador. Faça backup para não perder os dados.</p>
-<div class="toolbar"><button class="btn primary" onclick="backup()">💾 Baixar backup JSON</button><label class="btn secondary">📂 Restaurar JSON<input type="file" id="restore" accept=".json" hidden></label></div></div>
 <div class="panel"><h3>Backup das Devoluções</h3><p class="small">As devoluções têm backup próprio (não entram no backup dos refugos acima). Restaurar mescla com o que já existe, sem apagar nada.</p><div class="toolbar"><button class="btn primary" onclick="devBackup()">💾 Baixar backup de devoluções</button><label class="btn secondary">📂 Restaurar devoluções<input type="file" accept=".json" hidden onchange="devRestaurar(this)"></label></div></div>
 <div class="panel"><h3>Indicadores rápidos</h3><div id="summary"></div></div>
 </div>
@@ -1092,18 +1229,18 @@ service cloud.firestore {
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script src="dados-iniciais.js?v=159"></script>
-<script src="analises.js?v=159"></script>
-<script src="filtros.js?v=159"></script>
-<script src="retrabalhos.js?v=159"></script>
-<script src="app.js?v=159"></script>
-<script src="devolucoes.js?v=159"></script>
-<script src="gestao.js?v=159"></script>
-<script src="relatorios.js?v=159"></script>
-<script src="previsao.js?v=159"></script>
-<script src="reuniao.js?v=159"></script>
-<script src="auditoria.js?v=159"></script>
-<script src="versao.js?v=159"></script>
+<script src="dados-iniciais.js?v=163"></script>
+<script src="analises.js?v=163"></script>
+<script src="filtros.js?v=163"></script>
+<script src="retrabalhos.js?v=163"></script>
+<script src="app.js?v=163"></script>
+<script src="devolucoes.js?v=163"></script>
+<script src="gestao.js?v=163"></script>
+<script src="relatorios.js?v=163"></script>
+<script src="previsao.js?v=163"></script>
+<script src="reuniao.js?v=163"></script>
+<script src="auditoria.js?v=163"></script>
+<script src="versao.js?v=163"></script>
 <script>
 /* aviso automático quando algum arquivo do site está desatualizado (cache ou envio incompleto) */
 window.addEventListener('load',function(){setTimeout(function(){try{
