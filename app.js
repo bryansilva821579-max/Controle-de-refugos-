@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v172';
+window.__V=window.__V||{};window.__V.app='v174';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -70,6 +70,15 @@ window.addEventListener('load',function(){try{
   localStorage.removeItem(BK);
 }catch(e){}});
 let firebaseSyncPaused=false,firebaseFirstPullDone=false;
+
+/* chave tolerante para juntar/identificar duplicados: data + código + OF + quantidade + kg (ignora textos que variam entre aparelhos) */
+function recordKeyLoose(r){
+  let d='';try{const x=date(r);if(x&&!isNaN(x))d=x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}catch(e){}
+  if(!d)d=String(val(r,'data')||'').slice(0,10);
+  const num=v=>{const x=Number(String(v??'').replace(',','.'));return Number.isFinite(x)?Math.round(x*1000)/1000:String(v??'')};
+  return [d,String(val(r,'codigo')||'').trim().toUpperCase(),String(val(r,'of')||'').trim().toUpperCase(),num(qty(r)),num(val(r,'kgRefugo')),String(val(r,'cliente')||'').trim().toUpperCase().slice(0,6)].join('|');
+}
+function baixarBackupSeguranca(nome){try{const b=new Blob([JSON.stringify(data)],{type:'application/json'}),l=document.createElement('a');l.href=URL.createObjectURL(b);l.download=(nome||'backup-seguranca')+'-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.json';document.body.appendChild(l);l.click();l.remove()}catch(e){}}
 function fsKgTotal(arr){let t=0;(arr||[]).forEach(r=>{try{t+=Number(typeof kg==='function'?kg(r):0)||0}catch(e){}});return t}
 function fsFmt(n){return Number(n||0).toLocaleString('pt-BR',{maximumFractionDigits:2})}
 /* Junta os pedaços (chunks) da nuvem só se pertencerem ao MESMO envio; evita misturar dados de dois computadores */
@@ -195,12 +204,12 @@ async function pullRemoteQuiet(){
       firebaseFirstPullDone=true;
       if(data.length>0){
         /* lançamentos que existem só neste aparelho (comparação por assinatura, contando repetidos) */
-        const cont=new Map();remote.forEach(r=>{const s=recordSignature(r);cont.set(s,(cont.get(s)||0)+1)});
-        const soLocal=[];data.forEach(r=>{const s=recordSignature(r),c=cont.get(s)||0;if(c>0)cont.set(s,c-1);else soLocal.push(r)});
+        const cont=new Map();remote.forEach(r=>{const s=recordKeyLoose(r);cont.set(s,(cont.get(s)||0)+1)});
+        const soLocal=[];data.forEach(r=>{const s=recordKeyLoose(r),c=cont.get(s)||0;if(c>0)cont.set(s,c-1);else soLocal.push(r)});
         if(soLocal.length){
           const ok=confirm('Este aparelho tem '+soLocal.length.toLocaleString('pt-BR')+' lançamento(s) que ainda NÃO estão na nuvem.\n\nNuvem: '+remote.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(remote))+' kg\nEste aparelho: '+data.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(data))+' kg\n\nOK = JUNTAR: mantém tudo da nuvem e envia estes '+soLocal.length.toLocaleString('pt-BR')+' para a nuvem (recomendado, nada se perde).\nCancelar = manter este aparelho como está e PAUSAR a sincronização.');
           if(!ok){firebaseSyncPaused=true;setFirebaseStatus('Sincronização pausada neste aparelho. Use "Enviar dados locais" ou "Baixar do Firebase" para decidir.','err');return}
-          juntados=remote.concat(soLocal);
+          baixarBackupSeguranca('backup-antes-de-juntar');juntados=remote.concat(soLocal);
         }
       }
     }
@@ -232,6 +241,49 @@ const dataId=Date.now().toString(36)+Math.random().toString(36).slice(2,8);const
 async function downloadFromFirebase(){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Baixando dados do Firebase...');const root=firebaseRoot();const cfgSnap=await root.collection('config').doc('estado').get();const chunkSnap=await root.collection('lancamentos').orderBy('index').get();if(!cfgSnap.exists&&!chunkSnap.size){throw new Error('Não existem dados publicados neste Firebase para este sistema.')}
  const _asm=fsAssemble(cfgSnap,chunkSnap);if(!_asm.ok)throw new Error('A nuvem está sendo atualizada por outro computador. Tente de novo em alguns segundos.');const cloudState=_asm.cloudState;const remote=_asm.remote;if(!remote.length&&!data.length)throw new Error('O Firebase está conectado, mas não há lançamentos para baixar.');if(remote.length){data=remote;if(cloudState.meta)meta=cloudState.meta;if(Array.isArray(cloudState.producaoFundicao))producaoFundicao=cloudState.producaoFundicao;if(cloudState.cadastros){cadastros=cloudState.cadastros;cadBaseSet()}if(Array.isArray(cloudState.reunioes)){window.reunioes=cloudState.reunioes;localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}if(cloudState.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cloudState.historicoFonte))}catch(e){}}producaoFundicao=(Array.isArray(producaoFundicao)?producaoFundicao:[]).map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));salvarHistoricoFonte();localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'_meta',JSON.stringify(meta));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));saveCad();refresh();}firebaseSyncPaused=false;firebaseFirstPullDone=true;setFirebaseStatus('Dados do Firebase carregados neste navegador.','ok');alert('Dados do Firebase carregados: '+remote.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao baixar: '+(e?.message||e),'err');alert('Erro ao baixar os dados do Firebase.\n\n'+(e?.message||e))}}
 function disconnectFirebase(){try{stopFirebaseListener();if(firebaseAuthOnline)firebaseAuthOnline.signOut();if(firebaseAppOnline&&firebaseAppOnline.delete)firebaseAppOnline.delete()}catch{}firebaseOnlineConnected=false;firebaseAuthOnline=null;firebaseDbOnline=null;firebaseAppOnline=null;localStorage.removeItem(FIREBASE_CONFIG_KEY);localStorage.removeItem(FIREBASE_SYNC_KEY);setFirebaseStatus('Desconectado. O sistema voltou para o modo local.','')}
+/* Compara este aparelho com a nuvem e mostra o que existe só aqui / só na nuvem; permite juntar os dois */
+async function compararComNuvem(){
+  try{
+    const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();return}
+    if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline){alert('Não consegui conectar à nuvem.');return}
+    setFirebaseStatus('Comparando com a nuvem...');
+    const root=firebaseRoot(),cfgSnap=await root.collection('config').doc('estado').get(),chunkSnap=await root.collection('lancamentos').orderBy('index').get();
+    const asm=fsAssemble(cfgSnap,chunkSnap);if(!asm.ok){alert('A nuvem está sendo atualizada por outro aparelho. Tente de novo em instantes.');return}
+    const remote=asm.remote,sig=recordKeyLoose;
+    const dif=(A,B)=>{const c=new Map();B.forEach(r=>{const s=sig(r);c.set(s,(c.get(s)||0)+1)});const o=[];A.forEach(r=>{const s=sig(r),k=c.get(s)||0;if(k>0)c.set(s,k-1);else o.push(r)});return o};
+    const soAqui=dif(data,remote),soNuvem=dif(remote,data);
+    const kgB=r=>{try{return kgBruto(r)}catch(e){return 0}};
+    const linha=r=>{let d='';try{d=String(val(r,'data')||'').slice(0,10)}catch(e){}return '• '+d+' · '+String(val(r,'codigo')||'').trim()+' · '+String(val(r,'cliente')||'').slice(0,18)+' · '+fsFmt(qty(r))+' pç · '+fsFmt(kgB(r))+' kg'};
+    const lst=(L)=>L.slice(0,12).map(linha).join('\n')+(L.length>12?'\n… e mais '+(L.length-12):'');
+    const tk=A=>A.reduce((s,r)=>s+kgB(r),0);
+    let msg='Este aparelho: '+data.length.toLocaleString('pt-BR')+' lançamentos · '+fsFmt(tk(data))+' kg (bruto)\nNuvem: '+remote.length.toLocaleString('pt-BR')+' lançamentos · '+fsFmt(tk(remote))+' kg (bruto)\n\n';
+    if(!soAqui.length&&!soNuvem.length){alert(msg+'Os lançamentos são idênticos. Se o peso ainda divergir, o problema não está nos lançamentos.');setFirebaseStatus('Aparelho e nuvem idênticos.','ok');return}
+    msg+='SÓ NESTE APARELHO ('+soAqui.length+', '+fsFmt(tk(soAqui))+' kg):\n'+(soAqui.length?lst(soAqui):'—')+'\n\nSÓ NA NUVEM ('+soNuvem.length+', '+fsFmt(tk(soNuvem))+' kg):\n'+(soNuvem.length?lst(soNuvem):'—')+'\n\nOK = JUNTAR os dois (fica com tudo e envia à nuvem; os outros aparelhos recebem).\nCancelar = não mudar nada.';
+    if(!confirm(msg)){setFirebaseStatus('Comparação feita; nada foi alterado.','ok');return}
+    baixarBackupSeguranca('backup-antes-de-juntar');
+    firebaseApplyingRemote=true;try{data=remote.concat(soAqui);localStorage.setItem(KEY,JSON.stringify(data));refresh()}finally{firebaseApplyingRemote=false}
+    firebaseKnownDataId=null;firebaseDataDirty=true;firebaseSyncPaused=false;scheduleFirebasePush();
+    setFirebaseStatus('Lançamentos juntados; enviando à nuvem...','ok');
+  }catch(e){console.error(e);alert('Erro ao comparar: '+(e&&e.message||e))}
+}
+window.compararComNuvem=compararComNuvem;
+/* Remove duplicados "quase iguais" (mesma data/código/OF/qtd/kg/cliente, mas textos diferentes) criados por uma junção errada; mantém a 1ª ocorrência. Duplicados 100% idênticos são preservados (podem ser lançamentos reais). */
+function removerDuplicadosQuase(){
+  const vistos=new Map(),rem=[];
+  data.forEach((r,i)=>{const k=recordKeyLoose(r),p=vistos.get(k);if(p===undefined){vistos.set(k,r);return}if(fsStable(p)!==fsStable(r))rem.push(i)});
+  const kgB=r=>{try{return kgBruto(r)}catch(e){return 0}},tot=rem.reduce((s,i)=>s+kgB(data[i]),0);
+  if(!rem.length){alert('Não encontrei duplicados "quase iguais".\n\nTotal atual: '+data.length.toLocaleString('pt-BR')+' lançamentos · '+fsFmt(data.reduce((s,r)=>s+kgB(r),0))+' kg.');return}
+  if(!confirm('Encontrei '+rem.length.toLocaleString('pt-BR')+' lançamentos duplicados ('+fsFmt(tot)+' kg).\n\nOK = remover os duplicados (fica a 1ª cópia de cada) e enviar à nuvem. Um backup será baixado antes.\nCancelar = não mudar nada.'))return;
+  baixarBackupSeguranca('backup-antes-de-remover-duplicados');
+  const set=new Set(rem);data=data.filter((r,i)=>!set.has(i));
+  try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}
+  firebaseDataDirty=true;firebaseKnownDataId=null;firebaseSyncPaused=false;
+  try{save()}catch(e){try{scheduleFirebasePush()}catch(x){}}
+  try{refresh()}catch(e){}
+  alert('Pronto: '+rem.length.toLocaleString('pt-BR')+' duplicados removidos. Agora são '+data.length.toLocaleString('pt-BR')+' lançamentos · '+fsFmt(data.reduce((s,r)=>s+kgB(r),0))+' kg.');
+}
+window.removerDuplicadosQuase=removerDuplicadosQuase;
+
 function scheduleFirebasePush(cadOnly){if(!firebaseOnlineConnected||firebaseApplyingRemote||firebaseSyncPaused||localStorage.getItem(FIREBASE_SYNC_KEY)==='false')return;clearTimeout(firebasePushTimer);firebasePushPending=true;firebasePushTimer=setTimeout(()=>{uploadLocalToFirebase(false,cadOnly===true).catch(()=>{}).finally(()=>{firebasePushPending=false})},800)}
 window.addEventListener('load',()=>{const cfg=getFirebaseConfig();if(cfg)setTimeout(()=>connectFirebase(cfg,false),700)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeFirebaseModal()});document.getElementById('firebaseOverlay')?.addEventListener('click',e=>{if(e.target.id==='firebaseOverlay')closeFirebaseModal()});
