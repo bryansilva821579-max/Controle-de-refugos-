@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v168';
+window.__V=window.__V||{};window.__V.app='v169';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -2157,13 +2157,14 @@ function prodCalSelecionar(iso){
   set('producaoEditIndex',i>=0?String(i):'');
   set('producaoCorridas',r?r.corridas??'':'');
   set('producaoKg',r?r.kg??'':'');
+  set('producaoKgLiq',r&&r.kgLiq!=null?r.kgLiq:'');
   set('producaoFundido',r?r.fundido||'':'');
   set('producaoObs',r?r.observacao||'':'');
   renderProducao();
 }
 function clearProducaoForm(){
   prodCalSelecionar(document.getElementById('producaoData')?.value||prodHojeISO());
-  ['producaoCorridas','producaoKg','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['producaoCorridas','producaoKg','producaoKgLiq','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const idx=document.getElementById('producaoEditIndex');if(idx)idx.value='';
   updateSecurityUI();
 }
@@ -2194,7 +2195,7 @@ function renderProducao(){
   const kgMes=dias.reduce((a,x)=>a+productionValue(x.r),0),corrMes=dias.reduce((a,x)=>a+n(x.r.corridas),0);
   const resumo=document.getElementById('prodCalResumo');
   if(resumo){
-    if(dias.length)resumo.innerHTML=`<b>Total do mês:</b> ${fmt(kgMes)} kg &nbsp;|&nbsp; <b>Corridas:</b> ${fmt(corrMes)} &nbsp;|&nbsp; <b>Dias lançados:</b> ${dias.length}${refMes?` &nbsp;|&nbsp; <b>Refugo Fundição:</b> ${fmt(refMes)} kg (${fmt(refMes/kgMes*100)}%)${costAccessAllowed()?' • R$ '+fmt(refMesCusto):''}`:''}`;
+    if(dias.length)resumo.innerHTML=`<b>Total do mês:</b> ${fmt(kgMes)} kg &nbsp;|&nbsp; <b>Corridas:</b> ${fmt(corrMes)} &nbsp;|&nbsp; <b>Dias lançados:</b> ${dias.length}${dias.some(x=>x.r.kgLiq!=null)?` &nbsp;|&nbsp; <b>Líquido:</b> ${fmt(dias.reduce((s,x)=>s+n(x.r.kgLiq),0))} kg`:''}${refMes?` &nbsp;|&nbsp; <b>Refugo Fundição:</b> ${fmt(refMes)} kg (${fmt(refMes/kgMes*100)}%)${costAccessAllowed()?' • R$ '+fmt(refMesCusto):''}`:''}`;
     else if(legado.length)resumo.innerHTML=`<b>Total mensal cadastrado:</b> ${fmt(legado.reduce((a,x)=>a+productionValue(x.r),0))} kg. Ao lançar o primeiro dia, o total do mês passa a ser a soma dos dias.`;
     else resumo.innerHTML=refMes?`Nenhum dia lançado neste mês. <b>Refugo Fundição:</b> ${fmt(refMes)} kg`:'Nenhum dia lançado neste mês.';
   }
@@ -2202,10 +2203,10 @@ function renderProducao(){
   const count=document.getElementById('producaoCount');
   if(count)count.textContent=dias.length?`${dias.length} ${dias.length===1?'dia lançado':'dias lançados'}`:(legado.length?'total mensal antigo':'sem lançamentos');
   const ordenados=[...dias].sort((a,b)=>String(b.r.data).localeCompare(String(a.r.data)));
-  const linhasDia=ordenados.map(({r,i})=>`<tr><td>${esc(String(r.data).split('-').reverse().join('/'))}</td><td style="white-space:normal;min-width:140px">${esc(r.fundido||'—')}</td><td>${esc(r.corridas??0)}</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>${esc(r.observacao||'')}</td><td><button class="btn secondary" onclick="editProducao(${i})">Editar</button> <button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
-  const linhasLeg=dias.length?[]:legado.map(({r,i})=>`<tr><td>${String(m).padStart(2,'0')}/${y} (total mensal)</td><td>—</td><td>—</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>${esc(r.observacao||'')}</td><td><button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
+  const linhasDia=ordenados.map(({r,i})=>`<tr><td>${esc(String(r.data).split('-').reverse().join('/'))}</td><td style="white-space:normal;min-width:140px">${esc(r.fundido||'—')}</td><td>${esc(r.corridas??0)}</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>${r.kgLiq!=null?fmt(n(r.kgLiq))+' kg':'—'}</td><td>${esc(r.observacao||'')}</td><td><button class="btn secondary" onclick="editProducao(${i})">Editar</button> <button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
+  const linhasLeg=dias.length?[]:legado.map(({r,i})=>`<tr><td>${String(m).padStart(2,'0')}/${y} (total mensal)</td><td>—</td><td>—</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>—</td><td>${esc(r.observacao||'')}</td><td><button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
   const linhas=[...linhasDia,...linhasLeg];
-  body.innerHTML=linhas.length?linhas.join(''):'<tr><td colspan="6" style="text-align:center" class="small">Nenhum dia lançado neste mês.</td></tr>';
+  body.innerHTML=linhas.length?linhas.join(''):'<tr><td colspan="7" style="text-align:center" class="small">Nenhum dia lançado neste mês.</td></tr>';
   updateSecurityUI();
 }
 function editProducao(i){const r=producaoFundicao[i];if(!r||!isProdDia(r))return;navigate('lancamentos');switchLaunchTab('producao');prodCalSelecionar(r.data);document.getElementById('producaoKg')?.focus();}
@@ -2225,18 +2226,21 @@ producaoForm?.addEventListener('submit',e=>{
   const kgVal=Number(String(document.getElementById('producaoKg').value).replace(',','.'));
   if(!Number.isInteger(corridas)||corridas<0)return alert('Informe a quantidade de corridas (número inteiro).');
   if(!Number.isFinite(kgVal)||kgVal<0)return alert('Informe os kg fundidos válidos.');
+  const kgLiqRaw=String(document.getElementById('producaoKgLiq')?.value||'').replace(',','.').trim(),kgLiqVal=kgLiqRaw===''?null:Number(kgLiqRaw);
+  if(kgLiqVal!==null&&(!Number.isFinite(kgLiqVal)||kgLiqVal<0))return alert('Informe um peso líquido válido.');
+  if(kgLiqVal!==null&&kgLiqVal>kgVal&&!confirm('O peso líquido é maior que o bruto fundido. Salvar mesmo assim?'))return;
   const fundido=document.getElementById('producaoFundido').value.trim(),obs=document.getElementById('producaoObs').value.trim();
   const editIdx=document.getElementById('producaoEditIndex').value;
   const dup=prodIdxDia(iso);
   if(dup>=0&&String(dup)!==editIdx&&!confirm('Já existe produção lançada neste dia. Substituir?'))return;
-  const obj={data:iso,ano,mes,dia,fundido,corridas,kg:kgVal,custoKg:2.6,observacao:obs};
+  const obj={data:iso,ano,mes,dia,fundido,corridas,kg:kgVal,kgLiq:kgLiqVal,custoKg:2.6,observacao:obs};
   if(dup>=0)producaoFundicao[dup]=obj;else producaoFundicao.push(obj);
   saveProducao();
   prodCalAno=ano;prodCalMes=mes;
-  ['producaoCorridas','producaoKg','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['producaoCorridas','producaoKg','producaoKgLiq','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('producaoEditIndex').value='';
   renderProducao();dashboardDirty=true;dashboard();
-  alert(`Produção de ${String(iso).split('-').reverse().join('/')} salva: ${fmt(kgVal)} kg em ${corridas} ${corridas===1?'corrida':'corridas'}.`);
+  alert(`Produção de ${String(iso).split('-').reverse().join('/')} salva: ${fmt(kgVal)} kg em ${corridas} ${corridas===1?'corrida':'corridas'}${kgLiqVal!==null?' (líquido '+fmt(kgLiqVal)+' kg)':''}.`);
 });
 
 const codigoInput=document.getElementById('codigo');
