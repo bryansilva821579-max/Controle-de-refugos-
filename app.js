@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v174';
+window.__V=window.__V||{};window.__V.app='v175';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -76,7 +76,7 @@ function recordKeyLoose(r){
   let d='';try{const x=date(r);if(x&&!isNaN(x))d=x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}catch(e){}
   if(!d)d=String(val(r,'data')||'').slice(0,10);
   const num=v=>{const x=Number(String(v??'').replace(',','.'));return Number.isFinite(x)?Math.round(x*1000)/1000:String(v??'')};
-  return [d,String(val(r,'codigo')||'').trim().toUpperCase(),String(val(r,'of')||'').trim().toUpperCase(),num(qty(r)),num(val(r,'kgRefugo')),String(val(r,'cliente')||'').trim().toUpperCase().slice(0,6)].join('|');
+  return [d,String(val(r,'codigo')||'').trim().toUpperCase(),String(val(r,'of')||'').trim().toUpperCase(),num(qty(r)),num(val(r,'kgRefugo')),String(val(r,'cliente')||'').trim().toUpperCase().slice(0,6),(()=>{const m=String(r['MOTIVO DO REFUGO']??'').trim();const x=parseInt(m,10);return Number.isFinite(x)?String(x):m.toUpperCase()})()].join('|');
 }
 function baixarBackupSeguranca(nome){try{const b=new Blob([JSON.stringify(data)],{type:'application/json'}),l=document.createElement('a');l.href=URL.createObjectURL(b);l.download=(nome||'backup-seguranca')+'-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.json';document.body.appendChild(l);l.click();l.remove()}catch(e){}}
 function fsKgTotal(arr){let t=0;(arr||[]).forEach(r=>{try{t+=Number(typeof kg==='function'?kg(r):0)||0}catch(e){}});return t}
@@ -269,8 +269,10 @@ async function compararComNuvem(){
 window.compararComNuvem=compararComNuvem;
 /* Remove duplicados "quase iguais" (mesma data/código/OF/qtd/kg/cliente, mas textos diferentes) criados por uma junção errada; mantém a 1ª ocorrência. Duplicados 100% idênticos são preservados (podem ser lançamentos reais). */
 function removerDuplicadosQuase(){
-  const vistos=new Map(),rem=[];
-  data.forEach((r,i)=>{const k=recordKeyLoose(r),p=vistos.get(k);if(p===undefined){vistos.set(k,r);return}if(fsStable(p)!==fsStable(r))rem.push(i)});
+  /* só remove a cópia "tipada" (números) de um lançamento que já existe na forma original (textos); lançamentos iguais mas com motivo diferente ou ambos originais são preservados */
+  const g=new Map(),rem=[];
+  data.forEach((r,i)=>{const k=recordKeyLoose(r);if(!g.has(k))g.set(k,[]);g.get(k).push(i)});
+  g.forEach(v=>{if(v.length<2)return;const txt=v.filter(i=>typeof data[i].QUANTIDADE==='string'),outros=v.filter(i=>typeof data[i].QUANTIDADE!=='string');if(txt.length&&outros.length)rem.push(...outros)});
   const kgB=r=>{try{return kgBruto(r)}catch(e){return 0}},tot=rem.reduce((s,i)=>s+kgB(data[i]),0);
   if(!rem.length){alert('Não encontrei duplicados "quase iguais".\n\nTotal atual: '+data.length.toLocaleString('pt-BR')+' lançamentos · '+fsFmt(data.reduce((s,r)=>s+kgB(r),0))+' kg.');return}
   if(!confirm('Encontrei '+rem.length.toLocaleString('pt-BR')+' lançamentos duplicados ('+fsFmt(tot)+' kg).\n\nOK = remover os duplicados (fica a 1ª cópia de cada) e enviar à nuvem. Um backup será baixado antes.\nCancelar = não mudar nada.'))return;
