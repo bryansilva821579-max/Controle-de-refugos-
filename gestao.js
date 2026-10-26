@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.gestao='v170';
+window.__V=window.__V||{};window.__V.gestao='v172';
 /* ==================================================================
    GESTÃO — alertas e metas, comparativo de períodos, cruzamento
    refugo × devolução e relatório mensal (PDF / Excel .xlsx).
@@ -711,7 +711,7 @@ window.pecaSemPesoAbrir=function(){
 const qesc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const qf=(v,d)=>N(v).toLocaleString('pt-BR',{maximumFractionDigits:d==null?0:d,minimumFractionDigits:0});
 const qnorm=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
-const qpl=t=>{t=qnorm(t);return t.includes('FUND')?'F':t.includes('USIN')?'U':''};
+const qpl=t=>{t=qnorm(t);return t.includes('FUND')&&t.includes('USIN')?'X':t.includes('FUND')?'F':t.includes('USIN')?'U':''};
 let QCSS=false;
 function quadroCss(){
   if(QCSS||document.getElementById('qdCss'))return;QCSS=true;const s=document.createElement('style');s.id='qdCss';
@@ -732,9 +732,14 @@ function quadroCss(){
 }
 /* dados de um conjunto de meses */
 function quadroDados(cfg){
-  const mt=cfg.mt==='qtd'?'qtd':'kg',PF=cfg.f!==false,PU=cfg.u!==false,both=PF&&PU,keep=c=>c==='F'?PF:c==='U'?PU:both;
+  const mt=cfg.mt==='qtd'?'qtd':'kg';
+  const PL=Array.isArray(cfg.PL)?cfg.PL:[];
+  const nm=s=>{try{return plantNormName(s)}catch(e){return String(s||'').toUpperCase()}};
+  const PF=PL.length?PL.some(x=>nm(x)==='FUNDICAO'):cfg.f!==false,PU=PL.length?PL.some(x=>nm(x)==='USINAGEM'):cfg.u!==false;
+  const keepN=s=>{if(!PL.length)return true;const v=nm(s);return PL.some(x=>nm(x)===v)};
+  const both=PF&&PU,keep0=c=>c==='F'?PF:c==='U'?PU:c==='X'?both:both,keep=PL.length?null:keep0;
   const vv=r=>mt==='qtd'?N(r.qtd):N(r.kg);
-  const R=refAll().filter(r=>keep(qpl(r.pl))),D=devAll().filter(r=>keep(qpl(r.tipo))&&!(r.raw&&(r.raw.procede==='Não'||r.raw.disp==='Reclamação não procede')));
+  const R=refAll().filter(r=>PL.length?keepN(r.pl):keep(qpl(r.pl))),D=devAll().filter(r=>(PL.length?keepN(r.tipo):keep(qpl(r.tipo)))&&!(r.raw&&(r.raw.procede==='Não'||r.raw.disp==='Reclamação não procede')));
   let RT=[];try{RT=(typeof rtLoad==='function'?rtLoad():[]).filter(r=>r.dt)}catch(e){}
   let cu=false;try{cu=costAccessAllowed()}catch(e){}
   const rk=(rows,key,val,lim)=>{const m=new Map();rows.forEach(r=>{const k=String(key(r)||'').trim()||'Não informado';m.set(k,(m.get(k)||0)+val(r))});return [...m].map(([nome,v])=>({nome,v})).filter(e=>e.v>0).sort((a,b)=>b.v-a.v).slice(0,lim||5)};
@@ -742,19 +747,20 @@ function quadroDados(cfg){
   (cfg.ms||[]).forEach(k=>{
     const rr=R.filter(r=>r.k===k),dd=D.filter(r=>r.k===k),rt=RT.filter(r=>String(r.dt).slice(0,7)===k);
     const v=somar(rr,vv),prod=prodDe(k),kgF=somar(rr.filter(r=>qpl(r.pl)==='F'),r=>N(r.kg));
-    out[k]={k,v,n:rr.length,pecas:somar(rr,r=>N(r.qtd)),rs:somar(rr,r=>N(r.rs)),prod,perc:(mt==='kg'&&PF&&prod)?kgF/prod*100:null,
+    out[k]={k,v,n:rr.length,pecas:somar(rr,r=>N(r.qtd)),rs:somar(rr,r=>N(r.rs)),prod,perc:(mt==='kg'&&(PL.length?PF:true)&&PF&&prod)?kgF/prod*100:null,
       dv:somar(dd,vv),dvQ:somar(dd,r=>N(r.qtd)),dvRs:somar(dd,r=>N(r.rs)),rtQ:somar(rt,r=>N(r.qtd)),rtN:rt.length,
       pF:somar(rr.filter(r=>qpl(r.pl)==='F'),vv),pU:somar(rr.filter(r=>qpl(r.pl)==='U'),vv),
       mot:rk(rr,r=>r.mot,vv),cli:rk(rr,r=>r.cli,vv),pec:rk(rr,r=>(r.cod?r.cod+' - ':'')+(r.pec||''),vv),causa:rk(rr,r=>r.causa,vv),dvCli:rk(dd,r=>r.cli,vv,3)};
   });
-  return {mt,PF,PU,cu,M:out,un:mt==='qtd'?'peças':'kg'};
+  return {mt,PF,PU,PL,mix:!PL.length||PL.length>1,cu,M:out,un:mt==='qtd'?'peças':'kg'};
 }
 function quadroHtml(cfg,sel,Q,anos,ano){
   const g=Q||quadroDados(cfg),ms=cfg.ms,un=g.un;
   const mx=Math.max(1,...ms.map(k=>g.M[k].v));
   let h='';
+  if(cfg.chips){const L=[['','Filtro do painel'],['ALL','Todas'],['FUNDICAO','Fundição'],['FUNDICAO NA USINAGEM','Fundição na Usinagem'],['USINAGEM','Usinagem']],cur=cfg.qpl||'';h+='<div class="qyr qpc">'+L.map(a=>'<button type="button" data-pl="'+a[0]+'"'+(a[0]===cur?' class="on"':'')+'>'+a[1]+'</button>').join('')+'</div>'}
   if(anos&&anos.length>1)h+='<div class="qyr">'+anos.map(y=>'<button type="button" data-y="'+y+'"'+(y===ano?' class="on"':'')+'>'+y+'</button>').join('')+'</div>';
-  h+='<div class="qh">Clique em um mês para ver os valores dele · '+(g.mt==='qtd'?'quantidade de peças refugadas':'kg de refugo'+(g.PF&&g.PU?'':' ('+(g.PF?'Fundição':'Usinagem')+')'))+'</div><div class="qg">';
+  h+='<div class="qh">Clique em um mês para ver os valores dele · '+(g.mt==='qtd'?'quantidade de peças refugadas':'kg de refugo')+(g.PL&&g.PL.length?' · filtro: '+g.PL.map(x=>String(x).replace(/FUNDICAO/g,'Fundição').replace(/USINAGEM/g,'Usinagem').replace(/NAO INFORMADO/,'Não informado').replace(/ NA /,' na ')).join(' + '):(g.PF&&g.PU?'':' ('+(g.PF?'Fundição':'Usinagem')+')'))+'</div><div class="qg">';
   ms.forEach((k,i)=>{
     const x=g.M[k],pk=ms[i-1]!=null?g.M[ms[i-1]]:null,vz=!(x.n>0||x.dv>0||x.rtQ>0);
     let st='<span class="mu">'+(vz?'sem lançamentos':x.perc!=null?qf(x.perc,2)+'% da produção':qf(x.n)+' lançamento(s)')+'</span>';
@@ -771,7 +777,7 @@ function quadroDet(cfg,k,g){
    '<div><span>Refugo ('+un+')</span><b>'+qf(x.v,g.mt==='qtd'?0:1)+'</b></div>'+
    '<div><span>Peças refugadas</span><b>'+qf(x.pecas)+'</b></div>'+
    (x.perc!=null?'<div><span>% da produção (Fundição)</span><b>'+qf(x.perc,2)+'%</b></div><div><span>Produção Fundição (kg)</span><b>'+qf(x.prod)+'</b></div>':'')+
-   (g.PF&&g.PU?'<div><span>Fundição / Usinagem ('+un+')</span><b>'+qf(x.pF)+' / '+qf(x.pU)+'</b></div>':'')+
+   (g.mix&&g.PF&&g.PU?'<div><span>Fundição / Usinagem ('+un+')</span><b>'+qf(x.pF)+' / '+qf(x.pU)+'</b></div>':'')+
    '<div><span>Devolução procedente ('+un+')</span><b>'+qf(x.dv,g.mt==='qtd'?0:1)+'</b></div>'+
    '<div><span>Peças devolvidas</span><b>'+qf(x.dvQ)+'</b></div>'+
    '<div><span>Retrabalho (peças)</span><b>'+qf(x.rtQ)+'</b></div>'+
@@ -783,6 +789,7 @@ function quadroDet(cfg,k,g){
 function quadroMontar(host,cfg0){
   if(!host)return;quadroCss();
   const cfg=Object.assign({},cfg0);
+  cfg.qpl=host.__qpl||'';if(cfg.chips&&cfg.qpl)cfg.PL=cfg.qpl==='ALL'?[]:[cfg.qpl];
   let ano=null,anos=null;
   if(cfg.porAno){
     const all=new Set();try{refAll().forEach(r=>all.add(r.k.slice(0,4)));devAll().forEach(r=>{if(r.k)all.add(r.k.slice(0,4))})}catch(e){}
@@ -796,6 +803,7 @@ function quadroMontar(host,cfg0){
   host.classList.add('qd');host.classList.remove('dk','lt');if(cfg.tema)host.classList.add(cfg.tema);
   host.innerHTML=quadroHtml(cfg,sel,g,anos,ano);
   host.onclick=e=>{
+    const pc=e.target.closest('[data-pl]');if(pc){host.__qpl=pc.dataset.pl;quadroMontar(host,cfg0);return}
     const y=e.target.closest('[data-y]');if(y){host.__qano=y.dataset.y;host.__qsel=null;quadroMontar(host,cfg0);return}
     const t=e.target.closest('.qt');if(!t)return;
     const k=t.dataset.k;host.__qsel=(host.__qsel===k&&cfg.toggle!==false)?null:k;
@@ -816,15 +824,15 @@ function qPlantaSel(){const v=(document.getElementById('filterPlant')||{}).value
 function quadroAtualiza(force){
   QHOSTS.forEach(([id,mt])=>{
     const h=document.getElementById(id);if(!h||!h.offsetParent)return;
-    const p=qPlantaSel();let sig='';
-    try{sig=[(Array.isArray(data)?data.length:0),pesoTipo(),p.f,p.u,mt,(window.devDados?window.devDados().length:0),(typeof rtLoad==='function'?rtLoad().length:0)].join('|')}catch(e){}
+    const p=qPlantaSel();let PL=[];try{PL=plSel(mt==='qtd'?'qFilterPlant':'filterPlant')||[]}catch(e){}p.PL=PL;let sig='';
+    try{sig=[(Array.isArray(data)?data.length:0),pesoTipo(),p.f,p.u,PL.join('+'),h.__qpl||'',mt,(window.devDados?window.devDados().length:0),(typeof rtLoad==='function'?rtLoad().length:0)].join('|')}catch(e){}
     if(!force&&QSIG[id]===sig&&h.firstChild)return;QSIG[id]=sig;
-    try{quadroMontar(h,{porAno:true,mt,f:p.f,u:p.u})}catch(e){console.error(e)}
+    try{quadroMontar(h,{porAno:true,chips:true,mt,f:p.f,u:p.u,PL})}catch(e){console.error(e)}
   });
 }
 window.__quadroRefresh=()=>quadroAtualiza(true);
 setInterval(()=>quadroAtualiza(false),1500);
-document.addEventListener('change',e=>{if(e.target&&/^(filterPlant|filterYear|filterMonth|filterPeso)$/.test(e.target.id))setTimeout(()=>quadroAtualiza(true),50)});
+document.addEventListener('change',e=>{if(e.target&&/^(filterPlant|filterYear|filterMonth|filterPeso|qFilterPlant|qFilterYear|qFilterMonth)$/.test(e.target.id))setTimeout(()=>quadroAtualiza(true),50)});
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.tab'))setTimeout(()=>quadroAtualiza(false),150)});
 
 /* para testes */

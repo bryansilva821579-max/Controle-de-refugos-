@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v170';
+window.__V=window.__V||{};window.__V.app='v172';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -190,16 +190,23 @@ async function pullRemoteQuiet(){
     const mesmoCad=!cloudState.cadastros||fsStable(cloudState.cadastros)===fsStable(cadastros);
     const mesmoProd=!Array.isArray(cloudState.producaoFundicao)||fsStable(cloudState.producaoFundicao)===fsStable(producaoFundicao);
     if(mesmoData&&mesmoMeta&&mesmoCad&&mesmoProd){if(mesmoData&&cloudState.dataId)firebaseKnownDataId=cloudState.dataId;return}
+    let juntados=null;
     if(!firebaseFirstPullDone){
       firebaseFirstPullDone=true;
       if(data.length>0){
-        const ok=confirm('Os dados da NUVEM são diferentes dos dados deste computador.\n\nNuvem: '+remote.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(remote))+' kg\nEste computador: '+data.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(data))+' kg\n\nOK = usar os dados da nuvem neste computador.\nCancelar = manter os dados deste computador e PAUSAR a sincronização.');
-        if(!ok){firebaseSyncPaused=true;setFirebaseStatus('Sincronização pausada neste computador. Use "Enviar dados locais" ou "Baixar do Firebase" para decidir.','err');return}
+        /* lançamentos que existem só neste aparelho (comparação por assinatura, contando repetidos) */
+        const cont=new Map();remote.forEach(r=>{const s=recordSignature(r);cont.set(s,(cont.get(s)||0)+1)});
+        const soLocal=[];data.forEach(r=>{const s=recordSignature(r),c=cont.get(s)||0;if(c>0)cont.set(s,c-1);else soLocal.push(r)});
+        if(soLocal.length){
+          const ok=confirm('Este aparelho tem '+soLocal.length.toLocaleString('pt-BR')+' lançamento(s) que ainda NÃO estão na nuvem.\n\nNuvem: '+remote.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(remote))+' kg\nEste aparelho: '+data.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(data))+' kg\n\nOK = JUNTAR: mantém tudo da nuvem e envia estes '+soLocal.length.toLocaleString('pt-BR')+' para a nuvem (recomendado, nada se perde).\nCancelar = manter este aparelho como está e PAUSAR a sincronização.');
+          if(!ok){firebaseSyncPaused=true;setFirebaseStatus('Sincronização pausada neste aparelho. Use "Enviar dados locais" ou "Baixar do Firebase" para decidir.','err');return}
+          juntados=remote.concat(soLocal);
+        }
       }
     }
     firebaseApplyingRemote=true;
     try{
-      data=remote;
+      data=juntados||remote;
       if(cloudState.meta)meta=cloudState.meta;
       if(Array.isArray(cloudState.producaoFundicao))producaoFundicao=cloudState.producaoFundicao;
       if(cloudState.cadastros){cadastros=cloudState.cadastros;cadBaseSet()}
@@ -213,6 +220,7 @@ async function pullRemoteQuiet(){
       saveCad();
       refresh();
     }finally{firebaseApplyingRemote=false}
+    if(juntados){firebaseKnownDataId=null;firebaseDataDirty=true;firebasePulling=false;scheduleFirebasePush();setFirebaseStatus('Lançamentos deste aparelho juntados; enviando à nuvem...','ok');return}
     if(cloudState.dataId)firebaseKnownDataId=cloudState.dataId;
     firebaseFirstPullDone=true;setFirebaseStatus('Atualizado em tempo real às '+new Date().toLocaleTimeString('pt-BR')+'.','ok');
   }catch(e){console.error('Atualização remota:',e)}
