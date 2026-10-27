@@ -72,11 +72,11 @@ window.addEventListener('load',function(){try{
 let firebaseSyncPaused=false,firebaseFirstPullDone=false;
 
 /* chave tolerante para juntar/identificar duplicados: data + código + OF + quantidade + kg (ignora textos que variam entre aparelhos) */
-function recordKeyLoose(r){
+function recordKeyLoose(r,semKg){
   let d='';try{const x=date(r);if(x&&!isNaN(x))d=x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}catch(e){}
   if(!d)d=String(val(r,'data')||'').slice(0,10);
   const num=v=>{const x=Number(String(v??'').replace(',','.'));return Number.isFinite(x)?Math.round(x*1000)/1000:String(v??'')};
-  return [d,String(val(r,'codigo')||'').trim().toUpperCase(),String(val(r,'of')||'').trim().toUpperCase(),num(qty(r)),num(val(r,'kgRefugo')),String(val(r,'cliente')||'').trim().toUpperCase().slice(0,6),(()=>{const m=String(r['MOTIVO DO REFUGO']??'').trim();const x=parseInt(m,10);return Number.isFinite(x)?String(x):m.toUpperCase()})()].join('|');
+  return [d,String(val(r,'codigo')||'').trim().toUpperCase(),String(val(r,'of')||'').trim().toUpperCase(),num(qty(r)),(semKg?'':num(val(r,'kgRefugo'))),String(val(r,'cliente')||'').trim().toUpperCase().slice(0,6),(()=>{const m=String(r['MOTIVO DO REFUGO']??'').trim();const x=parseInt(m,10);return Number.isFinite(x)?String(x):m.toUpperCase()})()].join('|');
 }
 function baixarBackupSeguranca(nome){try{const b=new Blob([JSON.stringify(data)],{type:'application/json'}),l=document.createElement('a');l.href=URL.createObjectURL(b);l.download=(nome||'backup-seguranca')+'-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.json';document.body.appendChild(l);l.click();l.remove()}catch(e){}}
 function fsKgTotal(arr){let t=0;(arr||[]).forEach(r=>{try{t+=Number(typeof kg==='function'?kg(r):0)||0}catch(e){}});return t}
@@ -249,19 +249,30 @@ async function compararComNuvem(){
     setFirebaseStatus('Comparando com a nuvem...');
     const root=firebaseRoot(),cfgSnap=await root.collection('config').doc('estado').get(),chunkSnap=await root.collection('lancamentos').orderBy('index').get();
     const asm=fsAssemble(cfgSnap,chunkSnap);if(!asm.ok){alert('A nuvem está sendo atualizada por outro aparelho. Tente de novo em instantes.');return}
-    const remote=asm.remote,sig=recordKeyLoose;
-    const dif=(A,B)=>{const c=new Map();B.forEach(r=>{const s=sig(r);c.set(s,(c.get(s)||0)+1)});const o=[];A.forEach(r=>{const s=sig(r),k=c.get(s)||0;if(k>0)c.set(s,k-1);else o.push(r)});return o};
-    const soAqui=dif(data,remote),soNuvem=dif(remote,data);
+    const remote=asm.remote,sig=r=>recordKeyLoose(r,true);
+    /* Casa lançamento a lançamento SEM olhar o peso. Peso diferente não vira "lançamento a mais": é listado à parte. */
+    const pool=new Map();data.forEach((r,i)=>{const s=sig(r);if(!pool.has(s))pool.set(s,[]);pool.get(s).push(i)});
+    const usadoAqui=new Set(),pares=[],soNuvem=[];
+    remote.forEach((rr,ri)=>{const L=pool.get(sig(rr));if(L&&L.length){const li=L.shift();usadoAqui.add(li);pares.push([li,ri])}else soNuvem.push(rr)});
+    const soAqui=data.filter((r,i)=>!usadoAqui.has(i));
     const kgB=r=>{try{return kgBruto(r)}catch(e){return 0}};
+    const pesoDif=pares.filter(p=>Math.abs(kgB(data[p[0]])-kgB(remote[p[1]]))>0.0005);
     const linha=r=>{let d='';try{d=String(val(r,'data')||'').slice(0,10)}catch(e){}return '• '+d+' · '+String(val(r,'codigo')||'').trim()+' · '+String(val(r,'cliente')||'').slice(0,18)+' · '+fsFmt(qty(r))+' pç · '+fsFmt(kgB(r))+' kg'};
-    const lst=(L)=>L.slice(0,12).map(linha).join('\n')+(L.length>12?'\n… e mais '+(L.length-12):'');
+    const linhaP=p=>{const a=data[p[0]],b=remote[p[1]];let d='';try{d=String(val(a,'data')||'').slice(0,10)}catch(e){}return '• '+d+' · '+String(val(a,'codigo')||'').trim()+' · '+fsFmt(qty(a))+' pç · aqui '+fsFmt(kgB(a))+' kg · nuvem '+fsFmt(kgB(b))+' kg'};
+    const lst=(L,f)=>L.slice(0,12).map(f||linha).join('\n')+(L.length>12?'\n… e mais '+(L.length-12):'');
     const tk=A=>A.reduce((s,r)=>s+kgB(r),0);
     let msg='Este aparelho: '+data.length.toLocaleString('pt-BR')+' lançamentos · '+fsFmt(tk(data))+' kg (bruto)\nNuvem: '+remote.length.toLocaleString('pt-BR')+' lançamentos · '+fsFmt(tk(remote))+' kg (bruto)\n\n';
-    if(!soAqui.length&&!soNuvem.length){alert(msg+'Os lançamentos são idênticos. Se o peso ainda divergir, o problema não está nos lançamentos.');setFirebaseStatus('Aparelho e nuvem idênticos.','ok');return}
-    msg+='SÓ NESTE APARELHO ('+soAqui.length+', '+fsFmt(tk(soAqui))+' kg):\n'+(soAqui.length?lst(soAqui):'—')+'\n\nSÓ NA NUVEM ('+soNuvem.length+', '+fsFmt(tk(soNuvem))+' kg):\n'+(soNuvem.length?lst(soNuvem):'—')+'\n\nOK = JUNTAR os dois (fica com tudo e envia à nuvem; os outros aparelhos recebem).\nCancelar = não mudar nada.';
+    if(!soAqui.length&&!soNuvem.length&&!pesoDif.length){alert(msg+'Os lançamentos e os pesos são idênticos.');setFirebaseStatus('Aparelho e nuvem idênticos.','ok');return}
+    msg+='LANÇAMENTOS SÓ NESTE APARELHO ('+soAqui.length+', '+fsFmt(tk(soAqui))+' kg):\n'+(soAqui.length?lst(soAqui):'—')+'\n\nLANÇAMENTOS SÓ NA NUVEM ('+soNuvem.length+', '+fsFmt(tk(soNuvem))+' kg):\n'+(soNuvem.length?lst(soNuvem):'—')+'\n\nMESMO LANÇAMENTO COM PESO DIFERENTE ('+pesoDif.length+'):\n'+(pesoDif.length?lst(pesoDif,linhaP):'—')+'\n\n';
+    if(!soAqui.length&&!soNuvem.length){msg+='Só os pesos diferem; nenhum lançamento será duplicado.\n\nOK = escolher quais pesos valem.\nCancelar = não mudar nada.'}
+    else msg+='OK = JUNTAR os lançamentos que faltam (sem duplicar os que já existem dos dois lados).\nCancelar = não mudar nada.';
     if(!confirm(msg)){setFirebaseStatus('Comparação feita; nada foi alterado.','ok');return}
+    let usarLocal=false;
+    if(pesoDif.length)usarLocal=confirm('Há '+pesoDif.length+' lançamento(s) com peso diferente.\n\nOK = usar os pesos DESTE aparelho (por exemplo, depois de atualizar os pesos pela planilha).\nCancelar = manter os pesos da NUVEM.');
     baixarBackupSeguranca('backup-antes-de-juntar');
-    firebaseApplyingRemote=true;try{data=remote.concat(soAqui);localStorage.setItem(KEY,JSON.stringify(data));refresh()}finally{firebaseApplyingRemote=false}
+    const loc=new Map(pesoDif.map(p=>[p[1],data[p[0]]]));
+    const merged=remote.map((r,ri)=>(usarLocal&&loc.has(ri))?loc.get(ri):r).concat(soAqui);
+    firebaseApplyingRemote=true;try{data=merged;localStorage.setItem(KEY,JSON.stringify(data));refresh()}finally{firebaseApplyingRemote=false}
     firebaseKnownDataId=null;firebaseDataDirty=true;firebaseSyncPaused=false;scheduleFirebasePush();
     setFirebaseStatus('Lançamentos juntados; enviando à nuvem...','ok');
   }catch(e){console.error(e);alert('Erro ao comparar: '+(e&&e.message||e))}
@@ -2857,6 +2868,51 @@ function mapImportedProduct(raw){
     _origemExcel:true
   };
 }
+
+/* ===== Pesos novos valem só a partir de uma data (v176) =====
+   Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
+   a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
+function __snapPesosCad(){
+  const m=new Map();((cadastros&&cadastros.pecas)||[]).forEach(p=>{const k=String(p.codigo??'').trim().toUpperCase();if(!k)return;m.set(k,{pp:n(p.pesoPrincipal),pa:n(p.pesoArvore),pf:n(p.pesoFundUsin),pu:n(p.pesoUsinado)})});
+  return m;
+}
+function __dataLanc(r){
+  let v=val(r,'data');if(v==null||v==='')return '';
+  if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);
+  v=String(v).trim();let m=v.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[1]+'-'+m[2]+'-'+m[3];
+  m=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);if(m){let y=m[3].length===2?'20'+m[3]:m[3];return y+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2)}
+  return '';
+}
+function __aplicarPesosNovos(antes){
+  __pesoCacheReset();
+  const depois=__snapPesosCad(),mudou=new Set();
+  depois.forEach((v,k)=>{const o=antes.get(k);if(!o)return;if(v.pp!==o.pp||v.pa!==o.pa||v.pf!==o.pf||v.pu!==o.pu)mudou.add(k)});
+  if(!mudou.size||!Array.isArray(data))return ' Nenhum peso mudou em relação ao cadastro anterior.';
+  const hoje=new Date(),def=('0'+1).slice(-2)+'/'+('0'+(hoje.getMonth()+1)).slice(-2)+'/'+hoje.getFullYear();
+  const resp=prompt('Os pesos de '+mudou.size+' peça(s) mudaram.\n\nA partir de que data os NOVOS pesos devem valer nos lançamentos?\n(dd/mm/aaaa — lançamentos dessa data em diante são recalculados; os anteriores ficam com o peso antigo)\n\nCancelar ou deixar vazio = não mexer em nenhum lançamento.',def);
+  if(resp===null||!String(resp).trim())return ' Lançamentos não foram alterados.';
+  const m=String(resp).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(!m){alert('Data inválida. Os lançamentos NÃO foram alterados.');return ' Lançamentos não foram alterados (data inválida).'}
+  const ini=m[3]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);
+  let cont=0,pecas=new Set(),kgAntes=0,kgDepois=0;
+  data.forEach(r=>{
+    if(!r||typeof r!=='object')return;
+    const cod=String(val(r,'codigo')??'').trim().toUpperCase();if(!mudou.has(cod))return;
+    const d=__dataLanc(r);if(!d||d<ini)return;
+    const p=depois.get(cod),q=qty(r);if(!(q>0))return;
+    kgAntes+=n(val(r,'kgRefugo'));
+    if(p.pp>0)r[cols.kgRefugo]=(q*p.pp).toFixed(3);
+    if(p.pa>0)r[cols.pesoArvore]=p.pa;
+    if(p.pf>0){r[cols.pesoCanal]=p.pf;r[cols.kgFundUsin]=q*p.pf}
+    if(p.pu>0)r.PESO_USINADO_CADASTRO=p.pu;
+    kgDepois+=n(val(r,'kgRefugo'));cont++;pecas.add(cod);
+  });
+  if(cont){
+    baixarBackupSeguranca('backup-antes-de-atualizar-pesos');
+    save();refresh();
+  }
+  return ' Pesos novos aplicados a '+cont.toLocaleString('pt-BR')+' lançamento(s) a partir de '+resp.trim()+' ('+pecas.size+' peça(s)); refugo bruto '+fmt(kgAntes)+' kg → '+fmt(kgDepois)+' kg.';
+}
 async function importProdutosExcel(mode){
   const input=document.getElementById('produtoExcelImport'),status=document.getElementById('produtoExcelStatus');
   if(!input?.files?.[0]){status.textContent='Escolha primeiro a planilha Excel da aba CADASTRO.';status.className='small import-status error';return}
@@ -2865,6 +2921,7 @@ async function importProdutosExcel(mode){
     const raw=await parseXLSX(input.files[0],'CADASTRO');
     const imported=raw.map(mapImportedProduct).filter(x=>x&&x.descricao);
     if(!imported.length) throw new Error('A aba CADASTRO foi encontrada, mas nenhum produto válido foi localizado.');
+    const __pesosAntes=__snapPesosCad();
     const key=x=>String(x.codigo||'').trim()+'|'+String(x.descricao||'').trim().toUpperCase();
     const map=new Map();
     if(mode==='merge') (cadastros.pecas||[]).forEach(x=>map.set(key(x),x));
@@ -2876,7 +2933,8 @@ async function importProdutosExcel(mode){
     cadastros.pecas=[...map.values()];
     cadastros.pecas.sort((a,b)=>String(a.descricao||'').localeCompare(String(b.descricao||''),'pt-BR'));
     saveCad();renderCadastro();
-    status.textContent=`Cadastro atualizado: ${imported.length.toLocaleString('pt-BR')} produtos lidos da planilha (${cadastros.pecas.length.toLocaleString('pt-BR')} no cadastro).`;
+    let __msgPesos='';try{__msgPesos=__aplicarPesosNovos(__pesosAntes)}catch(e){console.error(e);__msgPesos=' (não consegui atualizar os lançamentos: '+e.message+')'}
+    status.textContent=`Cadastro atualizado: ${imported.length.toLocaleString('pt-BR')} produtos lidos da planilha (${cadastros.pecas.length.toLocaleString('pt-BR')} no cadastro).`+__msgPesos;
     status.className='small import-status ok';
     alert(status.textContent);
   }catch(err){
