@@ -2906,8 +2906,52 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-function backup(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-refugos-2026.json';a.click()}
-document.querySelectorAll('input[id="restore"]').forEach(function(__r){__r.addEventListener('change',e=>{let f=e.target.files[0];if(!f)return;let rd=new FileReader();rd.onload=()=>{try{data=JSON.parse(rd.result);save();refresh();alert('Backup restaurado.')}catch{alert('Arquivo inválido.')}};rd.readAsText(f)})});
+/* ===== Backup COMPLETO do sistema (v176) =====
+   Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
+   devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
+function __bkChaves(){return{
+  lancamentos:KEY,
+  meta:KEY+'_meta',
+  producaoFundicao:PROD_KEY,
+  cadastros:CADKEY,
+  retrabalhos:KEY+'_retrabalhos',
+  devolucoes:'controle_refugos_2026_devolucoes_v1',
+  devolucoesExcluidas:'controle_refugos_2026_devolucoes_v1_del',
+  reunioes:'controle_refugos_2026_reunioes',
+  historicoFonte:FONTE_HIST_KEY,
+  tipoPeso:PESO_KEY
+}}
+function backup(){
+  try{
+    const ch=__bkChaves(),dados={};
+    Object.keys(ch).forEach(function(k){try{const raw=localStorage.getItem(ch[k]);if(raw!==null)dados[k]=JSON.parse(raw)}catch(e){}});
+    dados.lancamentos=data;dados.meta=meta;dados.producaoFundicao=producaoFundicao;
+    const pacote={formato:'controle-refugos-completo',versao:1,appVersion:window.APP_VERSION||'',geradoEm:new Date().toISOString(),dados:dados};
+    const blob=new Blob([JSON.stringify(pacote)],{type:'application/json'}),a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download='backup-completo-refugos-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.json';
+    document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},3000);
+    const n=function(k){return Array.isArray(dados[k])?dados[k].length:0};
+    alert('Backup completo baixado.\n\nLançamentos: '+n('lancamentos').toLocaleString('pt-BR')+'\nRetrabalhos: '+n('retrabalhos').toLocaleString('pt-BR')+'\nDevoluções: '+n('devolucoes').toLocaleString('pt-BR')+'\nProdução bruta: '+n('producaoFundicao')+' meses\n\nObs.: as fotos ficam na nuvem (Firebase) e não entram neste arquivo.')
+  }catch(e){alert('Não foi possível gerar o backup: '+e.message)}
+}
+document.querySelectorAll('input[id="restore"]').forEach(function(__r){__r.addEventListener('change',e=>{
+  let f=e.target.files[0];if(!f)return;
+  let rd=new FileReader();
+  rd.onload=()=>{
+    let j;try{j=JSON.parse(rd.result)}catch{alert('Arquivo inválido.');__r.value='';return}
+    if(Array.isArray(j)){data=j;save();refresh();alert('Backup antigo restaurado (somente lançamentos).');__r.value='';return}
+    if(!j||j.formato!=='controle-refugos-completo'||!j.dados){alert('Arquivo inválido.');__r.value='';return}
+    const d=j.dados,ch=__bkChaves();
+    if(!confirm('Restaurar o backup COMPLETO de '+(j.geradoEm?new Date(j.geradoEm).toLocaleString('pt-BR'):'data desconhecida')+'?\n\nIsso substitui os dados deste aparelho: lançamentos ('+(d.lancamentos||[]).length+'), retrabalhos ('+(d.retrabalhos||[]).length+'), devoluções ('+(d.devolucoes||[]).length+'), produção, cadastros e reuniões.\n\nOK = restaurar. Cancelar = não mudar nada.')){__r.value='';return}
+    try{
+      baixarBackupSeguranca('backup-antes-de-restaurar');
+      Object.keys(ch).forEach(function(k){if(d[k]!==undefined)localStorage.setItem(ch[k],JSON.stringify(d[k]))});
+      /* marca os retrabalhos para reenvio à nuvem */
+      try{if(Array.isArray(d.retrabalhos))localStorage.setItem(KEY+'_rt_pend',JSON.stringify(d.retrabalhos.map(function(r){return r.id})))}catch(x){}
+      alert('Backup restaurado. A página vai recarregar.');location.reload()
+    }catch(err){alert('Erro ao restaurar: '+err.message)}
+  };
+  rd.readAsText(f)})});
 
 /* ---------- composição: peça fundida → itens usinados ---------- */
 function compRotulo(cod){const c=String(cod??'').trim();if(!c)return '';const f=__pecaCad(c);return f&&f.descricao?c+' — '+f.descricao:c}
