@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v175';
+window.__V=window.__V||{};window.__V.app='v177';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -906,11 +906,14 @@ function saveMeta(){if(!cadastroAccessAllowed()){alert('A meta só pode ser alte
 function productionYear(p){const y=Number(p?.ano);return Number.isFinite(y)?y:null}
 function productionMonth(p){const m=Number(p?.mes);return Number.isFinite(m)&&m>=1&&m<=12?m:null}
 function productionValue(p){return n(p?.kg)}
+/* base da produção para o % de refugo: no modo líquido usa o peso líquido produzido (dias sem líquido caem no bruto) */
+function prodVal(p){return pesoTipo()==='liquido'&&p&&p.kgLiq!=null&&p.kgLiq!==''?n(p.kgLiq):n(p?.kg)}
+function prodSemLiquido(){let c=0;(producaoFundicao||[]).forEach(p=>{if(isProdDia(p)&&(p.kgLiq==null||p.kgLiq===''))c++});return c}
 function isProdDia(p){return !!(p&&p.data)}
 // Total por mês: se o mês tem dias lançados, vale a soma dos dias; senão vale o total mensal antigo.
 function prodMonthTotals(){
   const dias=new Map(),leg=new Map();
-  producaoFundicao.forEach(p=>{const y=productionYear(p),m=productionMonth(p);if(!y||!m)return;const k=y+'-'+m;const alvo=isProdDia(p)?dias:leg;alvo.set(k,(alvo.get(k)||0)+productionValue(p))});
+  producaoFundicao.forEach(p=>{const y=productionYear(p),m=productionMonth(p);if(!y||!m)return;const k=y+'-'+m;const alvo=isProdDia(p)?dias:leg;alvo.set(k,(alvo.get(k)||0)+prodVal(p))});
   const out=new Map(leg);dias.forEach((v,k)=>out.set(k,v));return out;
 }
 function productionTotalForFilters(){
@@ -1570,7 +1573,7 @@ function dashboard(){
  let reasons=group(rows,r=>motivoDescricao(r)), clients=group(rows,r=>String(val(r,'cliente')).trim());
  preencherMotivosPlantas(rows,r=>kg(r),'');
 try{anaRenderResumo();anaRenderCusto(rows)}catch(e){console.error('analises',e)}
-kpiPerc.textContent=fmt(perc)+'%';if(kpiCusto){kpiCusto.dataset.costValue='R$ '+fmt(totalCost);kpiCusto.textContent=costAccessAllowed()?'R$ '+fmt(totalCost):'🔒 Restrito';}if(document.getElementById('kpiCustoSub'))document.getElementById('kpiCustoSub').textContent=costAccessAllowed()?'valor financeiro da perda':'valores protegidos — acesso restrito';
+kpiPerc.textContent=fmt(perc)+'%';try{const sb=kpiPerc.parentElement.querySelector('.sub');if(sb){const liq=pesoTipo()==='liquido';const sem=liq?prodSemLiquido():0;sb.textContent=liq?('refugo líquido da Fundição ÷ produção líquida'+(sem?' ('+sem+' dia(s) sem líquido usam o bruto)':'')):'refugo da Fundição ÷ produção da Fundição'}}catch(e){}if(kpiCusto){kpiCusto.dataset.costValue='R$ '+fmt(totalCost);kpiCusto.textContent=costAccessAllowed()?'R$ '+fmt(totalCost):'🔒 Restrito';}if(document.getElementById('kpiCustoSub'))document.getElementById('kpiCustoSub').textContent=costAccessAllowed()?'valor financeiro da perda':'valores protegidos — acesso restrito';
 kpiMeta.innerHTML=meta.perc?((perc<=meta.perc)?'<span class="meta-pill ok">✔ Dentro</span>':'<span class="meta-pill bad">▲ Acima</span>'):'<span class="meta-pill none">Sem meta</span>';
 (function(){var s=document.getElementById('kpiMetaSub'),b=document.getElementById('kpiMetaBar'),c=document.getElementById('kpiMeta').closest('.card');if(!s)return;
 if(!meta.perc){s.textContent='defina a meta em Cadastro > Metas';if(b)b.style.width='0%';c.dataset.st='none';return}
@@ -2268,7 +2271,7 @@ function renderProducao(){
   const kgMes=dias.reduce((a,x)=>a+productionValue(x.r),0),corrMes=dias.reduce((a,x)=>a+n(x.r.corridas),0);
   const resumo=document.getElementById('prodCalResumo');
   if(resumo){
-    if(dias.length)resumo.innerHTML=`<b>Total do mês:</b> ${fmt(kgMes)} kg &nbsp;|&nbsp; <b>Corridas:</b> ${fmt(corrMes)} &nbsp;|&nbsp; <b>Dias lançados:</b> ${dias.length}${dias.some(x=>x.r.kgLiq!=null)?` &nbsp;|&nbsp; <b>Líquido:</b> ${fmt(dias.reduce((s,x)=>s+n(x.r.kgLiq),0))} kg`:''}${refMes?` &nbsp;|&nbsp; <b>Refugo Fundição:</b> ${fmt(refMes)} kg (${fmt(refMes/kgMes*100)}%)${costAccessAllowed()?' • R$ '+fmt(refMesCusto):''}`:''}`;
+    if(dias.length)resumo.innerHTML=`<b>Total do mês:</b> ${fmt(kgMes)} kg &nbsp;|&nbsp; <b>Corridas:</b> ${fmt(corrMes)} &nbsp;|&nbsp; <b>Dias lançados:</b> ${dias.length}${dias.some(x=>x.r.kgLiq!=null)?` &nbsp;|&nbsp; <b>Líquido:</b> ${fmt(dias.reduce((s,x)=>s+n(x.r.kgLiq),0))} kg &nbsp;|&nbsp; <b>Rendimento:</b> ${fmt(dias.reduce((s,x)=>s+n(x.r.kgLiq),0)/Math.max(1,dias.filter(x=>x.r.kgLiq!=null).reduce((s,x)=>s+productionValue(x.r),0))*100)}%`:''}${refMes?` &nbsp;|&nbsp; <b>Refugo Fundição:</b> ${fmt(refMes)} kg (${fmt(refMes/Math.max(1e-9,dias.reduce((s,x)=>s+prodVal(x.r),0))*100)}%${pesoTipo()==='liquido'?' sobre o líquido':''})${costAccessAllowed()?' • R$ '+fmt(refMesCusto):''}`:''}`;
     else if(legado.length)resumo.innerHTML=`<b>Total mensal cadastrado:</b> ${fmt(legado.reduce((a,x)=>a+productionValue(x.r),0))} kg. Ao lançar o primeiro dia, o total do mês passa a ser a soma dos dias.`;
     else resumo.innerHTML=refMes?`Nenhum dia lançado neste mês. <b>Refugo Fundição:</b> ${fmt(refMes)} kg`:'Nenhum dia lançado neste mês.';
   }
@@ -2280,7 +2283,23 @@ function renderProducao(){
   const linhasLeg=dias.length?[]:legado.map(({r,i})=>`<tr><td>${String(m).padStart(2,'0')}/${y} (total mensal)</td><td>—</td><td>—</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>—</td><td>${esc(r.observacao||'')}</td><td><button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
   const linhas=[...linhasDia,...linhasLeg];
   body.innerHTML=linhas.length?linhas.join(''):'<tr><td colspan="7" style="text-align:center" class="small">Nenhum dia lançado neste mês.</td></tr>';
+  try{renderRendimento()}catch(e){console.error(e)}
   updateSecurityUI();
+}
+/* Rendimento = peso líquido ÷ bruto fundido, mês a mês (só dias com líquido informado) */
+function renderRendimento(){
+  const host=document.getElementById('producaoTableBody');if(!host)return;
+  let box=document.getElementById('prodRendimento');
+  if(!box){const pn=host.closest('.panel');if(!pn)return;box=document.createElement('div');box.id='prodRendimento';box.className='panel';box.style.marginTop='16px';pn.parentNode.insertBefore(box,pn.nextSibling)}
+  const y=prodCalAno,M=MESES_PRODUCAO||[],lin=[];let tB=0,tL=0;
+  for(let m=1;m<=12;m++){
+    const ds=producaoFundicao.filter(p=>isProdDia(p)&&productionYear(p)===y&&productionMonth(p)===m);
+    const com=ds.filter(p=>p.kgLiq!=null&&p.kgLiq!==''),b=com.reduce((s,p)=>s+n(p.kg),0),l=com.reduce((s,p)=>s+n(p.kgLiq),0),tot=ds.reduce((s,p)=>s+n(p.kg),0);
+    if(!ds.length)continue;tB+=b;tL+=l;
+    const r=b?l/b*100:null;
+    lin.push('<tr><td>'+esc(M[m-1]||m)+'</td><td>'+fmt(tot)+' kg</td><td>'+(com.length?fmt(l)+' kg':'—')+'</td><td><strong>'+(r==null?'—':fmt(r)+'%')+'</strong></td><td class="small">'+com.length+'/'+ds.length+' dias</td></tr>');
+  }
+  box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento da Fundição — '+y+'</h3><div class="small">Peso líquido produzido ÷ kg fundidos (bruto), só nos dias em que o líquido foi informado.</div></div><div class="cad-count">'+(tB?'Ano: '+fmt(tL/tB*100)+'%':'sem líquido')+'</div></div>'+(lin.length?'<div class="tablewrap"><table><thead><tr><th>Mês</th><th>Kg fundidos</th><th>Kg líquido</th><th>Rendimento</th><th>Dias com líquido</th></tr></thead><tbody>'+lin.join('')+'</tbody></table></div>':'<div class="small">Nenhum dia lançado em '+y+'.</div>');
 }
 function editProducao(i){const r=producaoFundicao[i];if(!r||!isProdDia(r))return;navigate('lancamentos');switchLaunchTab('producao');prodCalSelecionar(r.data);document.getElementById('producaoKg')?.focus();}
 function removeProducao(i){
@@ -2366,13 +2385,13 @@ function analysisProductionTotal(filters){
       const d=new Date(y,m-1,Number(p.dia)||1);
       if(filters.start && d<filters.start)return sum;
       if(filters.end && d>filters.end)return sum;
-      return sum+productionValue(p);
+      return sum+prodVal(p);
     }
     if(mesesComDia.has(y+'-'+m))return sum;
     const pStart=new Date(y,m-1,1),pEnd=new Date(y,m,0,23,59,59,999);
     if(filters.start && pEnd<filters.start)return sum;
     if(filters.end && pStart>filters.end)return sum;
-    return sum+productionValue(p);
+    return sum+prodVal(p);
   },0);
 }
 function analysisFilterLabel(){
@@ -2869,7 +2888,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v176) =====
+/* ===== Pesos novos valem só a partir de uma data (v177) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -2964,7 +2983,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v176) =====
+/* ===== Backup COMPLETO do sistema (v177) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{
@@ -2998,6 +3017,7 @@ document.querySelectorAll('input[id="restore"]').forEach(function(__r){__r.addEv
   rd.onload=()=>{
     let j;try{j=JSON.parse(rd.result)}catch{alert('Arquivo inválido.');__r.value='';return}
     if(Array.isArray(j)){data=j;save();refresh();alert('Backup antigo restaurado (somente lançamentos).');__r.value='';return}
+    if(j&&!j.formato&&Array.isArray(j.data)){/* backup semanal/da Auditoria */j={formato:'controle-refugos-completo',geradoEm:j.geradoEm,dados:{lancamentos:j.data,cadastros:j.cadastros,meta:j.meta,producaoFundicao:j.producao,reunioes:j.reunioes,retrabalhos:j.retrabalhos,devolucoes:j.devolucoes}};Object.keys(j.dados).forEach(function(k){if(j.dados[k]==null)delete j.dados[k]})}
     if(!j||j.formato!=='controle-refugos-completo'||!j.dados){alert('Arquivo inválido.');__r.value='';return}
     const d=j.dados,ch=__bkChaves();
     if(!confirm('Restaurar o backup COMPLETO de '+(j.geradoEm?new Date(j.geradoEm).toLocaleString('pt-BR'):'data desconhecida')+'?\n\nIsso substitui os dados deste aparelho: lançamentos ('+(d.lancamentos||[]).length+'), retrabalhos ('+(d.retrabalhos||[]).length+'), devoluções ('+(d.devolucoes||[]).length+'), produção, cadastros e reuniões.\n\nOK = restaurar. Cancelar = não mudar nada.')){__r.value='';return}
