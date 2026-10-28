@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v177';
+window.__V=window.__V||{};window.__V.app='v179';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -101,8 +101,8 @@ function fsStable(v){
   if(typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+fsStable(v[k])).join(',')+'}';
   return JSON.stringify(v);
 }
-function stopFirebaseListener(){try{rtUnlisten()}catch(e){}try{devUnlisten()}catch(e){}firebaseUnsub.forEach(u=>{try{u()}catch(e){}});firebaseUnsub=[];clearTimeout(firebasePullTimer)}
-function startFirebaseListener(){
+function stopFirebaseListener(){try{refUnlisten()}catch(e){}try{rtUnlisten()}catch(e){}try{devUnlisten()}catch(e){}firebaseUnsub.forEach(u=>{try{u()}catch(e){}});firebaseUnsub=[];clearTimeout(firebasePullTimer)}
+function startFirebaseListenerLegacy(){
   stopFirebaseListener();
   if(localStorage.getItem(FIREBASE_SYNC_KEY)==='false'||!firebaseDbOnline)return;
   const root=firebaseRoot();
@@ -164,7 +164,7 @@ async function cadPreMerge(root){
   try{showToast('⚠ O cadastro tinha sido alterado em outro computador: as alterações foram mescladas com as suas.')}catch(e){alert('O cadastro tinha sido alterado em outro computador: as alterações foram mescladas com as suas.')}
 }
 window.__cadMerge3=cadMerge3;
-async function pullRemoteQuiet(){
+async function pullRemoteQuietLegacy(){
   if(firebasePulling||!firebaseDbOnline||firebaseSyncPaused)return;
   if(firebasePushPending){clearTimeout(firebasePullTimer);firebasePullTimer=setTimeout(pullRemoteQuiet,1500);return} /* há mudança local a enviar */
   firebasePulling=true;
@@ -235,14 +235,15 @@ async function pullRemoteQuiet(){
   }catch(e){console.error('Atualização remota:',e)}
   finally{firebasePulling=false}
 }
-async function uploadLocalToFirebase(showMessage=true,cadOnly=false){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Enviando dados locais para o Firebase...');const root=firebaseRoot();if(!showMessage){try{await cadPreMerge(root)}catch(e){console.warn('Mescla do cadastro:',e)}}const fonteHistorico={versao:'v79',custoRefugoKg:2.60,producaoFundicao:Array.isArray(producaoFundicao)?producaoFundicao.map(x=>({...x,custoKg:2.6})):[],reunioes:Array.isArray(window.reunioes)?window.reunioes:[]};if(showMessage){const _c=await root.collection('config').doc('estado').get();const _k=await root.collection('lancamentos').orderBy('index').get();const _a=fsAssemble(_c,_k);if(_a.ok&&_a.remote.length&&(_a.remote.length!==data.length||Math.abs(fsKgTotal(_a.remote)-fsKgTotal(data))>0.5)){if(!confirm('ATENÇÃO: a nuvem já tem dados DIFERENTES dos deste computador.\n\nNuvem: '+_a.remote.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(_a.remote))+' kg\nEste computador: '+data.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(data))+' kg\n\nSubstituir os dados da nuvem pelos deste computador?')){setFirebaseStatus('Envio cancelado. A nuvem não foi alterada.','');return}}}
+async function uploadLocalToFirebaseLegacy(showMessage=true,cadOnly=false){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Enviando dados locais para o Firebase...');const root=firebaseRoot();if(!showMessage){try{await cadPreMerge(root)}catch(e){console.warn('Mescla do cadastro:',e)}}const fonteHistorico={versao:'v79',custoRefugoKg:2.60,producaoFundicao:Array.isArray(producaoFundicao)?producaoFundicao.map(x=>({...x,custoKg:2.6})):[],reunioes:Array.isArray(window.reunioes)?window.reunioes:[]};if(showMessage){const _c=await root.collection('config').doc('estado').get();const _k=await root.collection('lancamentos').orderBy('index').get();const _a=fsAssemble(_c,_k);if(_a.ok&&_a.remote.length&&(_a.remote.length!==data.length||Math.abs(fsKgTotal(_a.remote)-fsKgTotal(data))>0.5)){if(!confirm('ATENÇÃO: a nuvem já tem dados DIFERENTES dos deste computador.\n\nNuvem: '+_a.remote.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(_a.remote))+' kg\nEste computador: '+data.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(data))+' kg\n\nSubstituir os dados da nuvem pelos deste computador?')){setFirebaseStatus('Envio cancelado. A nuvem não foi alterada.','');return}}}
 if(!showMessage&&!firebaseDataDirty&&(firebaseKnownDataId||cadOnly)){await root.collection('config').doc('estado').set(fsSanitize({meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()}),{merge:true});cadBaseSet();setFirebaseStatus('Cadastros enviados ao Firebase.','ok');return}
 const dataId=Date.now().toString(36)+Math.random().toString(36).slice(2,8);const metaPayload={meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,dataId,totalRecords:data.length,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()};const chunks=[];for(let i=0;i<data.length;i+=FIREBASE_CHUNK_SIZE)chunks.push({index:Math.floor(i/FIREBASE_CHUNK_SIZE),records:data.slice(i,i+FIREBASE_CHUNK_SIZE),uploadId:dataId,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()});metaPayload.totalChunks=chunks.length;for(let i=0;i<chunks.length;i+=20){const batch=firebaseDbOnline.batch();chunks.slice(i,i+20).forEach(ch=>batch.set(root.collection('lancamentos').doc('chunk_'+String(ch.index).padStart(4,'0')),fsSanitize(ch)));await batch.commit()}const existing=await root.collection('lancamentos').get();const valid=new Set(chunks.map(ch=>'chunk_'+String(ch.index).padStart(4,'0')));let batch=firebaseDbOnline.batch(),count=0;existing.docs.forEach(d=>{if(!valid.has(d.id)){batch.delete(d.ref);count++}});if(count)await batch.commit();await root.collection('config').doc('estado').set(fsSanitize(metaPayload),{merge:true});firebaseSyncPaused=false;firebaseFirstPullDone=true;firebaseKnownDataId=dataId;firebaseDataDirty=false;cadBaseSet();setFirebaseStatus('Dados locais enviados para o Firebase.','ok');if(showMessage)alert('Sincronização concluída: '+data.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao enviar: '+(e?.message||e),'err');alert('Erro ao enviar os dados para o Firebase.\n\n'+(e?.message||e))}}
-async function downloadFromFirebase(){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Baixando dados do Firebase...');const root=firebaseRoot();const cfgSnap=await root.collection('config').doc('estado').get();const chunkSnap=await root.collection('lancamentos').orderBy('index').get();if(!cfgSnap.exists&&!chunkSnap.size){throw new Error('Não existem dados publicados neste Firebase para este sistema.')}
+async function downloadFromFirebaseLegacy(){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Baixando dados do Firebase...');const root=firebaseRoot();const cfgSnap=await root.collection('config').doc('estado').get();const chunkSnap=await root.collection('lancamentos').orderBy('index').get();if(!cfgSnap.exists&&!chunkSnap.size){throw new Error('Não existem dados publicados neste Firebase para este sistema.')}
  const _asm=fsAssemble(cfgSnap,chunkSnap);if(!_asm.ok)throw new Error('A nuvem está sendo atualizada por outro computador. Tente de novo em alguns segundos.');const cloudState=_asm.cloudState;const remote=_asm.remote;if(!remote.length&&!data.length)throw new Error('O Firebase está conectado, mas não há lançamentos para baixar.');if(remote.length){data=remote;if(cloudState.meta)meta=cloudState.meta;if(Array.isArray(cloudState.producaoFundicao))producaoFundicao=cloudState.producaoFundicao;if(cloudState.cadastros){cadastros=cloudState.cadastros;cadBaseSet()}if(Array.isArray(cloudState.reunioes)){window.reunioes=cloudState.reunioes;localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}if(cloudState.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cloudState.historicoFonte))}catch(e){}}producaoFundicao=(Array.isArray(producaoFundicao)?producaoFundicao:[]).map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));salvarHistoricoFonte();localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'_meta',JSON.stringify(meta));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));saveCad();refresh();}firebaseSyncPaused=false;firebaseFirstPullDone=true;setFirebaseStatus('Dados do Firebase carregados neste navegador.','ok');alert('Dados do Firebase carregados: '+remote.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao baixar: '+(e?.message||e),'err');alert('Erro ao baixar os dados do Firebase.\n\n'+(e?.message||e))}}
 function disconnectFirebase(){try{stopFirebaseListener();if(firebaseAuthOnline)firebaseAuthOnline.signOut();if(firebaseAppOnline&&firebaseAppOnline.delete)firebaseAppOnline.delete()}catch{}firebaseOnlineConnected=false;firebaseAuthOnline=null;firebaseDbOnline=null;firebaseAppOnline=null;localStorage.removeItem(FIREBASE_CONFIG_KEY);localStorage.removeItem(FIREBASE_SYNC_KEY);setFirebaseStatus('Desconectado. O sistema voltou para o modo local.','')}
 /* Compara este aparelho com a nuvem e mostra o que existe só aqui / só na nuvem; permite juntar os dois */
 async function compararComNuvem(){
+  if(refModo==='doc')return refComparar();
   try{
     const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();return}
     if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline){alert('Não consegui conectar à nuvem.');return}
@@ -297,6 +298,252 @@ function removerDuplicadosQuase(){
 }
 window.removerDuplicadosQuase=removerDuplicadosQuase;
 
+/* ===== Sincronização por lançamento (v179) =====
+   Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
+   fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
+   A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
+const REF_IDX_KEY='controle_refugos_2026_refidx_v1';
+let refDecidido=false,refModo='legacy',refUnsub=null,refReady=false,refPushing=false,refQueue=[],refDrainT=null,refOferta=false,refCfgSig='',refFlagTs=0;
+let refIdx={};try{refIdx=JSON.parse(localStorage.getItem(REF_IDX_KEY)||'{}')||{}}catch(e){refIdx={}}
+function refSalvaIdx(){try{localStorage.setItem(REF_IDX_KEY,JSON.stringify(refIdx))}catch(e){}}
+function refFnv(s,seed){let h=seed>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)>>>0}return h.toString(16).padStart(8,'0')}
+function refH(r){const o={};Object.keys(r).forEach(k=>{if(k!=='_rts'&&k!=='_del')o[k]=r[k]});const s=fsStable(o);return refFnv(s,2166136261)+refFnv(s,0x9747b28c)}
+function refNovoId(){return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,9)}
+function refIdLegado(r,usados){const k=recordKeyLoose(r),b='L'+refFnv(k,2166136261)+refFnv(k,0x9747b28c);let n=0;while(usados.has(b+'-'+n))n++;return b+'-'+n}
+/* garante _rid único em todo lançamento (sem id: id determinístico pela chave; id repetido: o 2º ganha id novo) */
+function refGarantirIds(){
+  if(!Array.isArray(data))return false;
+  const usados=new Set();let mud=false;
+  data.forEach(r=>{if(r&&typeof r==='object'&&r._rid){if(usados.has(r._rid)){r._rid=refNovoId();mud=true}usados.add(r._rid)}});
+  data.forEach(r=>{if(r&&typeof r==='object'&&!r._rid){const id=refIdLegado(r,usados);r._rid=id;usados.add(id);mud=true}});
+  return mud;
+}
+/* marca a hora de edição (para "vale o mais recente") */
+function refCarimbar(){
+  refGarantirIds();const agora=Date.now();
+  data.forEach(r=>{if(!r||typeof r!=='object')return;const id=r._rid;
+    if(refIdx[id]!==undefined){if(refH(r)!==refIdx[id])r._rts=agora}
+    else if(id&&id[0]==='r'&&!r._rts)r._rts=agora});
+}
+function refCol(){return firebaseRoot().collection('refugos')}
+function refEditando(){const e=document.getElementById('editIndex');return !!(e&&e.value!=='')}
+function refUnlisten(){if(refUnsub){try{refUnsub()}catch(e){}refUnsub=null}}
+function refMudo(fn){const m0=(typeof audMute!=='undefined')?audMute:false;try{if(typeof audMute!=='undefined')audMute=true;firebaseApplyingRemote=true;return fn()}finally{firebaseApplyingRemote=false;try{if(typeof audMute!=='undefined'){audMute=m0;audSnapBuild()}}catch(e){}}}
+function refAplicar(changes){
+  if(!changes.length)return;
+  refMudo(()=>{
+    const by=new Map();data.forEach((r,i)=>{if(r&&r._rid)by.set(r._rid,i)});
+    const apagar=new Set();let mud=false;
+    changes.forEach(({id,d})=>{
+      d._rid=id;const i=by.get(id),loc=i!=null?data[i]:null;
+      if(d._del){if(loc&&(loc._rts||0)<=(d._rts||0)){apagar.add(i);mud=true}if(!loc||apagar.has(i))delete refIdx[id];return}
+      if(!loc){data.push(d);by.set(id,data.length-1);refIdx[id]=refH(d);mud=true}
+      else if((d._rts||0)>(loc._rts||0)){data[i]=d;refIdx[id]=refH(d);mud=true}
+    });
+    if(apagar.size){data=data.filter((r,i)=>!apagar.has(i))}
+    if(mud){try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}refSalvaIdx();try{dashboardDirty=true;dashboardQtdDirty=true}catch(e){}clearTimeout(refAplicar.t);refAplicar.t=setTimeout(()=>{try{refresh()}catch(e){console.error(e)}},120)}
+  });
+}
+function refDrenar(){
+  clearTimeout(refDrainT);
+  if(refEditando()){refDrainT=setTimeout(refDrenar,4000);return}
+  const q=refQueue.splice(0),primeira=!refReady&&Object.keys(refIdx).length===0;if(q.length)refAplicar(q);
+  if(primeira){try{refConferirLocais()}catch(e){console.error(e)}}
+  if(!refReady){refReady=true;setTimeout(()=>{try{refPush(false).catch(()=>{})}catch(e){}},300)}
+}
+/* primeira vez neste aparelho: lançamentos que só existem aqui (e não na nuvem) */
+function refConferirLocais(){
+  const loc=data.filter(r=>r&&r._rid&&refIdx[r._rid]===undefined);if(!loc.length)return;
+  const kgB=r=>{try{return kgBruto(r)}catch(e){return 0}},tot=loc.reduce((s,r)=>s+kgB(r),0);
+  const ok=confirm('Este aparelho tem '+loc.length.toLocaleString('pt-BR')+' lançamento(s) ('+fsFmt(tot)+' kg) que NÃO estão na nuvem.\n\nOK = enviar para a nuvem (recomendado se foram lançados aqui).\nCancelar = descartar estes '+loc.length.toLocaleString('pt-BR')+' deste aparelho (um backup será baixado antes) e ficar igual à nuvem.');
+  if(ok)return;
+  baixarBackupSeguranca('backup-antes-de-descartar-locais');
+  const s=new Set(loc);refMudo(()=>{data=data.filter(r=>!s.has(r));try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}try{dashboardDirty=true;dashboardQtdDirty=true;refresh()}catch(e){}});
+}
+async function refComparar(){
+  try{
+    if(!refReady){alert('A sincronização inicial ainda está carregando. Tente de novo em alguns segundos.');return}
+    const snap=await refCol().get(),rem=new Map();snap.docs.forEach(d=>{const o=fsDesanitize(d.data());o._rid=d.id;rem.set(d.id,o)});
+    const kgB=r=>{try{return kgBruto(r)}catch(e){return 0}},vivos=[...rem.values()].filter(x=>!x._del);
+    const soAqui=data.filter(r=>r._rid&&(!rem.has(r._rid)||rem.get(r._rid)._del));
+    const idsLocal=new Set(data.map(r=>r._rid)),soNuv=vivos.filter(x=>!idsLocal.has(x._rid)),dif=data.filter(r=>r._rid&&rem.has(r._rid)&&!rem.get(r._rid)._del&&refH(rem.get(r._rid))!==refH(r));
+    const tk=A=>A.reduce((s,r)=>s+kgB(r),0);
+    alert('Este aparelho: '+data.length.toLocaleString('pt-BR')+' lançamentos · '+fsFmt(tk(data))+' kg\nNuvem: '+vivos.length.toLocaleString('pt-BR')+' lançamentos · '+fsFmt(tk(vivos))+' kg\n\nSó neste aparelho: '+soAqui.length+' ('+fsFmt(tk(soAqui))+' kg)\nSó na nuvem: '+soNuv.length+' ('+fsFmt(tk(soNuv))+' kg)\nMesmo lançamento com conteúdo diferente: '+dif.length+'\n\nNo modo novo as diferenças se acertam sozinhas (vale o mais recente). Se persistirem, use "Enviar dados locais" ou "Baixar do Firebase".');
+  }catch(e){console.error(e);alert('Erro ao comparar: '+(e&&e.message||e))}
+}
+function refListen(){
+  refUnlisten();if(refModo!=='doc'||!firebaseDbOnline)return;
+  refReady=false;
+  refUnsub=refCol().onSnapshot(snap=>{
+    snap.docChanges().forEach(c=>{if(c.type==='removed')return;if(c.doc.metadata&&c.doc.metadata.hasPendingWrites)return;refQueue.push({id:c.doc.id,d:fsDesanitize(c.doc.data())})});
+    refDrenar();
+  },e=>{console.error('Escuta lançamentos',e);setFirebaseStatus('Erro ao ouvir a nuvem: '+(e&&e.message||e),'err')});
+}
+function refDiff(forcar){
+  const mud=[],del=[],cur=new Set();
+  data.forEach(r=>{if(!r||!r._rid)return;cur.add(r._rid);const h=refH(r);if(forcar||refIdx[r._rid]!==h)mud.push([r,h])});
+  Object.keys(refIdx).forEach(id=>{if(!cur.has(id))del.push(id)});
+  return{mud,del};
+}
+async function refPush(forcar){
+  if(refModo!=='doc'||!refReady||refPushing||!firebaseDbOnline)return 0;
+  refPushing=true;
+  try{
+    if(refGarantirIds())try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}
+    const {mud,del}=refDiff(forcar);if(!mud.length&&!del.length)return 0;
+    const col=refCol(),agora=Date.now(),ops=[];
+    mud.forEach(([r,h])=>{if(forcar||!r._rts)r._rts=agora;ops.push({id:r._rid,doc:fsSanitize(Object.assign({},r)),h})});
+    del.forEach(id=>ops.push({id,doc:{_rid:id,_del:true,_rts:agora},del:true}));
+    for(let i=0;i<ops.length;i+=400){
+      const lote=ops.slice(i,i+400),b=firebaseDbOnline.batch();
+      lote.forEach(o=>b.set(col.doc(o.id),o.doc));await b.commit();
+      lote.forEach(o=>{if(o.del)delete refIdx[o.id];else refIdx[o.id]=o.h});refSalvaIdx();
+    }
+    try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}
+    return ops.length;
+  }finally{refPushing=false}
+}
+async function refEnviarConfig(root,forcar){
+  const fonteHistorico={versao:'v79',custoRefugoKg:2.60,producaoFundicao:Array.isArray(producaoFundicao)?producaoFundicao.map(x=>({...x,custoKg:2.6})):[],reunioes:Array.isArray(window.reunioes)?window.reunioes:[]};
+  const estado={meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico};
+  const sig=fsStable(estado);if(!forcar&&sig===refCfgSig)return;
+  await root.collection('config').doc('estado').set(fsSanitize(Object.assign({},estado,{updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()})),{merge:true});
+  refCfgSig=sig;cadBaseSet();
+}
+function refAplicarConfig(cs){
+  if(cs.meta){meta=cs.meta}
+  if(Array.isArray(cs.producaoFundicao))producaoFundicao=cs.producaoFundicao.map(x=>({...x,custoKg:2.6}));
+  if(cs.cadastros){cadastros=cs.cadastros;cadBaseSet()}
+  if(Array.isArray(cs.reunioes)){window.reunioes=cs.reunioes;try{localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}catch(e){}}
+  if(cs.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cs.historicoFonte))}catch(e){}}
+  localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));localStorage.setItem(KEY+'_meta',JSON.stringify(meta));salvarHistoricoFonte();saveCad();
+}
+/* --- ativação / migração --- */
+async function refChecarFlag(){
+  const root=firebaseRoot(),c=await root.collection('config').doc('estado').get();
+  return !!(c.exists&&fsDesanitize(c.data()).refugosMigrado);
+}
+async function refAtivar(){
+  if(refModo==='doc'&&refUnsub)return;
+  refModo='doc';
+  if(refGarantirIds())try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}
+  refListen();
+  setFirebaseStatus('Sincronização por lançamento ativa.','ok');
+}
+async function refIniciar(){
+  try{
+    if(!firebaseDbOnline)return;
+    if(await refChecarFlag()){refDecidido=true;await refAtivar();return}
+    if(!refOferta){refOferta=true;setTimeout(()=>{refOferecer().catch(e=>console.error(e)).finally(()=>{refDecidido=true;try{pullRemoteQuiet()}catch(e){}})},2500)}
+    else refDecidido=true;
+  }catch(e){refDecidido=true;console.error('Sincronização por lançamento:',e)}
+}
+async function refOferecer(){
+  if(refModo==='doc'||!firebaseDbOnline)return;
+  if(await refChecarFlag()){await refAtivar();return}
+  if(!confirm('ATUALIZAÇÃO DA SINCRONIZAÇÃO (uma única vez)\n\nCada lançamento passará a ser gravado separadamente na nuvem, com identificador próprio. Isso evita duplicados e perdas quando dois aparelhos usam o sistema ao mesmo tempo.\n\n• Um backup deste aparelho será baixado antes.\n• Os lançamentos da nuvem e os deste aparelho serão juntados (sem duplicar).\n• Depois, atualize os outros aparelhos para a mesma versão.\n\nOK = atualizar agora\nCancelar = continuar no modo antigo por enquanto'))return;
+  await refMigrar();
+}
+async function refMigrar(){
+  try{
+    setFirebaseStatus('Atualizando a sincronização...');
+    const root=firebaseRoot(),cfgSnap=await root.collection('config').doc('estado').get(),chunkSnap=await root.collection('lancamentos').orderBy('index').get();
+    if(cfgSnap.exists&&fsDesanitize(cfgSnap.data()).refugosMigrado){await refAtivar();return}
+    const asm=fsAssemble(cfgSnap,chunkSnap);
+    if(!asm.ok){alert('A nuvem está sendo atualizada por outro aparelho. Tente de novo em alguns segundos.');setFirebaseStatus('Tente novamente em instantes.','err');return}
+    const remote=asm.remote,cont=new Map();
+    remote.forEach(r=>{const s=recordKeyLoose(r);cont.set(s,(cont.get(s)||0)+1)});
+    const soLocal=[];(Array.isArray(data)?data:[]).forEach(r=>{const s=recordKeyLoose(r),c=cont.get(s)||0;if(c>0)cont.set(s,c-1);else soLocal.push(r)});
+    baixarBackupSeguranca('backup-antes-da-nova-sincronizacao');
+    const uniao=remote.concat(soLocal),usados=new Set(),agora=Date.now();
+    uniao.forEach(r=>{if(r&&r._rid)usados.add(r._rid)});
+    uniao.forEach(r=>{if(!r||typeof r!=='object')return;if(!r._rid){const id=refIdLegado(r,usados);r._rid=id;usados.add(id)}if(!r._rts)r._rts=agora});
+    data=uniao;try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}
+    const col=refCol();
+    for(let i=0;i<uniao.length;i+=400){const b=firebaseDbOnline.batch();uniao.slice(i,i+400).forEach(r=>b.set(col.doc(r._rid),fsSanitize(Object.assign({},r))));await b.commit()}
+    await root.collection('config').doc('estado').set({refugosMigrado:{em:agora,total:uniao.length,versao:window.APP_VERSION||''}},{merge:true});
+    refIdx={};uniao.forEach(r=>{refIdx[r._rid]=refH(r)});refSalvaIdx();
+    refModo='doc';refListen();
+    try{refresh()}catch(e){}
+    setFirebaseStatus('Sincronização por lançamento ativa.','ok');
+    alert('Sincronização atualizada.\n\n'+uniao.length.toLocaleString('pt-BR')+' lançamentos gravados na nuvem ('+soLocal.length.toLocaleString('pt-BR')+' vieram só deste aparelho).\n\nAtualize os outros aparelhos (Ctrl+F5) para a mesma versão.');
+  }catch(e){console.error(e);setFirebaseStatus('Erro na atualização: '+(e&&e.message||e),'err');alert('Não foi possível atualizar a sincronização.\n\n'+(e&&e.message||e)+'\n\nNada foi perdido: o sistema continua no modo antigo.')}
+}
+/* reenvio periódico de pendências (ex.: aparelho ficou offline) */
+setInterval(()=>{try{if(refModo==='doc'&&refReady&&firebaseOnlineConnected&&!firebasePushPending&&!document.hidden)refPush(false).then(n=>{if(n)setFirebaseStatus('Atualizado em tempo real às '+new Date().toLocaleTimeString('pt-BR')+'.','ok')}).catch(()=>{})}catch(e){}},30000);
+/* --- funções públicas (modo novo; senão, comportamento antigo) --- */
+function startFirebaseListener(){startFirebaseListenerLegacy();if(localStorage.getItem(FIREBASE_SYNC_KEY)==='false'||!firebaseDbOnline)return;refIniciar()}
+async function pullRemoteQuiet(){
+  if(refModo!=='doc'){
+    try{if(firebaseDbOnline&&Date.now()-refFlagTs>20000){refFlagTs=Date.now();if(await refChecarFlag()){await refAtivar()}}}catch(e){}
+    if(!refDecidido)return; /* aguardando a decisão sobre a nova sincronização */
+    if(refModo!=='doc')return pullRemoteQuietLegacy();
+  }
+  if(firebasePulling||!firebaseDbOnline||firebaseSyncPaused)return;
+  if(firebasePushPending){clearTimeout(firebasePullTimer);firebasePullTimer=setTimeout(pullRemoteQuiet,1500);return}
+  firebasePulling=true;
+  try{
+    const cfgSnap=await firebaseRoot().collection('config').doc('estado').get();if(!cfgSnap.exists)return;
+    const cs=fsDesanitize(cfgSnap.data());
+    const dMeta=cs.meta&&fsStable(cs.meta)!==fsStable(meta),dCad=cs.cadastros&&fsStable(cs.cadastros)!==fsStable(cadastros),dProd=Array.isArray(cs.producaoFundicao)&&fsStable(cs.producaoFundicao)!==fsStable(producaoFundicao);
+    if(!dCad&&!cadBase)cadBaseSet();
+    if(!dMeta&&!dCad&&!dProd)return;
+    firebaseApplyingRemote=true;
+    try{
+      if(dMeta){meta=cs.meta;localStorage.setItem(KEY+'_meta',JSON.stringify(meta))}
+      if(dProd){producaoFundicao=cs.producaoFundicao.map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao))}
+      if(dCad){cadastros=cs.cadastros;saveCad();cadBaseSet()}
+      refresh();
+    }finally{firebaseApplyingRemote=false}
+    setFirebaseStatus('Atualizado em tempo real às '+new Date().toLocaleTimeString('pt-BR')+'.','ok');
+  }catch(e){console.error('Atualização remota:',e)}
+  finally{firebasePulling=false}
+}
+async function uploadLocalToFirebase(showMessage=true,cadOnly=false){
+  if(refModo!=='doc')return uploadLocalToFirebaseLegacy(showMessage,cadOnly);
+  try{
+    const cfg=getFirebaseConfig()||firebaseCfgFields();
+    if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}
+    if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;
+    if(showMessage){
+      if(!refReady){alert('A sincronização inicial ainda está carregando. Tente de novo em alguns segundos.');return}
+      if(!confirm('Enviar TODOS os lançamentos deste aparelho para a nuvem?\n\nEles serão gravados um a um, valendo como a versão mais recente. Nada que só existe na nuvem é apagado.'))return;
+    }
+    const root=firebaseRoot();
+    if(!showMessage){try{await cadPreMerge(root)}catch(e){console.warn('Mescla do cadastro:',e)}}
+    setFirebaseStatus('Enviando dados para o Firebase...');
+    await refEnviarConfig(root,showMessage);
+    const n=await refPush(showMessage);
+    firebaseSyncPaused=false;
+    setFirebaseStatus(showMessage?'Dados locais enviados para o Firebase.':'Atualizado em tempo real às '+new Date().toLocaleTimeString('pt-BR')+'.','ok');
+    if(showMessage)alert('Envio concluído: '+n.toLocaleString('pt-BR')+' lançamento(s) gravado(s).');
+  }catch(e){console.error(e);setFirebaseStatus('Erro ao enviar: '+(e&&e.message||e),'err');if(showMessage)alert('Erro ao enviar os dados para o Firebase.\n\n'+(e&&e.message||e))}
+}
+async function downloadFromFirebase(){
+  if(refModo!=='doc')return downloadFromFirebaseLegacy();
+  try{
+    const cfg=getFirebaseConfig()||firebaseCfgFields();
+    if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}
+    if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;
+    setFirebaseStatus('Baixando dados do Firebase...');
+    const root=firebaseRoot(),snap=await refCol().get(),cfgSnap=await root.collection('config').doc('estado').get();
+    const docs=snap.docs.map(d=>{const o=fsDesanitize(d.data());o._rid=d.id;return o});
+    const vivos=docs.filter(d=>!d._del).sort((a,b)=>(a._rts||0)-(b._rts||0));
+    if(!vivos.length&&!confirm('A nuvem não tem nenhum lançamento. Apagar os dados deste aparelho?')){return}
+    if(!confirm('Substituir os dados deste aparelho pelos da nuvem ('+vivos.length.toLocaleString('pt-BR')+' lançamentos)?\n\nUm backup será baixado antes.'))return;
+    baixarBackupSeguranca('backup-antes-de-baixar');
+    refMudo(()=>{
+      data=vivos;refIdx={};data.forEach(r=>{refIdx[r._rid]=refH(r)});refSalvaIdx();
+      docs.filter(d=>d._del).forEach(d=>{delete refIdx[d._rid]});
+      localStorage.setItem(KEY,JSON.stringify(data));
+      if(cfgSnap.exists)refAplicarConfig(fsDesanitize(cfgSnap.data()));
+      refresh();
+    });
+    firebaseSyncPaused=false;
+    setFirebaseStatus('Dados do Firebase carregados neste navegador.','ok');
+    alert('Dados do Firebase carregados: '+vivos.length.toLocaleString('pt-BR')+' lançamento(s).');
+  }catch(e){console.error(e);setFirebaseStatus('Erro ao baixar: '+(e&&e.message||e),'err');alert('Erro ao baixar os dados do Firebase.\n\n'+(e&&e.message||e))}
+}
 function scheduleFirebasePush(cadOnly){if(!firebaseOnlineConnected||firebaseApplyingRemote||firebaseSyncPaused||localStorage.getItem(FIREBASE_SYNC_KEY)==='false')return;clearTimeout(firebasePushTimer);firebasePushPending=true;firebasePushTimer=setTimeout(()=>{uploadLocalToFirebase(false,cadOnly===true).catch(()=>{}).finally(()=>{firebasePushPending=false})},800)}
 window.addEventListener('load',()=>{const cfg=getFirebaseConfig();if(cfg)setTimeout(()=>connectFirebase(cfg,false),700)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeFirebaseModal()});document.getElementById('firebaseOverlay')?.addEventListener('click',e=>{if(e.target.id==='firebaseOverlay')closeFirebaseModal()});
@@ -2175,6 +2422,7 @@ refugoForm?.addEventListener('submit',async e=>{
     const i=document.getElementById('editIndex')?.value??'';
     if(i==='' && !r[cols.dataLancamento]){const n=new Date();r[cols.dataLancamento]=new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,10)}
     await commitFormFotos(r);
+    {const velho=(i!==''&&Number.isInteger(Number(i)))?data[Number(i)]:null;r._rid=(velho&&velho._rid)||refNovoId();r._rts=Date.now()}
     if(i==='' || !Number.isInteger(Number(i))) data.push(r); else data[Number(i)]=r;
     save();
     clearForm();
@@ -2888,7 +3136,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v177) =====
+/* ===== Pesos novos valem só a partir de uma data (v179) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -2983,7 +3231,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v177) =====
+/* ===== Backup COMPLETO do sistema (v179) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{
@@ -3087,7 +3335,7 @@ function exportXlsxHistorico(){
 
 // Integração do modo online ao salvamento local existente.
 const __saveOriginal=save;
-save=function(){__saveOriginal();if(!firebaseApplyingRemote)firebaseDataDirty=true;scheduleFirebasePush()};
+save=function(){try{refCarimbar()}catch(e){console.error('ids',e)}__saveOriginal();if(!firebaseApplyingRemote)firebaseDataDirty=true;scheduleFirebasePush()};
 const __saveCadOriginal=saveCad;
 saveCad=function(){__saveCadOriginal();scheduleFirebasePush(true)};
 const __saveProducaoOriginal=saveProducao;
