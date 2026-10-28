@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v179';
+window.__V=window.__V||{};window.__V.app='v180';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -298,7 +298,7 @@ function removerDuplicadosQuase(){
 }
 window.removerDuplicadosQuase=removerDuplicadosQuase;
 
-/* ===== Sincronização por lançamento (v179) =====
+/* ===== Sincronização por lançamento (v180) =====
    Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
    fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
    A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
@@ -3136,7 +3136,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v179) =====
+/* ===== Pesos novos valem só a partir de uma data (v180) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -3231,7 +3231,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v179) =====
+/* ===== Backup COMPLETO do sistema (v180) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{
