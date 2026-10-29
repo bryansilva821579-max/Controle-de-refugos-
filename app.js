@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v181';
+window.__V=window.__V||{};window.__V.app='v182';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -101,7 +101,7 @@ function fsStable(v){
   if(typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+fsStable(v[k])).join(',')+'}';
   return JSON.stringify(v);
 }
-function stopFirebaseListener(){try{refUnlisten()}catch(e){}try{rtUnlisten()}catch(e){}try{devUnlisten()}catch(e){}firebaseUnsub.forEach(u=>{try{u()}catch(e){}});firebaseUnsub=[];clearTimeout(firebasePullTimer)}
+function stopFirebaseListener(){try{refUnlisten()}catch(e){}try{blobUnlisten()}catch(e){}try{rtUnlisten()}catch(e){}try{devUnlisten()}catch(e){}firebaseUnsub.forEach(u=>{try{u()}catch(e){}});firebaseUnsub=[];clearTimeout(firebasePullTimer)}
 function startFirebaseListenerLegacy(){
   stopFirebaseListener();
   if(localStorage.getItem(FIREBASE_SYNC_KEY)==='false'||!firebaseDbOnline)return;
@@ -154,9 +154,15 @@ function cadMerge3(base,local,remote){
   return out;
 }
 async function cadPreMerge(root){
-  if(!cadBase)return;
-  const snap=await root.collection('config').doc('estado').get();if(!snap.exists)return;
-  const rc=fsDesanitize(snap.data()).cadastros;if(!rc||typeof rc!=='object')return;
+  let rc;
+  if(refModo==='doc'){const r=await blobLerRemoto('cadastros',root);rc=r&&r.valor}
+  else{const snap=await root.collection('config').doc('estado').get();if(!snap.exists)return;rc=fsDesanitize(snap.data()).cadastros}
+  if(!rc||typeof rc!=='object')return;
+  if(!cadBase){ /* ainda não sincronizou o cadastro neste aparelho: a nuvem manda (senão itens apagados voltariam) */
+    firebaseApplyingRemote=true;
+    try{cadastros=rc;saveCad();cadBaseSet();refresh()}finally{firebaseApplyingRemote=false}
+    return;
+  }
   const sr=fsStable(rc);if(sr===fsStable(cadBase)||sr===fsStable(cadastros))return;
   const merged=cadMerge3(cadBase,cadastros,rc);
   firebaseApplyingRemote=true;
@@ -175,14 +181,15 @@ async function pullRemoteQuietLegacy(){
     if(cfgSnap.exists&&firebaseKnownDataId){
       const cs=fsDesanitize(cfgSnap.data());
       if(cs.dataId&&cs.dataId===firebaseKnownDataId){
-        const dMeta=cs.meta&&fsStable(cs.meta)!==fsStable(meta),dCad=cs.cadastros&&fsStable(cs.cadastros)!==fsStable(cadastros),dProd=Array.isArray(cs.producaoFundicao)&&fsStable(cs.producaoFundicao)!==fsStable(producaoFundicao);
+        const dMeta=cs.meta&&fsStable(cs.meta)!==fsStable(meta),dCad=cs.cadastros&&fsStable(cs.cadastros)!==fsStable(cadastros),dProd=Array.isArray(cs.producaoFundicao)&&fsStable(cs.producaoFundicao)!==fsStable(producaoFundicao),dReu=Array.isArray(cs.reunioes)&&fsStable(cs.reunioes)!==fsStable(window.reunioes||[]);
         if(!dCad&&!cadBase)cadBaseSet();
-        if(!dMeta&&!dCad&&!dProd)return;
+        if(!dMeta&&!dCad&&!dProd&&!dReu)return;
         firebaseApplyingRemote=true;
         try{
           if(dMeta){meta=cs.meta;localStorage.setItem(KEY+'_meta',JSON.stringify(meta))}
           if(dProd){producaoFundicao=cs.producaoFundicao.map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao))}
           if(dCad){cadastros=cs.cadastros;saveCad();cadBaseSet()}
+          if(dReu){window.reunioes=cs.reunioes;try{localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}catch(e){}}
           refresh();
         }finally{firebaseApplyingRemote=false}
         setFirebaseStatus('Atualizado em tempo real às '+new Date().toLocaleTimeString('pt-BR')+'.','ok');
@@ -298,7 +305,7 @@ function removerDuplicadosQuase(){
 }
 window.removerDuplicadosQuase=removerDuplicadosQuase;
 
-/* ===== Sincronização por lançamento (v181) =====
+/* ===== Sincronização por lançamento (v182) =====
    Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
    fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
    A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
@@ -372,7 +379,8 @@ async function refComparar(){
   }catch(e){console.error(e);alert('Erro ao comparar: '+(e&&e.message||e))}
 }
 function refListen(){
-  refUnlisten();if(refModo!=='doc'||!firebaseDbOnline)return;
+  refUnlisten();blobUnlisten();if(refModo!=='doc'||!firebaseDbOnline)return;
+  try{blobUnsub=blobCol().onSnapshot(sn=>{if(sn&&sn.metadata&&sn.metadata.hasPendingWrites)return;clearTimeout(firebasePullTimer);firebasePullTimer=setTimeout(pullRemoteQuiet,900)},e=>console.error('Escuta cadastro/reuniões',e))}catch(e){console.error(e)}
   refReady=false;
   refUnsub=refCol().onSnapshot(snap=>{
     snap.docChanges().forEach(c=>{if(c.type==='removed')return;if(c.doc.metadata&&c.doc.metadata.hasPendingWrites)return;refQueue.push({id:c.doc.id,d:fsDesanitize(c.doc.data())})});
@@ -403,14 +411,61 @@ async function refPush(forcar){
     return ops.length;
   }finally{refPushing=false}
 }
-async function refEnviarConfig(root,forcar){
-  const fonteHistorico={versao:'v79',custoRefugoKg:2.60,producaoFundicao:Array.isArray(producaoFundicao)?producaoFundicao.map(x=>({...x,custoKg:2.6})):[],reunioes:Array.isArray(window.reunioes)?window.reunioes:[]};
-  const estado={meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico};
-  const sig=fsStable(estado);if(!forcar&&sig===refCfgSig)return;
-  await root.collection('config').doc('estado').set(fsSanitize(Object.assign({},estado,{updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()})),{merge:true});
-  refCfgSig=sig;cadBaseSet();
+/* --- cadastro e reuniões em documentos próprios (o documento único passava de 1 MB e a gravação falhava) --- */
+const BLOB_MAX=250000;
+let blobSig={},blobN={},blobUnsub=null,refLegadoLimpo=false,reuBase=null;
+function blobCol(){return firebaseRoot().collection('config')}
+function reuBaseSet(){try{reuBase=JSON.parse(JSON.stringify(window.reunioes||[]))}catch(e){reuBase=null}}
+function blobUnlisten(){if(blobUnsub){try{blobUnsub()}catch(e){}blobUnsub=null}}
+function blobMontar(docs){
+  const g={};
+  docs.forEach(d=>{const x=d.data?d.data():d,id=d.id||'';if(!id.startsWith('blob_')||!x||typeof x.json!=='string')return;
+    const k=x.name+'|'+x.v;(g[k]=g[k]||{name:x.name,v:x.v,n:x.n,p:{}}).p[x.i]=x.json});
+  const out={};
+  Object.keys(g).forEach(k=>{const o=g[k];let ok=true,txt='';for(let i=0;i<o.n;i++){if(typeof o.p[i]!=='string'){ok=false;break}txt+=o.p[i]}
+    if(!ok)return;if(out[o.name]&&out[o.name].v>=o.v)return;
+    try{out[o.name]={valor:JSON.parse(txt),v:o.v,n:o.n}}catch(e){}});
+  Object.keys(out).forEach(n=>{blobN[n]=out[n].n});
+  return out;
 }
-function refAplicarConfig(cs){
+async function blobEnviar(name,valor,forcar){
+  const sig=fsStable(valor);if(!forcar&&sig===blobSig[name])return;
+  const js=JSON.stringify(valor===undefined?null:valor).replace(/[\ud800-\udfff]/g,c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0'));
+  const partes=[];for(let i=0;i<js.length;i+=BLOB_MAX)partes.push(js.slice(i,i+BLOB_MAX));if(!partes.length)partes.push('null');
+  const v=Date.now(),col=blobCol(),b=firebaseDbOnline.batch();
+  partes.forEach((p,i)=>b.set(col.doc('blob_'+name+'__'+i),{name,i,n:partes.length,v,json:p}));
+  for(let i=partes.length;i<(blobN[name]||0);i++)b.delete(col.doc('blob_'+name+'__'+i));
+  await b.commit();blobN[name]=partes.length;blobSig[name]=sig;
+}
+async function blobLerRemoto(name,root){
+  const s=await blobCol().get(),B=blobMontar(s.docs);
+  if(B[name])return{valor:B[name].valor,v:B[name].v};
+  const c=await root.collection('config').doc('estado').get();
+  if(c.exists){const x=fsDesanitize(c.data())[name];if(x!==undefined)return{valor:x,v:0,legado:true}}
+  return null;
+}
+async function reuPreMerge(root){
+  const r=await blobLerRemoto('reunioes',root);if(!r||!Array.isArray(r.valor))return;
+  const rr=r.valor,L=Array.isArray(window.reunioes)?window.reunioes:[];
+  const sr=fsStable(rr);if(sr===fsStable(L)||(reuBase&&sr===fsStable(reuBase)))return;
+  const merged=cadMergeLista(reuBase||[],L,rr,x=>String(x&&x.id));
+  firebaseApplyingRemote=true;
+  try{window.reunioes=merged;try{localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(merged))}catch(e){}try{window.reuLists&&window.reuLists()}catch(e){}}finally{firebaseApplyingRemote=false}
+}
+async function refEnviarConfig(root,forcar){
+  const estado={meta,producaoFundicao};
+  const sig=fsStable(estado);
+  await blobEnviar('cadastros',cadastros,forcar);
+  await blobEnviar('reunioes',window.reunioes||[],forcar);
+  if(forcar||sig!==refCfgSig||!refLegadoLimpo){
+    const F=window.firebase.firestore.FieldValue;
+    await root.collection('config').doc('estado').set(Object.assign(fsSanitize(Object.assign({},estado)),{updatedAt:F.serverTimestamp(),cadastros:F.delete(),reunioes:F.delete(),historicoFonte:F.delete()}),{merge:true});
+    refCfgSig=sig;refLegadoLimpo=true;
+  }
+  cadBaseSet();reuBaseSet();
+}
+function refAplicarConfig(cs,ex){
+  ex=ex||{};if(ex.cadastros!==undefined)cs=Object.assign({},cs,{cadastros:ex.cadastros});if(ex.reunioes!==undefined)cs=Object.assign({},cs,{reunioes:ex.reunioes});
   if(cs.meta){meta=cs.meta}
   if(Array.isArray(cs.producaoFundicao))producaoFundicao=cs.producaoFundicao.map(x=>({...x,custoKg:2.6}));
   if(cs.cadastros){cadastros=cs.cadastros;cadBaseSet()}
@@ -485,14 +540,17 @@ async function pullRemoteQuiet(){
   try{
     const cfgSnap=await firebaseRoot().collection('config').doc('estado').get();if(!cfgSnap.exists)return;
     const cs=fsDesanitize(cfgSnap.data());
-    const dMeta=cs.meta&&fsStable(cs.meta)!==fsStable(meta),dCad=cs.cadastros&&fsStable(cs.cadastros)!==fsStable(cadastros),dProd=Array.isArray(cs.producaoFundicao)&&fsStable(cs.producaoFundicao)!==fsStable(producaoFundicao);
-    if(!dCad&&!cadBase)cadBaseSet();
-    if(!dMeta&&!dCad&&!dProd)return;
+    const _B=blobMontar((await blobCol().get()).docs);
+    if(_B.cadastros)cs.cadastros=_B.cadastros.valor;if(_B.reunioes)cs.reunioes=_B.reunioes.valor;
+    const dMeta=cs.meta&&fsStable(cs.meta)!==fsStable(meta),dCad=cs.cadastros&&fsStable(cs.cadastros)!==fsStable(cadastros),dProd=Array.isArray(cs.producaoFundicao)&&fsStable(cs.producaoFundicao)!==fsStable(producaoFundicao),dReu=Array.isArray(cs.reunioes)&&fsStable(cs.reunioes)!==fsStable(window.reunioes||[]);
+    if(!dCad&&!cadBase)cadBaseSet();if(!dReu&&!reuBase)reuBaseSet();
+    if(!dMeta&&!dCad&&!dProd&&!dReu)return;
     firebaseApplyingRemote=true;
     try{
       if(dMeta){meta=cs.meta;localStorage.setItem(KEY+'_meta',JSON.stringify(meta))}
       if(dProd){producaoFundicao=cs.producaoFundicao.map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao))}
-      if(dCad){cadastros=cs.cadastros;saveCad();cadBaseSet()}
+      if(dCad){cadastros=cs.cadastros;saveCad();cadBaseSet();blobSig.cadastros=fsStable(cadastros)}
+      if(dReu){window.reunioes=cs.reunioes;blobSig.reunioes=fsStable(cs.reunioes);try{localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}catch(e){}reuBaseSet();try{window.reuLists&&window.reuLists()}catch(e){}}
       refresh();
     }finally{firebaseApplyingRemote=false}
     setFirebaseStatus('Atualizado em tempo real às '+new Date().toLocaleTimeString('pt-BR')+'.','ok');
@@ -510,7 +568,7 @@ async function uploadLocalToFirebase(showMessage=true,cadOnly=false){
       if(!confirm('Enviar TODOS os lançamentos deste aparelho para a nuvem?\n\nEles serão gravados um a um, valendo como a versão mais recente. Nada que só existe na nuvem é apagado.'))return;
     }
     const root=firebaseRoot();
-    if(!showMessage){try{await cadPreMerge(root)}catch(e){console.warn('Mescla do cadastro:',e)}}
+    if(!showMessage){try{await cadPreMerge(root)}catch(e){console.warn('Mescla do cadastro:',e)}try{await reuPreMerge(root)}catch(e){console.warn('Mescla das reuniões:',e)}}
     setFirebaseStatus('Enviando dados para o Firebase...');
     await refEnviarConfig(root,showMessage);
     const n=await refPush(showMessage);
@@ -527,6 +585,7 @@ async function downloadFromFirebase(){
     if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;
     setFirebaseStatus('Baixando dados do Firebase...');
     const root=firebaseRoot(),snap=await refCol().get(),cfgSnap=await root.collection('config').doc('estado').get();
+    const _B=blobMontar((await blobCol().get()).docs),exBlobs={cadastros:_B.cadastros&&_B.cadastros.valor,reunioes:_B.reunioes&&_B.reunioes.valor};
     const docs=snap.docs.map(d=>{const o=fsDesanitize(d.data());o._rid=d.id;return o});
     const vivos=docs.filter(d=>!d._del).sort((a,b)=>(a._rts||0)-(b._rts||0));
     if(!vivos.length&&!confirm('A nuvem não tem nenhum lançamento. Apagar os dados deste aparelho?')){return}
@@ -536,8 +595,8 @@ async function downloadFromFirebase(){
       data=vivos;refIdx={};data.forEach(r=>{refIdx[r._rid]=refH(r)});refSalvaIdx();
       docs.filter(d=>d._del).forEach(d=>{delete refIdx[d._rid]});
       localStorage.setItem(KEY,JSON.stringify(data));
-      if(cfgSnap.exists)refAplicarConfig(fsDesanitize(cfgSnap.data()));
-      refresh();
+      if(cfgSnap.exists)refAplicarConfig(fsDesanitize(cfgSnap.data()),exBlobs);
+      reuBaseSet();refresh();
     });
     firebaseSyncPaused=false;
     setFirebaseStatus('Dados do Firebase carregados neste navegador.','ok');
@@ -775,11 +834,14 @@ if(localStorage.getItem(KEY+'_auto_cadastro_version')!==AUTO_CADASTRO_VERSION){ 
   // Garante que todos os clientes existentes nos lançamentos históricos também
   // estejam disponíveis no campo Cliente do formulário de Novo lançamento.
   const clientesHistorico=Array.isArray(data)?[...new Set(data.map(r=>String(r?.CLIENTE??'')))].map(canonicalClientName).filter(Boolean):[];
-  cadastros.clientes=normalizeClientList([...(cadastros.clientes||[]),...clientesHistorico]);
+  if(!cadastros.removidos||typeof cadastros.removidos!=='object')cadastros.removidos={clientes:[],responsaveis:[]};
+  const __rmK=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+  const __rmC=new Set((cadastros.removidos.clientes||[]).map(__rmK)),__rmR=new Set((cadastros.removidos.responsaveis||[]).map(__rmK));
+  cadastros.clientes=normalizeClientList([...(cadastros.clientes||[]),...clientesHistorico.filter(x=>!__rmC.has(__rmK(x)))]);
   const responsaveisHistorico=Array.isArray(data)?[...new Set(data.map(r=>String(r?.['RESPONSÁVEL PELA ETIQUETA']??'').trim()).filter(Boolean))]:[];
   if(!Array.isArray(cadastros.participantes))cadastros.participantes=['Ryan','Jambres','Gabriel','Antonio','Jose Raimundo','Josemario','Johnny','Christoffer','Fabio R.','Tiago B.','Thiago M.'].map(n=>({nome:n,email:''}));
   {const seenP=new Set();cadastros.participantes=cadastros.participantes.map(x=>typeof x==='string'?{nome:x.trim(),email:''}:{nome:String(x?.nome??'').trim(),email:String(x?.email??'').trim()}).filter(x=>{if(!x.nome)return false;const k=x.nome.toUpperCase();if(seenP.has(k))return false;seenP.add(k);return true})}
-  cadastros.responsaveis=[...(cadastros.responsaveis||[]),...responsaveisHistorico]
+  cadastros.responsaveis=[...(cadastros.responsaveis||[]),...responsaveisHistorico.filter(x=>!__rmR.has(__rmK(x)))]
     .map(x=>String(x).trim()).filter(Boolean)
     .filter((()=>{const seen=new Set();return x=>{const k=x.toUpperCase();if(seen.has(k))return false;seen.add(k);return true}})())
     .sort((a,b)=>a.localeCompare(b,'pt-BR'));
@@ -1136,12 +1198,14 @@ function emailValido(e){return !e||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)}
 function addParticipante(){const n=document.getElementById('cadPartNome').value.trim(),e=document.getElementById('cadPartEmail').value.trim();if(!n)return alert('Informe o nome do participante.');if(!emailValido(e))return alert('E-mail inválido.');if(cadastros.participantes.some(x=>x.nome.toUpperCase()===n.toUpperCase()))return alert('Esse participante já está cadastrado.');cadastros.participantes.push({nome:n,email:e});saveCad();scheduleFirebasePush();document.getElementById('cadPartNome').value='';document.getElementById('cadPartEmail').value='';renderCadastro()}
 function editParticipante(i){const x=cadastros.participantes[i];if(!x)return;const n=prompt('Nome do participante:',x.nome);if(n===null)return;const nome=n.trim();if(!nome)return alert('Informe o nome do participante.');const e=prompt('E-mail do participante:',x.email||'');if(e===null)return;const em=e.trim();if(!emailValido(em))return alert('E-mail inválido.');if(cadastros.participantes.some((y,idx)=>idx!==i&&y.nome.toUpperCase()===nome.toUpperCase()))return alert('Esse participante já está cadastrado.');cadastros.participantes[i]={nome,email:em};saveCad();scheduleFirebasePush();renderCadastro()}
 function removeParticipante(i){if(confirm('Excluir este participante do cadastro? As atas já salvas não são alteradas.')){cadastros.participantes.splice(i,1);saveCad();scheduleFirebasePush();renderCadastro()}}
-function addResponsavel(){const d=document.getElementById('cadResponsavel').value.trim();if(!d)return alert('Informe o nome do responsável.');if(cadastros.responsaveis.some(x=>x.toUpperCase()===d.toUpperCase()))return alert('Esse responsável já está cadastrado.');cadastros.responsaveis.push(d);saveCad();document.getElementById('cadResponsavel').value='';renderCadastro();}
-function addCliente(){const d=document.getElementById('cadCliente').value.trim();if(!d)return alert('Informe o nome do cliente.');if(cadastros.clientes.some(x=>String(x).trim().toUpperCase()===d.toUpperCase()))return alert('Esse cliente já está cadastrado.');cadastros.clientes.push(d);cadastros.clientes.sort((a,b)=>a.localeCompare(b,'pt-BR'));saveCad();document.getElementById('cadCliente').value='';renderCadastro();}
+function addResponsavel(){const d=document.getElementById('cadResponsavel').value.trim();if(!d)return alert('Informe o nome do responsável.');if(cadastros.responsaveis.some(x=>x.toUpperCase()===d.toUpperCase()))return alert('Esse responsável já está cadastrado.');cadDesmarcaRemovido('responsaveis',d);cadastros.responsaveis.push(d);saveCad();document.getElementById('cadResponsavel').value='';renderCadastro();}
+function addCliente(){const d=document.getElementById('cadCliente').value.trim();if(!d)return alert('Informe o nome do cliente.');if(cadastros.clientes.some(x=>String(x).trim().toUpperCase()===d.toUpperCase()))return alert('Esse cliente já está cadastrado.');cadDesmarcaRemovido('clientes',d);cadastros.clientes.push(d);cadastros.clientes.sort((a,b)=>a.localeCompare(b,'pt-BR'));saveCad();document.getElementById('cadCliente').value='';renderCadastro();}
 function removeMotivo(i){if(confirm('Excluir este motivo do cadastro?')){cadastros.motivos.splice(i,1);saveCad();renderCadastro()}}
 function removePeca(i){if(confirm('Excluir esta peça do cadastro?')){cadastros.pecas.splice(i,1);saveCad();renderCadastro()}}
-function removeResponsavel(i){if(confirm('Excluir este responsável do cadastro?')){cadastros.responsaveis.splice(i,1);saveCad();renderCadastro()}}
-function removeCliente(i){if(confirm('Excluir este cliente do cadastro?')){cadastros.clientes.splice(i,1);saveCad();renderCadastro()}}
+function cadMarcaRemovido(t,nome){try{if(!cadastros.removidos||typeof cadastros.removidos!=='object')cadastros.removidos={clientes:[],responsaveis:[]};const L=cadastros.removidos[t]=cadastros.removidos[t]||[];if(!L.some(x=>String(x).toUpperCase()===String(nome).toUpperCase()))L.push(String(nome))}catch(e){}}
+function cadDesmarcaRemovido(t,nome){try{const L=cadastros.removidos&&cadastros.removidos[t];if(L)cadastros.removidos[t]=L.filter(x=>String(x).toUpperCase()!==String(nome).toUpperCase())}catch(e){}}
+function removeResponsavel(i){if(confirm('Excluir este responsável do cadastro?')){cadMarcaRemovido('responsaveis',cadastros.responsaveis[i]);cadastros.responsaveis.splice(i,1);saveCad();renderCadastro()}}
+function removeCliente(i){if(confirm('Excluir este cliente do cadastro?')){cadMarcaRemovido('clientes',cadastros.clientes[i]);cadastros.clientes.splice(i,1);saveCad();renderCadastro()}}
 
 function save(){
   __historySearchCache=new WeakMap();
@@ -3136,7 +3200,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v181) =====
+/* ===== Pesos novos valem só a partir de uma data (v182) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -3231,7 +3295,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v181) =====
+/* ===== Backup COMPLETO do sistema (v182) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{
@@ -3338,6 +3402,7 @@ const __saveOriginal=save;
 save=function(){try{refCarimbar()}catch(e){console.error('ids',e)}__saveOriginal();if(!firebaseApplyingRemote)firebaseDataDirty=true;scheduleFirebasePush()};
 const __saveCadOriginal=saveCad;
 saveCad=function(){__saveCadOriginal();scheduleFirebasePush(true)};
+(function(){try{const si=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){const r=si.apply(this,arguments);try{if(k==='controle_refugos_2026_reunioes'&&this===window.localStorage&&!firebaseApplyingRemote)scheduleFirebasePush(true)}catch(e){}return r};}catch(e){}})();
 const __saveProducaoOriginal=saveProducao;
 saveProducao=function(){__saveProducaoOriginal();scheduleFirebasePush()};
 document.getElementById('data')?.addEventListener('input',atualizarDataDisplay);document.getElementById('data')?.addEventListener('change',atualizarDataDisplay);document.getElementById('data')?.addEventListener('blur',atualizarDataDisplay);
