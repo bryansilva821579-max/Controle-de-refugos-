@@ -13,7 +13,8 @@ function selFill(id,list,first){var e=document.getElementById(id);if(!e)return;v
 function ltMatPop(){selFill('material',matList(),'Selecione')}
 function ltMatSet(v){ltMatPop();selSet('material',matNorm(v))}
 function prodOf(cod,cli){try{return(window.__BUSCAR_PRODUTO_OFICIAL__&&window.__BUSCAR_PRODUTO_OFICIAL__(cod))||findPeca(cli||'',cod)}catch(e){return null}}
-function ltMatFill(){var m=document.getElementById('material');if(!m||m.value)return;var p=prodOf((document.getElementById('codigo')||{}).value,'');if(p&&p.material)ltMatSet(p.material)}
+function ltMatUltimo(cod){var k=String(cod||'').trim().toUpperCase();if(!k)return '';var d=(typeof data!=='undefined'&&Array.isArray(data))?data:[],best='',bd='';for(var i=0;i<d.length;i++){var r=d[i];if(!r)continue;if(String(val(r,'codigo')==null?'':val(r,'codigo')).trim().toUpperCase()!==k)continue;var m=matNorm(val(r,'material'));if(!m||m==='SEMMATERIAL')continue;var dt='';try{dt=__dataLanc(r)||''}catch(e){}if(!best||dt>=bd){best=m;bd=dt}}return best}
+function ltMatFill(){var m=document.getElementById('material');if(!m||m.value)return;var cod=(document.getElementById('codigo')||{}).value,p=prodOf(cod,'');if(p&&p.material&&String(p.material).trim().toUpperCase()!=='SEM MATERIAL'){ltMatSet(p.material);return}var u=ltMatUltimo(cod);if(u)ltMatSet(u)}
 function matRec(r){var m=matNorm(val(r,'material'));if(m&&m!=='SEMMATERIAL')return m;var p=prodOf(val(r,'codigo'),'');return matShow(p&&p.material)}
 function cadMatLoad(){var e=document.getElementById('cadMatTxt');if(e)e.value=matList().join('\n')}
 function salvarMateriais(){var a=[...new Set(String(document.getElementById('cadMatTxt').value||'').split(/\n|,|;/).map(function(x){return matNorm(x)}).filter(Boolean))];cadastros.materiais=a;try{saveCad()}catch(e){try{localStorage.setItem(CADKEY,JSON.stringify(cadastros))}catch(x){}}ltMatPop();alert('Materiais salvos ('+a.length+').')}

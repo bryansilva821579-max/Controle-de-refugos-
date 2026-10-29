@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v182';
+window.__V=window.__V||{};window.__V.app='v184';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -305,7 +305,7 @@ function removerDuplicadosQuase(){
 }
 window.removerDuplicadosQuase=removerDuplicadosQuase;
 
-/* ===== Sincronização por lançamento (v182) =====
+/* ===== Sincronização por lançamento (v184) =====
    Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
    fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
    A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
@@ -3200,7 +3200,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v182) =====
+/* ===== Pesos novos valem só a partir de uma data (v184) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -3219,7 +3219,7 @@ function __aplicarPesosNovos(antes){
   const depois=__snapPesosCad(),mudou=new Set();
   depois.forEach((v,k)=>{const o=antes.get(k);if(!o)return;if(v.pp!==o.pp||v.pa!==o.pa||v.pf!==o.pf||v.pu!==o.pu)mudou.add(k)});
   if(!mudou.size||!Array.isArray(data))return ' Nenhum peso mudou em relação ao cadastro anterior.';
-  const hoje=new Date(),def=('0'+1).slice(-2)+'/'+('0'+(hoje.getMonth()+1)).slice(-2)+'/'+hoje.getFullYear();
+  const def='01/01/'+new Date().getFullYear();
   const resp=prompt('Os pesos de '+mudou.size+' peça(s) mudaram.\n\nA partir de que data os NOVOS pesos devem valer nos lançamentos?\n(dd/mm/aaaa — lançamentos dessa data em diante são recalculados; os anteriores ficam com o peso antigo)\n\nCancelar ou deixar vazio = não mexer em nenhum lançamento.',def);
   if(resp===null||!String(resp).trim())return ' Lançamentos não foram alterados.';
   const m=String(resp).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -3244,6 +3244,18 @@ function __aplicarPesosNovos(antes){
   }
   return ' Pesos novos aplicados a '+cont.toLocaleString('pt-BR')+' lançamento(s) a partir de '+resp.trim()+' ('+pecas.size+' peça(s)); refugo bruto '+fmt(kgAntes)+' kg → '+fmt(kgDepois)+' kg.';
 }
+function recalcularPesosComposicao(){
+  try{
+    const snap=__snapPesosCad(),antes=new Map();
+    ((cadastros&&cadastros.pecas)||[]).forEach(p=>{if(!p||!p._composicao)return;const k=String(p.codigo??'').trim().toUpperCase();if(k&&snap.has(k))antes.set(k,{pp:-1,pa:-1,pf:-1,pu:-1})});
+    if(!antes.size){alert('Nenhuma peça do cadastro veio da planilha de composição. Aplique a planilha primeiro.');return}
+    snap.forEach((v,k)=>{if(!antes.has(k))antes.set(k,v)});
+    const msg=__aplicarPesosNovos(antes);
+    try{renderCadastro()}catch(e){}
+    alert('Recálculo pela composição.\n\n'+String(msg||'').trim());
+  }catch(e){alert('Erro ao recalcular: '+e.message)}
+}
+window.recalcularPesosComposicao=recalcularPesosComposicao;
 async function importProdutosExcel(mode){
   const input=document.getElementById('produtoExcelImport'),status=document.getElementById('produtoExcelStatus');
   if(!input?.files?.[0]){status.textContent='Escolha primeiro a planilha Excel da aba CADASTRO.';status.className='small import-status error';return}
@@ -3295,7 +3307,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v182) =====
+/* ===== Backup COMPLETO do sistema (v184) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{
