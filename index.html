@@ -833,7 +833,7 @@ service cloud.firestore {
       <input id="searchProdutoCodigo" placeholder="🔎 Pesquisar pelo código (ex.: 66680)" autocomplete="off" style="flex:1;min-width:240px">
       <span id="produtoSearchCount" class="small"></span>
     </div>
-    <div class="toolbar" style="margin-top:8px;align-items:center"><span id="compResumo" class="small" style="flex:1"></span><button class="btn secondary" type="button" onclick="exportComposicaoXlsx()">📊 Excel da composição (usinagem ↔ fundida)</button></div>
+    <div class="toolbar" style="margin-top:8px;align-items:center"><span id="compResumo" class="small" style="flex:1"></span><button class="btn secondary" type="button" onclick="exportComposicaoXlsx()">📊 Excel da composição (usinagem ↔ fundida)</button><button class="btn primary" type="button" onclick="window.aplicarComposicaoPlanilha&&window.aplicarComposicaoPlanilha()">📥 Aplicar planilha de composição</button></div>
     <button type="button" class="btn secondary" style="margin:6px 0" onclick="window.pecaSemPesoAbrir&&window.pecaSemPesoAbrir()">⚖ Produtos sem peso</button><input id="pecasBusca" placeholder="🔎 Buscar produto (código, descrição, cliente)…" oninput="window.__lim_pecas=60;renderCadastro()" style="width:100%;margin:6px 0"><div id="pecasListView" class="cad-list cad-list-wide"></div>
   </div>
 </div>
@@ -1348,6 +1348,7 @@ window.helpIr=function(id){
 <script src="previsao.js?v=182"></script>
 <script src="reuniao.js?v=182"></script>
 <script src="auditoria.js?v=182"></script>
+<script src="composicao.js?v=182"></script>
 <script src="versao.js?v=182"></script>
 <script>
 /* aviso automático quando algum arquivo do site está desatualizado (cache ou envio incompleto) */
