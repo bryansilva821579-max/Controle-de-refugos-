@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v185';
+window.__V=window.__V||{};window.__V.app='v186';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -330,7 +330,141 @@ function removerDuplicadosPeso(){
 }
 window.removerDuplicadosPeso=removerDuplicadosPeso;
 
-/* ===== Sincronização por lançamento (v185) =====
+/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v186) ===== */
+const BKN_MAX=600000,BKN_DIAS=30;
+let bkRodando=false;
+function bkCol(){return firebaseRoot().collection('backups')}
+function bkHoje(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function bkDiaBr(d){const m=String(d).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?m[3]+'/'+m[2]+'/'+m[1]:d}
+function bkPacote(){
+  const ch=__bkChaves(),dados={};
+  Object.keys(ch).forEach(function(k){try{const raw=localStorage.getItem(ch[k]);if(raw!==null)dados[k]=JSON.parse(raw)}catch(e){}});
+  dados.lancamentos=data;dados.meta=meta;dados.producaoFundicao=producaoFundicao;
+  return{formato:'controle-refugos-completo',versao:1,appVersion:window.APP_VERSION||'',geradoEm:new Date().toISOString(),dados:dados};
+}
+function bkB64(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s)}
+async function bkGz(txt){const cs=new CompressionStream('gzip'),w=cs.writable.getWriter();w.write(new TextEncoder().encode(txt));w.close();return bkB64(new Uint8Array(await new Response(cs.readable).arrayBuffer()))}
+async function bkUnGz(b64){const bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);const ds=new DecompressionStream('gzip'),w=ds.writable.getWriter();w.write(u);w.close();return await new Response(ds.readable).text()}
+function bkCarimbar(d){const agora=Date.now();if(d&&Array.isArray(d.lancamentos))d.lancamentos.forEach(r=>{if(r&&typeof r==='object'){r._rts=agora;delete r._del}})}
+async function bkNuvem(manual){
+  if(bkRodando)return;
+  if(!firebaseDbOnline){if(manual)alert('A nuvem (Firebase) ainda não está conectada.');return}
+  if(typeof CompressionStream==='undefined'){if(manual)alert('Este navegador é antigo demais para o backup na nuvem. Use o botão "Baixar backup JSON".');return}
+  if(!manual&&refModo==='doc'&&!refReady)return;
+  bkRodando=true;
+  try{
+    const dia=bkHoje(),idxRef=bkCol().doc('_indice'),s=await idxRef.get(),idx=(s.exists&&s.data()&&s.data().dias)||{};
+    if(!manual&&idx[dia])return;
+    if(!Array.isArray(data)||!data.length){if(manual)alert('Não há lançamentos para guardar.');return}
+    const b64=await bkGz(JSON.stringify(bkPacote())),partes=[];
+    for(let i=0;i<b64.length;i+=BKN_MAX)partes.push(b64.slice(i,i+BKN_MAX));
+    const b=firebaseDbOnline.batch(),ts=Date.now();
+    partes.forEach((p,i)=>b.set(bkCol().doc('bk_'+dia+'_'+i),{dia,i,n:partes.length,ts,json:p}));
+    for(let i=partes.length;i<((idx[dia]&&idx[dia].n)||0);i++)b.delete(bkCol().doc('bk_'+dia+'_'+i));
+    await b.commit();
+    const kg=data.reduce((t,r)=>{try{return t+kgBruto(r)}catch(e){return t}},0);
+    idx[dia]={n:partes.length,lanc:data.length,kg:Math.round(kg),ts,app:window.APP_VERSION||''};
+    const dias=Object.keys(idx).sort(),velhos=dias.slice(0,Math.max(0,dias.length-BKN_DIAS));
+    if(velhos.length){const b2=firebaseDbOnline.batch();velhos.forEach(d=>{for(let i=0;i<idx[d].n;i++)b2.delete(bkCol().doc('bk_'+d+'_'+i));delete idx[d]});await b2.commit()}
+    await idxRef.set({dias:idx});
+    try{localStorage.setItem('controle_refugos_2026_bknuvem_ultimo',dia)}catch(e){}
+    if(manual)alert('Backup na nuvem guardado: '+data.length.toLocaleString('pt-BR')+' lançamentos ('+partes.length+' parte(s)). Ficam guardados os últimos '+BKN_DIAS+' dias.');
+  }catch(e){console.error('Backup na nuvem',e);if(manual)alert('Não foi possível guardar o backup na nuvem.\n\n'+(e&&e.message||e));else try{setFirebaseStatus('Backup diário na nuvem falhou: '+(e&&e.message||e),'err')}catch(x){}}
+  finally{bkRodando=false}
+}
+async function bkNuvemLer(dia,n){
+  const docs=await Promise.all(Array.from({length:n},(_,i)=>bkCol().doc('bk_'+dia+'_'+i).get()));
+  let txt='';for(const d of docs){if(!d.exists)throw new Error('Parte do backup não encontrada na nuvem.');txt+=d.data().json}
+  return JSON.parse(await bkUnGz(txt));
+}
+function bkRestaurarPacote(j){
+  if(!j||j.formato!=='controle-refugos-completo'||!j.dados){alert('Backup inválido.');return}
+  const d=j.dados,ch=__bkChaves();
+  if(!confirm('Restaurar o backup COMPLETO de '+(j.geradoEm?new Date(j.geradoEm).toLocaleString('pt-BR'):'data desconhecida')+'?\n\nIsso substitui os dados deste aparelho (e, com a sincronização ligada, a nuvem): lançamentos ('+(d.lancamentos||[]).length+'), retrabalhos ('+(d.retrabalhos||[]).length+'), devoluções ('+(d.devolucoes||[]).length+'), produção, cadastros e reuniões.\n\nUm backup do estado atual será baixado antes.\n\nOK = restaurar. Cancelar = não mudar nada.'))return;
+  try{
+    baixarBackupSeguranca('backup-antes-de-restaurar');
+    bkCarimbar(d);
+    Object.keys(ch).forEach(function(k){if(d[k]!==undefined)localStorage.setItem(ch[k],JSON.stringify(d[k]))});
+    try{if(Array.isArray(d.retrabalhos))localStorage.setItem(KEY+'_rt_pend',JSON.stringify(d.retrabalhos.map(function(r){return r.id})))}catch(x){}
+    alert('Backup restaurado. A página vai recarregar.');location.reload()
+  }catch(err){alert('Erro ao restaurar: '+err.message)}
+}
+function bkPopup(html){
+  let o=document.getElementById('appPopup');if(o)o.remove();
+  o=document.createElement('div');o.id='appPopup';
+  o.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:14px';
+  o.innerHTML='<div style="background:var(--card,#fff);color:var(--text,#111);border:1px solid var(--border,#ccc);border-radius:14px;max-width:760px;width:100%;max-height:86vh;overflow:auto;padding:16px 18px;box-shadow:0 20px 60px rgba(0,0,0,.5)"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div id="appPopupTitulo" style="font-weight:800;font-size:17px"></div><button type="button" class="btn secondary" onclick="document.getElementById(\'appPopup\').remove()">Fechar</button></div><div id="appPopupCorpo" style="margin-top:10px"></div></div>';
+  document.body.appendChild(o);o.addEventListener('click',e=>{if(e.target===o)o.remove()});
+  return o;
+}
+async function bkNuvemAbrir(){
+  if(!firebaseDbOnline){alert('A nuvem (Firebase) ainda não está conectada.');return}
+  const o=bkPopup('');o.querySelector('#appPopupTitulo').textContent='☁ Backups na nuvem';
+  const c=o.querySelector('#appPopupCorpo');c.textContent='Carregando...';
+  try{
+    const s=await bkCol().doc('_indice').get(),idx=(s.exists&&s.data()&&s.data().dias)||{},dias=Object.keys(idx).sort().reverse();
+    if(!dias.length){c.innerHTML='<div class="small">Ainda não há backups na nuvem. Eles são feitos sozinhos uma vez por dia, ou use "Fazer backup na nuvem agora".</div>';return}
+    c.innerHTML='<div class="small" style="margin-bottom:8px">Um backup por dia, últimos '+BKN_DIAS+' dias. "Restaurar" substitui os dados atuais (um backup do estado atual é baixado antes).</div>'
+      +dias.map(d=>'<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;border-top:1px solid var(--border,#ddd);padding:8px 0;flex-wrap:wrap"><div><b>'+bkDiaBr(d)+'</b> <span class="small">· '+Number(idx[d].lanc).toLocaleString('pt-BR')+' lançamentos · '+Number(idx[d].kg).toLocaleString('pt-BR')+' kg · '+(idx[d].ts?new Date(idx[d].ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'')+'</span></div><div style="display:flex;gap:6px"><button type="button" class="btn secondary" data-bk="baixar" data-d="'+d+'" data-n="'+idx[d].n+'">Baixar arquivo</button><button type="button" class="btn primary" data-bk="rest" data-d="'+d+'" data-n="'+idx[d].n+'">Restaurar</button></div></div>').join('');
+    c.addEventListener('click',async e=>{
+      const b=e.target.closest('button[data-bk]');if(!b)return;
+      const txt=b.textContent;b.disabled=true;b.textContent='...';
+      try{
+        const j=await bkNuvemLer(b.dataset.d,+b.dataset.n);
+        if(b.dataset.bk==='baixar'){const bl=new Blob([JSON.stringify(j)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download='backup-nuvem-refugos-'+b.dataset.d+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},3000)}
+        else bkRestaurarPacote(j);
+      }catch(err){alert('Não foi possível ler esse backup: '+(err&&err.message||err))}
+      b.disabled=false;b.textContent=txt;
+    });
+  }catch(e){c.textContent='Erro ao ler a lista de backups: '+(e&&e.message||e)}
+}
+window.bkNuvem=bkNuvem;window.bkNuvemAbrir=bkNuvemAbrir;
+setTimeout(()=>{try{bkNuvem(false)}catch(e){}},60000);
+setInterval(()=>{try{if(!document.hidden)bkNuvem(false)}catch(e){}},30*60000);
+
+/* --- conferência de pesos --- */
+function confPesosCalc(){
+  const snap=__snapPesosCad(),g=new Map();
+  (Array.isArray(data)?data:[]).forEach(r=>{
+    if(!r||typeof r!=='object')return;const q=qty(r);if(!(q>0)||kgBruto(r)>0)return;
+    const cod=String(val(r,'codigo')??'').trim().toUpperCase();if(!cod)return;
+    let o=g.get(cod);if(!o){const s=snap.get(cod);o={cod,desc:String(val(r,'produto')||''),n:0,q:0,pp:s?s.pp:0,cad:!!s,rs:[]};g.set(cod,o)}
+    o.n++;o.q+=q;o.rs.push(r);
+  });
+  return Array.from(g.values()).sort((x,y)=>y.q-x.q);
+}
+function confPesosAbrir(){
+  const L=confPesosCalc(),pode=L.filter(o=>o.pp>0),falta=L.filter(o=>!(o.pp>0));
+  const o=bkPopup('');o.querySelector('#appPopupTitulo').textContent='🔎 Conferência de pesos';
+  const c=o.querySelector('#appPopupCorpo');
+  if(!L.length){c.innerHTML='<div>✅ Nenhum lançamento com quantidade e peso 0. Está tudo certo.</div>';return}
+  const nl=a=>a.reduce((t,x)=>t+x.n,0);
+  const tab=(a,txt)=>'<table style="width:100%;font-size:13px"><thead><tr><th style="text-align:left">Código</th><th style="text-align:left">Produto</th><th>Lanç.</th><th>Peças</th><th>'+txt+'</th></tr></thead><tbody>'+a.slice(0,40).map(x=>'<tr><td>'+esc(x.cod)+'</td><td>'+esc(x.desc)+'</td><td style="text-align:center">'+x.n+'</td><td style="text-align:center">'+x.q.toLocaleString('pt-BR')+'</td><td style="text-align:center">'+(x.pp>0?fmt(x.pp*x.q)+' kg':(x.cad?'sem peso no cadastro':'não está no cadastro'))+'</td></tr>').join('')+'</tbody></table>'+(a.length>40?'<div class="small">... e mais '+(a.length-40)+' peça(s).</div>':'');
+  c.innerHTML='<div class="small" style="margin-bottom:8px">Lançamentos com quantidade e <b>peso 0</b>: '+nl(L).toLocaleString('pt-BR')+' em '+L.length+' peça(s).</div>'
+   +(pode.length?'<div style="margin:10px 0 4px;font-weight:700">Têm peso no cadastro ('+nl(pode)+' lançamentos, '+pode.length+' peças)</div>'+tab(pode,'Peso a gravar')+'<div style="margin:10px 0"><button type="button" class="btn primary" id="confPesosFix">Corrigir estes '+nl(pode).toLocaleString('pt-BR')+' lançamentos</button></div>':'')
+   +(falta.length?'<div style="margin:14px 0 4px;font-weight:700">Falta peso no cadastro ('+nl(falta)+' lançamentos, '+falta.length+' peças)</div>'+tab(falta,'Situação')+'<div class="small" style="margin-top:6px">Cadastre o peso bruto fracionado dessas peças (ou aplique a planilha de composição) e abra esta conferência de novo.</div>':'');
+  const bt=c.querySelector('#confPesosFix');
+  if(bt)bt.addEventListener('click',()=>{
+    if(!confirm('Gravar quantidade × peso bruto fracionado do cadastro em '+nl(pode)+' lançamento(s) que estão com peso 0?\n\nLançamentos que já têm peso não são mexidos. Um backup é baixado antes.'))return;
+    baixarBackupSeguranca('backup-antes-de-corrigir-pesos');
+    let cont=0,kg=0;
+    pode.forEach(x=>x.rs.forEach(r=>{const q=qty(r);r[cols.kgRefugo]=(q*x.pp).toFixed(3);kg+=q*x.pp;cont++}));
+    save();try{refresh()}catch(e){}
+    o.remove();alert('Pronto: '+cont.toLocaleString('pt-BR')+' lançamentos corrigidos (+'+fmt(kg)+' kg).');
+  });
+}
+window.confPesosAbrir=confPesosAbrir;
+function confPesosAviso(){
+  try{
+    const hoje=bkHoje();if(localStorage.getItem('controle_refugos_2026_confpesos_aviso')===hoje)return;
+    const L=confPesosCalc();if(!L.length)return;
+    localStorage.setItem('controle_refugos_2026_confpesos_aviso',hoje);
+    showToast('⚠ '+L.reduce((t,x)=>t+x.n,0).toLocaleString('pt-BR')+' lançamento(s) com peso 0 ('+L.length+' peça(s)). Veja em Cadastro › Produtos › Conferir pesos.');
+  }catch(e){}
+}
+setTimeout(confPesosAviso,9000);
+
+/* ===== Sincronização por lançamento (v186) =====
    Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
    fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
    A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
@@ -3225,7 +3359,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v185) =====
+/* ===== Pesos novos valem só a partir de uma data (v186) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -3332,7 +3466,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v185) =====
+/* ===== Backup COMPLETO do sistema (v186) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{
@@ -3372,6 +3506,7 @@ document.querySelectorAll('input[id="restore"]').forEach(function(__r){__r.addEv
     if(!confirm('Restaurar o backup COMPLETO de '+(j.geradoEm?new Date(j.geradoEm).toLocaleString('pt-BR'):'data desconhecida')+'?\n\nIsso substitui os dados deste aparelho: lançamentos ('+(d.lancamentos||[]).length+'), retrabalhos ('+(d.retrabalhos||[]).length+'), devoluções ('+(d.devolucoes||[]).length+'), produção, cadastros e reuniões.\n\nOK = restaurar. Cancelar = não mudar nada.')){__r.value='';return}
     try{
       baixarBackupSeguranca('backup-antes-de-restaurar');
+      try{bkCarimbar(d)}catch(x){}
       Object.keys(ch).forEach(function(k){if(d[k]!==undefined)localStorage.setItem(ch[k],JSON.stringify(d[k]))});
       /* marca os retrabalhos para reenvio à nuvem */
       try{if(Array.isArray(d.retrabalhos))localStorage.setItem(KEY+'_rt_pend',JSON.stringify(d.retrabalhos.map(function(r){return r.id})))}catch(x){}
