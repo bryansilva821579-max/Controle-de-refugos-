@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v184';
+window.__V=window.__V||{};window.__V.app='v185';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -304,8 +304,33 @@ function removerDuplicadosQuase(){
   alert('Pronto: '+rem.length.toLocaleString('pt-BR')+' duplicados removidos. Agora são '+data.length.toLocaleString('pt-BR')+' lançamentos · '+fsFmt(data.reduce((s,r)=>s+kgB(r),0))+' kg.');
 }
 window.removerDuplicadosQuase=removerDuplicadosQuase;
+function removerDuplicadosPeso(){
+  /* mesma data/código/OF/quantidade/cliente/motivo, mas com kg diferente: fica a cópia cujo kg bate com quantidade × peso bruto fracionado do cadastro */
+  const snap=__snapPesosCad(),g=new Map(),rem=[],kgB=r=>{try{return kgBruto(r)}catch(e){return 0}};
+  data.forEach((r,i)=>{const k=recordKeyLoose(r,true);if(!g.has(k))g.set(k,[]);g.get(k).push(i)});
+  g.forEach(v=>{
+    if(v.length<2)return;
+    const cod=String(val(data[v[0]],'codigo')??'').trim().toUpperCase(),s=snap.get(cod),q=qty(data[v[0]]);
+    if(!s||!(s.pp>0)||!(q>0))return;
+    const esp=q*s.pp,ok=i=>Math.abs(n(val(data[i],'kgRefugo'))-esp)<=Math.max(0.02,esp*0.005);
+    const certos=v.filter(ok);if(!certos.length||certos.length===v.length)return;
+    rem.push(...v.filter(i=>!ok(i)));
+    certos.slice(1).forEach(i=>rem.push(i));
+  });
+  const tot=rem.reduce((s,i)=>s+kgB(data[i]),0);
+  if(!rem.length){alert('Não encontrei lançamentos repetidos com peso diferente do cadastro.');return}
+  if(!confirm('Encontrei '+rem.length.toLocaleString('pt-BR')+' lançamento(s) repetido(s) com peso antigo/errado ('+fsFmt(tot)+' kg).\n\nEm cada grupo fica a cópia cujo peso bate com quantidade × peso bruto fracionado do cadastro.\n\nOK = remover as outras (um backup é baixado antes).\nCancelar = não mudar nada.'))return;
+  baixarBackupSeguranca('backup-antes-de-remover-peso-repetido');
+  const set=new Set(rem);data=data.filter((r,i)=>!set.has(i));
+  try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}
+  firebaseDataDirty=true;firebaseKnownDataId=null;firebaseSyncPaused=false;
+  try{save()}catch(e){try{scheduleFirebasePush()}catch(x){}}
+  try{refresh()}catch(e){}
+  alert('Pronto: '+rem.length.toLocaleString('pt-BR')+' removidos. Agora são '+data.length.toLocaleString('pt-BR')+' lançamentos · '+fsFmt(data.reduce((s,r)=>s+kgB(r),0))+' kg.');
+}
+window.removerDuplicadosPeso=removerDuplicadosPeso;
 
-/* ===== Sincronização por lançamento (v184) =====
+/* ===== Sincronização por lançamento (v185) =====
    Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
    fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
    A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
@@ -3200,7 +3225,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v184) =====
+/* ===== Pesos novos valem só a partir de uma data (v185) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -3307,7 +3332,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v184) =====
+/* ===== Backup COMPLETO do sistema (v185) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{

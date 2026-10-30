@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.previsao='v184';
+window.__V=window.__V||{};window.__V.previsao='v185';
 /* ==================================================================
    VISÃO GERAL: filtro por período + PREVISÃO + APRESENTAÇÃO animada
    Lê os mesmos dados dos módulos (refugo, retrabalho, devolução).

@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Refugos">
 <title>Controle de Refugos 2026</title>
-<link rel="stylesheet" href="base.css?v=184">
+<link rel="stylesheet" href="base.css?v=185">
 
 <style id="dashboardPdfStyles">
 @page{size:A4 landscape;margin:8mm 8mm 9mm 8mm}
@@ -189,8 +189,8 @@ html[data-theme="dark"] .firebase-modal{background:#101a2a;color:#f3f4f6}.data-o
 @media (max-width:760px){.help-intro{grid-template-columns:1fr}.help-badge{justify-self:start}.help-grid{grid-template-columns:1fr}}
 </style>
 <style id="logoIndi">.sidebar .brand img{width:auto!important;height:48px!important;max-width:64px;object-fit:contain!important;border-radius:8px;background:#fff;padding:3px}.pdf-only-title .pdf-brand img{width:auto!important;object-fit:contain!important;border-radius:0}</style>
-<link rel="stylesheet" href="graficos.css?v=184">
-<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=184">
+<link rel="stylesheet" href="graficos.css?v=185">
+<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=185">
 <script>
 /* ===== CONFIGURAÇÃO DO FIREBASE =====
    Preencha uma vez e todos os computadores conectam sozinhos. Deixe "" para não usar. */
@@ -202,7 +202,7 @@ window.EMBEDDED_FIREBASE_CONFIG={
   messagingSenderId:"894679339944",
   appId:"1:894679339944:web:fcf8fc0bf6f45439c7c39d"
 };
-window.APP_VERSION="v184";
+window.APP_VERSION="v185";
 /* Mostra erros de JavaScript na tela em vez de ficar em branco */
 window.addEventListener('error',function(ev){
   try{
@@ -233,7 +233,7 @@ html[data-theme="dark"] .prodcal .dia span.ref,html[data-theme="dark"] .prodcal 
 .prodcal .vazio{min-height:66px}
 html[data-theme="dark"] .sidebar{background:linear-gradient(180deg,#1a2c47,#142238);border-right:1px solid var(--border)}
 </style>
-<link rel="stylesheet" href="mobile.css?v=184">
+<link rel="stylesheet" href="mobile.css?v=185">
 <style id="metalCss">
 /* ===== TEMA METAL LÍQUIDO (camada visual; só cores/efeitos, não altera layout) ===== */
 html.metal{--orange:#ff6a1f;--radius:16px;--mx:#ff6a1f}
@@ -833,7 +833,7 @@ service cloud.firestore {
       <input id="searchProdutoCodigo" placeholder="🔎 Pesquisar pelo código (ex.: 66680)" autocomplete="off" style="flex:1;min-width:240px">
       <span id="produtoSearchCount" class="small"></span>
     </div>
-    <div class="toolbar" style="margin-top:8px;align-items:center"><span id="compResumo" class="small" style="flex:1"></span><button class="btn secondary" type="button" onclick="exportComposicaoXlsx()">📊 Excel da composição (usinagem ↔ fundida)</button><button class="btn primary" type="button" onclick="window.aplicarComposicaoPlanilha&&window.aplicarComposicaoPlanilha()">📥 Aplicar planilha de composição</button><button class="btn secondary" type="button" onclick="recalcularPesosComposicao()" title="Reaplica os pesos da composição nos lançamentos a partir de uma data (padrão 01/01)">🔄 Recalcular lançamentos desde uma data</button></div>
+    <div class="toolbar" style="margin-top:8px;align-items:center"><span id="compResumo" class="small" style="flex:1"></span><button class="btn secondary" type="button" onclick="exportComposicaoXlsx()">📊 Excel da composição (usinagem ↔ fundida)</button><button class="btn primary" type="button" onclick="window.aplicarComposicaoPlanilha&&window.aplicarComposicaoPlanilha()">📥 Aplicar planilha de composição</button><button class="btn secondary" type="button" onclick="recalcularPesosComposicao()" title="Reaplica os pesos da composição nos lançamentos a partir de uma data (padrão 01/01)">🔄 Recalcular lançamentos desde uma data</button><button class="btn secondary" type="button" onclick="removerDuplicadosPeso()" title="Remove cópias de lançamentos que voltaram com o peso antigo">🧹 Remover repetidos com peso antigo</button></div>
     <button type="button" class="btn secondary" style="margin:6px 0" onclick="window.pecaSemPesoAbrir&&window.pecaSemPesoAbrir()">⚖ Produtos sem peso</button><input id="pecasBusca" placeholder="🔎 Buscar produto (código, descrição, cliente)…" oninput="window.__lim_pecas=60;renderCadastro()" style="width:100%;margin:6px 0"><div id="pecasListView" class="cad-list cad-list-wide"></div>
   </div>
 </div>
@@ -1337,19 +1337,19 @@ window.helpIr=function(id){
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script src="dados-iniciais.js?v=184"></script>
-<script src="analises.js?v=184"></script>
-<script src="filtros.js?v=184"></script>
-<script src="retrabalhos.js?v=184"></script>
-<script src="app.js?v=184"></script>
-<script src="devolucoes.js?v=184"></script>
-<script src="gestao.js?v=184"></script>
-<script src="relatorios.js?v=184"></script>
-<script src="previsao.js?v=184"></script>
-<script src="reuniao.js?v=184"></script>
-<script src="auditoria.js?v=184"></script>
-<script src="composicao.js?v=184"></script>
-<script src="versao.js?v=184"></script>
+<script src="dados-iniciais.js?v=185"></script>
+<script src="analises.js?v=185"></script>
+<script src="filtros.js?v=185"></script>
+<script src="retrabalhos.js?v=185"></script>
+<script src="app.js?v=185"></script>
+<script src="devolucoes.js?v=185"></script>
+<script src="gestao.js?v=185"></script>
+<script src="relatorios.js?v=185"></script>
+<script src="previsao.js?v=185"></script>
+<script src="reuniao.js?v=185"></script>
+<script src="auditoria.js?v=185"></script>
+<script src="composicao.js?v=185"></script>
+<script src="versao.js?v=185"></script>
 <script>
 /* aviso automático quando algum arquivo do site está desatualizado (cache ou envio incompleto) */
 window.addEventListener('load',function(){setTimeout(function(){try{

@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.composicao='v184';
+window.__V=window.__V||{};window.__V.composicao='v185';
 /* ===== Planilha de composição (peça usinada ← peça fundida/bucha) =====
    Cada linha: [código usinado, descrição, cliente, código da fundida (origem), peças usinadas por peça fundida, peso bruto fracionado, peso líq. Fund./bruto Usin. fracionado, peso usinado (kg)]
    O botão "Aplicar planilha de composição" (Cadastro › Produtos) grava a origem/quantidade e os pesos (bruto fracionado,
@@ -18,14 +18,14 @@ window.aplicarComposicaoPlanilha=function(){
       const L=idx.get(K(r[0]));
       if(!L||!L.length){novas.push(r);return}
       const us=L.filter(p=>!ehFund(p));
-      if(!us.length){fundicao.push(r);return}
+      if(!us.length){fundicao.push(r);atualizar.push([r,L]);return}
       atualizar.push([r,us]);
     });
     const semBruto=ROWS.filter(r=>!(r[5]>0)).length,semLiq=ROWS.filter(r=>!(r[6]>0)).length,semUsin=ROWS.filter(r=>!(r[7]>0)).length;
     let msg='PLANILHA DE COMPOSIÇÃO — '+ROWS.length+' peças usinadas\n\n'
       +'• '+atualizar.length+' já estão no cadastro: serão gravados os pesos (bruto fracionado, líq. Fund./bruto Usin. e usinado) e a origem (fundida + quantidade)\n'
       +'• '+novas.length+' ainda não existem: serão criadas na planta USINAGEM\n'
-      +'• '+fundicao.length+' têm esse código cadastrado como FUNDIÇÃO: ficam como estão (nada é alterado)\n'
+      +'• '+fundicao.length+' (já contadas acima) estão cadastradas como FUNDIÇÃO: também recebem os pesos e a origem, mantendo a planta\n'
       +'• Peso que vier 0/vazio na planilha não apaga o do cadastro (bruto: '+semBruto+' linhas, líquido: '+semLiq+', usinado: '+semUsin+')\n\nContinuar?';
     if(!confirm(msg))return;
     const antes=(typeof __snapPesosCad==='function')?__snapPesosCad():new Map();
