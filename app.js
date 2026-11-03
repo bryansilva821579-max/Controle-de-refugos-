@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v189';
+window.__V=window.__V||{};window.__V.app='v190';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -330,7 +330,7 @@ function removerDuplicadosPeso(){
 }
 window.removerDuplicadosPeso=removerDuplicadosPeso;
 
-/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v189) ===== */
+/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v190) ===== */
 const BKN_MAX=600000,BKN_DIAS=30;
 let bkRodando=false;
 function bkCol(){return firebaseRoot().collection('backups')}
@@ -464,7 +464,7 @@ function confPesosAviso(){
 }
 setTimeout(confPesosAviso,9000);
 
-/* ===== Ficha completa: busca por código, OF, descrição ou material (v189) ===== */
+/* ===== Ficha completa: busca por código, OF, descrição ou material (v190) ===== */
 const __nz=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
 const __f2=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:2});
 const __f0=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
@@ -501,12 +501,90 @@ function __fRetDev(match){
   }catch(e){}
   return h;
 }
-function __fAbre(titulo,html,voltar){
+window.__fichaSel=window.__fichaSel||[];window.__fOut=null;
+const __fK=(t,v)=>t+'|'+__nz(v);
+function __fNaSel(t,v){return window.__fichaSel.some(x=>__fK(x.t,x.v)===__fK(t,v))}
+function __fRot(t,v){
+  if(t==='peca'){const p=(cadastros.pecas||[]).find(x=>__nz(x.codigo)===__nz(v));return String(v)+(p&&p.descricao?' — '+p.descricao:'')}
+  return t==='of'?'OF '+v:'Material '+v;
+}
+function __fTog(t,v){const k=__fK(t,v),i=window.__fichaSel.findIndex(x=>__fK(x.t,x.v)===k);if(i>=0)window.__fichaSel.splice(i,1);else window.__fichaSel.push({t,v});}
+function __fBar(t,v,voltar){
+  const n=window.__fichaSel.length,b=(a,txt,cls,ex)=>'<button type="button" class="btn '+(cls||'secondary')+'" data-fa="'+a+'"'+(ex||'')+'>'+txt+'</button>';
+  let h='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">';
+  if(voltar)h+=b('voltar','← Resultados');
+  if(t){const ex=' data-ft="'+t+'" data-fv="'+esc(v)+'"';h+=b('tog',__fNaSel(t,v)?'✓ Na seleção (remover)':'➕ Adicionar à seleção','secondary',ex)+b('pdf1','📄 PDF deste item','secondary',ex)}
+  if(n)h+=b('sel','🗂 Seleção ('+n+')','primary');
+  return h+'</div>';
+}
+function __fAbre(titulo,html,voltar,t,v){
+  if(window.__fOut){window.__fOut.push({titulo,html});return}
   const o=bkPopup('',true);o.querySelector('#appPopupTitulo').textContent=titulo;
-  const c=o.querySelector('#appPopupCorpo');c.innerHTML=(voltar?'<button type="button" class="btn secondary" data-fv="voltar" style="margin-bottom:8px">← Voltar aos resultados</button>':'')+html;
-  c.addEventListener('click',e=>{const b=e.target.closest('[data-fk],[data-fv]');if(!b)return;if(b.dataset.fv==='voltar'){fichaBuscar(window.__fichaQ||'');return}fichaAbrir(b.dataset.fk,b.dataset.fv,true)});
+  const c=o.querySelector('#appPopupCorpo');c.innerHTML=__fBar(t,v,voltar)+html;
+  c.addEventListener('click',e=>{
+    const b=e.target.closest('[data-fk],[data-fa]');if(!b)return;
+    if(b.dataset.fk){e.preventDefault();fichaAbrir(b.dataset.fk,b.dataset.fv,true);return}
+    const a=b.dataset.fa,ft=b.dataset.ft,fv=b.dataset.fv;
+    if(a==='voltar')fichaBuscar(window.__fichaQ||'');
+    else if(a==='tog'){__fTog(ft,fv);fichaAbrir(ft,fv,voltar)}
+    else if(a==='tgl'){__fTog(ft,fv);b.textContent=__fNaSel(ft,fv)?'✓':'➕'}
+    else if(a==='pdf1')fichaPdf([{t:ft,v:fv}]);
+    else if(a==='sel')fichaSelecao();
+  });
   return o;
 }
+function fichaColeta(t,v){const prev=window.__fOut;window.__fOut=[];try{fichaAbrir(t,v,false)}finally{var r=window.__fOut;window.__fOut=prev}return r[0]||{titulo:String(v),html:''}}
+function __fLanc(t,v){
+  const K=__nz(v);
+  if(t==='peca')return(data||[]).filter(r=>__nz(val(r,'codigo'))===K);
+  if(t==='of')return(data||[]).filter(r=>__nz(val(r,'of'))===K);
+  const M=matNorm(v);return(data||[]).filter(r=>matNorm(matRec(r))===M);
+}
+function __fResumoSel(itens){
+  const rows=itens.map(x=>{const L=__fLanc(x.t,x.v);return{r:__fRot(x.t,x.v),n:L.length,q:L.reduce((s,r)=>s+qty(r),0),kb:L.reduce((s,r)=>s+kgBruto(r),0),kl:L.reduce((s,r)=>s+kgTipo(r,'liquido'),0),ku:L.reduce((s,r)=>s+kgTipo(r,'usinado'),0)}});
+  const tot=rows.reduce((s,o)=>({n:s.n+o.n,q:s.q+o.q,kb:s.kb+o.kb,kl:s.kl+o.kl,ku:s.ku+o.ku}),{n:0,q:0,kb:0,kl:0,ku:0});
+  return __fTab([['Item'],['Lanç.',1],['Peças',1],['Kg bruto',1],['Kg líquido',1],['Kg usinado',1]],rows.map(o=>[esc(o.r),__f0(o.n),__f0(o.q),__f2(o.kb),__f2(o.kl),__f2(o.ku)]).concat([['<b>Soma dos itens</b>','<b>'+__f0(tot.n)+'</b>','<b>'+__f0(tot.q)+'</b>','<b>'+__f2(tot.kb)+'</b>','<b>'+__f2(tot.kl)+'</b>','<b>'+__f2(tot.ku)+'</b>']]))+(itens.length>1?'<div class="small" style="opacity:.7;margin-top:-6px">Se você misturar tipos (por exemplo um produto e uma OF dele), os mesmos lançamentos entram nos dois e a soma conta duas vezes.</div>':'');
+}
+function __fDocHtml(itens){
+  const secs=itens.map(x=>fichaColeta(x.t,x.v));
+  const logo=new URL('logo.png',location.href).href,agora=new Date().toLocaleString('pt-BR');
+  const sem=h=>String(h).replace(/<a [^>]*>(.*?)<\/a>/g,'$1');
+  const tit=itens.length===1?'Ficha '+itens[0].v:'Ficha de '+itens.length+' itens';
+  return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>'+esc(tit)+'</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{font:11px/1.35 Arial,sans-serif;color:#111;margin:0}.top{display:flex;align-items:center;gap:12px;border-bottom:3px solid #ff5a1f;padding-bottom:8px;margin-bottom:10px}.top img{height:46px}.top h1{font-size:17px;margin:0}.top .d{font-size:10px;color:#555}.sec{margin-bottom:14px}.sec+.sec{page-break-before:always}.res+.sec{page-break-before:auto}.sec>h2{font-size:15px;margin:0 0 6px;background:#fff3ec;border-left:5px solid #ff5a1f;padding:5px 8px}table{width:100%;border-collapse:collapse;margin-bottom:8px}th{background:#f0f0f0;border-bottom:1px solid #999;padding:3px 6px;font-size:10.5px}td{padding:3px 6px;border-bottom:1px solid #ddd}tr{page-break-inside:avoid}.small{font-size:10px;color:#555}b{font-weight:700}</style></head><body><div class="top"><img src="'+logo+'" alt=""><div><h1>'+esc(tit)+'</h1><div class="d">Controle de Refugos · gerado em '+agora+'</div></div></div>'
+   +(itens.length>1?'<div class="sec res"><h2>Resumo geral</h2>'+__fResumoSel(itens)+'</div>':'')
+   +secs.map(s=>'<div class="sec"><h2>'+esc(s.titulo)+'</h2>'+sem(s.html)+'</div>').join('')+'</body></html>';
+}
+function fichaPdf(itens){
+  if(!itens||!itens.length){alert('Nada selecionado.');return}
+  let html;try{html=__fDocHtml(itens)}catch(e){alert('Não foi possível montar o PDF: '+e.message);return}
+  const f=document.createElement('iframe');f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';document.body.appendChild(f);
+  const d=f.contentWindow.document;d.open();d.write(html);d.close();
+  setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.print()}catch(e){alert('Não foi possível abrir a impressão: '+e.message)}setTimeout(()=>f.remove(),120000)},700);
+}
+function fichaJuntos(){
+  const itens=window.__fichaSel.slice();if(!itens.length){fichaSelecao();return}
+  const h='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"><button type="button" class="btn secondary" data-fa="sel">← Seleção</button><button type="button" class="btn primary" data-fa="pdfsel">📄 PDF de tudo</button></div>'+__fH('Resumo geral')+__fResumoSel(itens)+itens.map(x=>{const s=fichaColeta(x.t,x.v);return '<div style="border-top:3px solid #ff5a1f;margin-top:18px;padding-top:6px"><div style="font-size:16px;font-weight:800">'+esc(s.titulo)+'</div>'+s.html.replace(/<a [^>]*>(.*?)<\/a>/g,'$1')+'</div>'}).join('');
+  const o=bkPopup('',true);o.querySelector('#appPopupTitulo').textContent='🗂 Itens juntos ('+itens.length+')';
+  const c=o.querySelector('#appPopupCorpo');c.innerHTML=h;
+  c.addEventListener('click',e=>{const b=e.target.closest('[data-fa]');if(!b)return;if(b.dataset.fa==='sel')fichaSelecao();else if(b.dataset.fa==='pdfsel')fichaPdf(itens)});
+}
+function fichaSelecao(){
+  const o=bkPopup('',true);o.querySelector('#appPopupTitulo').textContent='🗂 Itens selecionados';
+  const c=o.querySelector('#appPopupCorpo'),S=window.__fichaSel;
+  const lista=S.length?S.map((x,i)=>'<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--border,#ddd)"><span>'+esc(__fRot(x.t,x.v))+' <span class="small" style="opacity:.6">('+(x.t==='peca'?'produto':x.t==='of'?'OF':'material')+')</span></span><span style="display:flex;gap:6px"><button type="button" class="btn secondary" data-fa="ver" data-ft="'+x.t+'" data-fv="'+esc(x.v)+'">Abrir</button><button type="button" class="btn secondary" data-fa="rm" data-i="'+i+'">✕</button></span></div>').join(''):'<div class="small" style="opacity:.7">Nenhum item ainda. Pesquise abaixo e use "➕".</div>';
+  c.innerHTML='<div style="display:flex;gap:6px;margin-bottom:10px"><input id="fSelQ" type="search" placeholder="🔎 Adicionar outro: código, OF, produto ou material" style="flex:1;min-width:0;border:1px solid var(--border,#ccc);border-radius:10px;padding:8px 10px;background:var(--card,#fff);color:var(--text,#111);font:inherit"><button type="button" class="btn secondary" data-fa="busca">Buscar</button></div>'
+   +lista+(S.length?'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px"><button type="button" class="btn primary" data-fa="juntos">Ver tudo junto</button><button type="button" class="btn primary" data-fa="pdfsel">📄 PDF de todos</button><button type="button" class="btn secondary" data-fa="limpar">Limpar seleção</button></div>':'');
+  const q=c.querySelector('#fSelQ');q.addEventListener('keydown',e=>{if(e.key==='Enter')c.querySelector('[data-fa=busca]').click()});
+  c.addEventListener('click',e=>{const b=e.target.closest('[data-fa]');if(!b)return;const a=b.dataset.fa;
+    if(a==='busca'){const v=q.value.trim();if(v)fichaBuscar(v)}
+    else if(a==='rm'){S.splice(+b.dataset.i,1);fichaSelecao()}
+    else if(a==='ver')fichaAbrir(b.dataset.ft,b.dataset.fv,false)
+    else if(a==='limpar'){S.length=0;fichaSelecao()}
+    else if(a==='juntos')fichaJuntos()
+    else if(a==='pdfsel')fichaPdf(S.slice())});
+  setTimeout(()=>q.focus(),50);
+}
+window.fichaPdf=fichaPdf;window.fichaSelecao=fichaSelecao;
 function fichaPeca(cod,voltar){
   const K=__nz(cod),cad=(cadastros.pecas||[]).filter(p=>__nz(p.codigo)===K),L=(data||[]).filter(r=>__nz(val(r,'codigo'))===K);
   const p=cad[0]||{},desc=p.descricao||(L[0]?val(L[0],'produto'):'')||'';
@@ -521,7 +599,7 @@ function fichaPeca(cod,voltar){
   h+=__fH('📉 Refugo lançado');
   h+=L.length?'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px">'+__fResumo(L)+'</div>'+__fH('Por mês (últimos 12)')+__fMeses(L)+__fH('Principais motivos')+__fMotivos(L)+__fH('Principais OFs')+__fTab([['OF'],['Lanç.',1],['Peças',1],['Kg bruto',1]],__fAgrupa(L,r=>String(val(r,'of')||'').trim(),8).map(o=>['<a href="#" data-fk="of" data-fv="'+esc(o.k)+'">'+esc(o.k)+'</a>',__f0(o.n),__f0(o.q),__f2(o.kg)]))+__fH('Últimos lançamentos')+__fUltimos(L,12):'<div class="small" style="opacity:.7">Nenhum refugo lançado para este código.</div>';
   h+=__fRetDev({rt:x=>__nz(x.cod)===K,dv:x=>__nz(x.codigo)===K});
-  __fAbre(String(cod)+' — '+desc,h,voltar);
+  __fAbre(String(cod)+' — '+desc,h,voltar,'peca',String(cod));
 }
 function fichaOf(of,voltar){
   const K=__nz(of),L=(data||[]).filter(r=>__nz(val(r,'of'))===K);
@@ -529,7 +607,7 @@ function fichaOf(of,voltar){
   h+=__fH('Produtos desta OF')+__fTab([['Produto'],['Lanç.',1],['Peças',1],['Kg bruto',1]],__fAgrupa(L,r=>String(val(r,'codigo')||'')+' — '+String(val(r,'produto')||''),12).map(o=>['<a href="#" data-fk="peca" data-fv="'+esc(o.k.split(' — ')[0])+'">'+esc(o.k)+'</a>',__f0(o.n),__f0(o.q),__f2(o.kg)]));
   h+=__fH('Motivos')+__fMotivos(L)+__fH('Por mês')+__fMeses(L)+__fH('Lançamentos (últimos 40)')+__fUltimos(L,40);
   h+=__fRetDev({rt:x=>__nz(x.of)===K,dv:x=>__nz(x.of)===K});
-  __fAbre('OF '+of,h,voltar);
+  __fAbre('OF '+of,h,voltar,'of',of);
 }
 function fichaMaterial(mat,voltar){
   const K=matNorm(mat),L=(data||[]).filter(r=>matNorm(matRec(r))===K||matRec(r)===K),pecas=(cadastros.pecas||[]).filter(p=>matNorm(p.material)===K);
@@ -537,9 +615,10 @@ function fichaMaterial(mat,voltar){
   h+=__fH('Produtos com mais refugo')+__fTab([['Produto'],['Lanç.',1],['Peças',1],['Kg bruto',1]],__fAgrupa(L,r=>String(val(r,'codigo')||'')+' — '+String(val(r,'produto')||''),10).map(o=>['<a href="#" data-fk="peca" data-fv="'+esc(o.k.split(' — ')[0])+'">'+esc(o.k)+'</a>',__f0(o.n),__f0(o.q),__f2(o.kg)]));
   h+=__fH('Motivos')+__fMotivos(L)+__fH('Por mês (últimos 12)')+__fMeses(L)+__fH('Últimos lançamentos')+__fUltimos(L,12);
   h+=__fRetDev({rt:x=>matNorm(x.mat)===K,dv:()=>false});
-  __fAbre('Material '+mat,h,voltar);
+  __fAbre('Material '+mat,h,voltar,'mat',mat);
 }
 function fichaAbrir(tipo,valor,voltar){if(tipo==='peca')fichaPeca(valor,voltar);else if(tipo==='of')fichaOf(valor,voltar);else if(tipo==='mat')fichaMaterial(valor,voltar)}
+function __fTgl(t,v){return '<button type="button" class="btn secondary" data-fa="tgl" data-ft="'+t+'" data-fv="'+esc(v)+'" style="min-height:32px;padding:2px 10px" title="Adicionar à seleção">'+(__fNaSel(t,v)?'✓':'➕')+'</button>'}
 function fichaBuscar(q0){
   window.__fichaQ=q0;const q=__nz(q0);if(!q)return;
   const termos=q.split(/\s+/).filter(Boolean),all=(s)=>{s=__nz(s);return termos.every(t=>s.includes(t))};
@@ -553,14 +632,14 @@ function fichaBuscar(q0){
   if(!total){const o=bkPopup('',true);o.querySelector('#appPopupTitulo').textContent='🔎 '+q0;o.querySelector('#appPopupCorpo').innerHTML='<div>Nada encontrado para "<b>'+esc(q0)+'</b>" em código, OF, descrição ou material.</div><div style="margin-top:10px"><button type="button" class="btn secondary" onclick="document.getElementById(\'appPopup\').remove();navigate(\'historico\');setTimeout(function(){var s=document.getElementById(\'search\');if(s){s.value=window.__fichaQ;s.dispatchEvent(new Event(\'input\',{bubbles:true}))}},250)">Procurar no Histórico</button></div>';return}
   if(total===1){if(pecas.length)fichaPeca(pecas[0].cod,false);else if(ofs.size)fichaOf(Array.from(ofs.keys())[0],false);else fichaMaterial(mats[0],false);return}
   let h='<div class="small" style="margin-bottom:6px">Escolha para ver tudo sobre o item.</div>';
-  if(mats.length)h+=__fH('Material')+mats.map(m=>'<div style="padding:6px 0;border-top:1px solid var(--border,#ddd)"><a href="#" data-fk="mat" data-fv="'+esc(m)+'"><b>'+esc(m)+'</b></a></div>').join('');
-  if(ofs.size)h+=__fH('OF ('+ofs.size+')')+Array.from(ofs.entries()).slice(0,30).map(([o,c])=>'<div style="padding:6px 0;border-top:1px solid var(--border,#ddd)"><a href="#" data-fk="of" data-fv="'+esc(o)+'"><b>'+esc(o)+'</b></a> <span class="small">· '+c+' lançamento(s)</span></div>').join('');
-  if(pecas.length)h+=__fH('Produtos ('+pecas.length+(pecas.length>=40?'+':'')+')')+pecas.map(o=>'<div style="padding:6px 0;border-top:1px solid var(--border,#ddd)"><a href="#" data-fk="peca" data-fv="'+esc(o.cod)+'"><b>'+esc(o.cod)+'</b> — '+esc(o.desc)+'</a> <span class="small">· '+esc(o.cli)+(o.mat?' · '+esc(o.mat):'')+'</span></div>').join('');
+  if(mats.length)h+=__fH('Material')+mats.map(m=>'<div style="padding:6px 0;border-top:1px solid var(--border,#ddd);display:flex;justify-content:space-between;gap:8px"><a href="#" data-fk="mat" data-fv="'+esc(m)+'"><b>'+esc(m)+'</b></a>'+__fTgl('mat',m)+'</div>').join('');
+  if(ofs.size)h+=__fH('OF ('+ofs.size+')')+Array.from(ofs.entries()).slice(0,30).map(([o,c])=>'<div style="padding:6px 0;border-top:1px solid var(--border,#ddd);display:flex;justify-content:space-between;gap:8px"><span><a href="#" data-fk="of" data-fv="'+esc(o)+'"><b>'+esc(o)+'</b></a> <span class="small">· '+c+' lançamento(s)</span></span>'+__fTgl('of',o)+'</div>').join('');
+  if(pecas.length)h+=__fH('Produtos ('+pecas.length+(pecas.length>=40?'+':'')+')')+pecas.map(o=>'<div style="padding:6px 0;border-top:1px solid var(--border,#ddd);display:flex;justify-content:space-between;gap:8px"><span><a href="#" data-fk="peca" data-fv="'+esc(o.cod)+'"><b>'+esc(o.cod)+'</b> — '+esc(o.desc)+'</a> <span class="small">· '+esc(o.cli)+(o.mat?' · '+esc(o.mat):'')+'</span></span>'+__fTgl('peca',o.cod)+'</div>').join('');
   __fAbre('🔎 "'+q0+'"',h,false);
 }
 window.fichaBuscar=fichaBuscar;window.fichaAbrir=fichaAbrir;
 
-/* ===== Sincronização por lançamento (v189) =====
+/* ===== Sincronização por lançamento (v190) =====
    Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
    fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
    A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
@@ -3454,7 +3533,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v189) =====
+/* ===== Pesos novos valem só a partir de uma data (v190) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -3561,7 +3640,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v189) =====
+/* ===== Backup COMPLETO do sistema (v190) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{
