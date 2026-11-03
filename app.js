@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v186';
+window.__V=window.__V||{};window.__V.app='v189';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -330,7 +330,7 @@ function removerDuplicadosPeso(){
 }
 window.removerDuplicadosPeso=removerDuplicadosPeso;
 
-/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v186) ===== */
+/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v189) ===== */
 const BKN_MAX=600000,BKN_DIAS=30;
 let bkRodando=false;
 function bkCol(){return firebaseRoot().collection('backups')}
@@ -389,11 +389,11 @@ function bkRestaurarPacote(j){
     alert('Backup restaurado. A página vai recarregar.');location.reload()
   }catch(err){alert('Erro ao restaurar: '+err.message)}
 }
-function bkPopup(html){
+function bkPopup(html,wide){
   let o=document.getElementById('appPopup');if(o)o.remove();
   o=document.createElement('div');o.id='appPopup';
   o.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:14px';
-  o.innerHTML='<div style="background:var(--card,#fff);color:var(--text,#111);border:1px solid var(--border,#ccc);border-radius:14px;max-width:760px;width:100%;max-height:86vh;overflow:auto;padding:16px 18px;box-shadow:0 20px 60px rgba(0,0,0,.5)"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div id="appPopupTitulo" style="font-weight:800;font-size:17px"></div><button type="button" class="btn secondary" onclick="document.getElementById(\'appPopup\').remove()">Fechar</button></div><div id="appPopupCorpo" style="margin-top:10px"></div></div>';
+  o.innerHTML='<div style="background:var(--card,#fff);color:var(--text,#111);border:1px solid var(--border,#ccc);border-radius:14px;max-width:'+(wide?'1000':'760')+'px;width:100%;max-height:88vh;overflow:auto;padding:16px 18px;box-shadow:0 20px 60px rgba(0,0,0,.5)"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div id="appPopupTitulo" style="font-weight:800;font-size:17px"></div><button type="button" class="btn secondary" onclick="document.getElementById(\'appPopup\').remove()">Fechar</button></div><div id="appPopupCorpo" style="margin-top:10px"></div></div>';
   document.body.appendChild(o);o.addEventListener('click',e=>{if(e.target===o)o.remove()});
   return o;
 }
@@ -464,7 +464,103 @@ function confPesosAviso(){
 }
 setTimeout(confPesosAviso,9000);
 
-/* ===== Sincronização por lançamento (v186) =====
+/* ===== Ficha completa: busca por código, OF, descrição ou material (v189) ===== */
+const __nz=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
+const __f2=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:2});
+const __f0=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
+function __fMes(r){const d=__dataLanc(r);return d?d.slice(0,7):''}
+function __fMesBr(m){return m&&m.length===7?m.slice(5)+'/'+m.slice(0,4):(m||'—')}
+function __fDiaBr(d){return d&&d.length>=10?d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4):(d||'—')}
+function __fKpi(l,v,s){return '<div style="flex:1 1 130px;min-width:120px;border:1px solid var(--border,#ddd);border-radius:12px;padding:10px 12px"><div class="small" style="opacity:.75">'+l+'</div><div style="font-size:20px;font-weight:800">'+v+'</div>'+(s?'<div class="small" style="opacity:.7">'+s+'</div>':'')+'</div>'}
+function __fTab(cab,rows,vazio){
+  if(!rows.length)return '<div class="small" style="opacity:.7;margin:4px 0 10px">'+(vazio||'Nada registrado.')+'</div>';
+  return '<div style="overflow-x:auto;margin-bottom:12px"><table style="width:100%;font-size:13px"><thead><tr>'+cab.map(c=>'<th'+(c[1]?' class="num"':'')+' style="text-align:'+(c[1]?'right':'left')+'">'+c[0]+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map((v,i)=>'<td'+(cab[i]&&cab[i][1]?' class="num" style="text-align:right"':'')+'>'+v+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function __fH(t){return '<div style="font-weight:800;margin:14px 0 6px;font-size:14px">'+t+'</div>'}
+function __fAgrupa(L,keyFn,top){
+  const m=new Map();L.forEach(r=>{const k=keyFn(r)||'—';let o=m.get(k);if(!o){o={k,n:0,q:0,kg:0};m.set(k,o)}o.n++;o.q+=qty(r);o.kg+=kgBruto(r)});
+  return Array.from(m.values()).sort((x,y)=>y.kg-x.kg||y.q-x.q).slice(0,top||8);
+}
+function __fResumo(L){
+  const q=L.reduce((t,r)=>t+qty(r),0),kb=L.reduce((t,r)=>t+kgBruto(r),0),kl=L.reduce((t,r)=>t+kgTipo(r,'liquido'),0),ku=L.reduce((t,r)=>t+kgTipo(r,'usinado'),0);
+  const ds=L.map(__dataLanc).filter(Boolean).sort();
+  return __fKpi('Lançamentos',__f0(L.length),ds.length?__fDiaBr(ds[0])+' a '+__fDiaBr(ds[ds.length-1]):'')+__fKpi('Peças refugadas',__f0(q))+__fKpi('Peso bruto fracionado',__f2(kb)+' kg')+__fKpi('Peso líquido',__f2(kl)+' kg')+__fKpi('Peso usinado',__f2(ku)+' kg');
+}
+function __fMeses(L){const g=__fAgrupa(L,__fMes,1000).sort((x,y)=>String(y.k).localeCompare(String(x.k))).slice(0,12);return __fTab([['Mês'],['Lanç.',1],['Peças',1],['Kg bruto',1]],g.map(o=>[__fMesBr(o.k),__f0(o.n),__f0(o.q),__f2(o.kg)]))}
+function __fMotivos(L){return __fTab([['Motivo'],['Lanç.',1],['Peças',1],['Kg bruto',1]],__fAgrupa(L,r=>motivoCompleto(r),8).map(o=>[esc(o.k),__f0(o.n),__f0(o.q),__f2(o.kg)]))}
+function __fUltimos(L,n){
+  const s=L.slice().sort((x,y)=>String(__dataLanc(y)).localeCompare(String(__dataLanc(x)))).slice(0,n||12);
+  return __fTab([['Data'],['Produto'],['OF'],['Qtd.',1],['Kg',1],['Motivo'],['Planta']],s.map(r=>[__fDiaBr(__dataLanc(r)),esc(String(val(r,'codigo')||'')+' '+String(val(r,'produto')||'').slice(0,28)),esc(val(r,'of')||''),__f0(qty(r)),__f2(kgBruto(r)),esc(motivoCompleto(r)||''),esc(val(r,'planta')||'')]));
+}
+function __fRetDev(match){
+  let h='';
+  try{
+    const rt=JSON.parse(localStorage.getItem(KEY+'_retrabalhos')||'[]').filter(match.rt),dv=JSON.parse(localStorage.getItem('controle_refugos_2026_devolucoes_v1')||'[]').filter(x=>!x._del&&match.dv(x));
+    h+=__fH('🔧 Retrabalhos ('+rt.length+' · '+__f0(rt.reduce((t,x)=>t+(+x.qtd||0),0))+' peças)')+__fTab([['Data'],['OF'],['Peças',1],['Status'],['Motivo']],rt.slice(0,8).map(x=>[__fDiaBr(x.dt),esc(x.of||''),__f0(x.qtd),esc(x.st||''),esc(x.mot||'')]),'Nenhum retrabalho.');
+    h+=__fH('↩ Devoluções ('+dv.length+' · '+__f0(dv.reduce((t,x)=>t+(+x.qtd||0),0))+' peças)')+__fTab([['Data'],['Cliente'],['OF'],['Peças',1],['Procede'],['Motivo']],dv.slice(0,8).map(x=>[__fDiaBr(x.data),esc(x.cliente||''),esc(x.of||''),__f0(x.qtd),esc(x.procede||''),esc(x.motivo||'')]),'Nenhuma devolução.');
+  }catch(e){}
+  return h;
+}
+function __fAbre(titulo,html,voltar){
+  const o=bkPopup('',true);o.querySelector('#appPopupTitulo').textContent=titulo;
+  const c=o.querySelector('#appPopupCorpo');c.innerHTML=(voltar?'<button type="button" class="btn secondary" data-fv="voltar" style="margin-bottom:8px">← Voltar aos resultados</button>':'')+html;
+  c.addEventListener('click',e=>{const b=e.target.closest('[data-fk],[data-fv]');if(!b)return;if(b.dataset.fv==='voltar'){fichaBuscar(window.__fichaQ||'');return}fichaAbrir(b.dataset.fk,b.dataset.fv,true)});
+  return o;
+}
+function fichaPeca(cod,voltar){
+  const K=__nz(cod),cad=(cadastros.pecas||[]).filter(p=>__nz(p.codigo)===K),L=(data||[]).filter(r=>__nz(val(r,'codigo'))===K);
+  const p=cad[0]||{},desc=p.descricao||(L[0]?val(L[0],'produto'):'')||'';
+  let h='';
+  h+='<div class="small" style="margin-bottom:6px">'+esc(p.cliente||(L[0]&&val(L[0],'cliente'))||'—')+' · '+esc(p.planta||'—')+' · Material: <b>'+esc(p.material||'não informado')+'</b>'+(cad.length>1?' · <i>('+cad.length+' cadastros com este código)</i>':'')+'</div>';
+  if(!cad.length)h+='<div class="small" style="color:#d97706;margin-bottom:6px">⚠ Este código tem lançamentos, mas não está no cadastro de produtos.</div>';
+  h+=__fH('📦 Cadastro (pesos)');
+  h+='<div style="display:flex;flex-wrap:wrap;gap:8px">'+__fKpi('Bruto fracionado',p.pesoPrincipal!==''&&p.pesoPrincipal!=null?__f2(n(p.pesoPrincipal))+' kg':'—')+__fKpi('Peso árvore',p.pesoArvore!==''&&p.pesoArvore!=null?__f2(n(p.pesoArvore))+' kg':'—')+__fKpi('Líquido Fund./bruto Usin.',p.pesoFundUsin!==''&&p.pesoFundUsin!=null?__f2(n(p.pesoFundUsin))+' kg':'—')+__fKpi('Peso usinado',p.pesoUsinado!==''&&p.pesoUsinado!=null?__f2(n(p.pesoUsinado))+' kg':'—')+'</div>';
+  const oc=String(p.origemCod??'').trim(),fil=(typeof compFilhos==='function')?compFilhos(cod):[];
+  if(oc)h+='<div class="small" style="margin:8px 0">🔗 <b>Origem (peça fundida):</b> <a href="#" data-fk="peca" data-fv="'+esc(oc)+'">'+esc(compRotulo(oc))+'</a> · '+__f2(p.origemQtd||1)+' peça(s) usinada(s) por fundida</div>';
+  if(fil.length)h+='<div class="small" style="margin:8px 0">🔗 <b>Gera na usinagem:</b> '+fil.map(y=>'<a href="#" data-fk="peca" data-fv="'+esc(y.codigo)+'">'+esc(y.codigo)+' — '+esc(y.descricao||'')+'</a> ('+__f2(y.origemQtd||1)+'×)').join(' • ')+'</div>';
+  h+=__fH('📉 Refugo lançado');
+  h+=L.length?'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px">'+__fResumo(L)+'</div>'+__fH('Por mês (últimos 12)')+__fMeses(L)+__fH('Principais motivos')+__fMotivos(L)+__fH('Principais OFs')+__fTab([['OF'],['Lanç.',1],['Peças',1],['Kg bruto',1]],__fAgrupa(L,r=>String(val(r,'of')||'').trim(),8).map(o=>['<a href="#" data-fk="of" data-fv="'+esc(o.k)+'">'+esc(o.k)+'</a>',__f0(o.n),__f0(o.q),__f2(o.kg)]))+__fH('Últimos lançamentos')+__fUltimos(L,12):'<div class="small" style="opacity:.7">Nenhum refugo lançado para este código.</div>';
+  h+=__fRetDev({rt:x=>__nz(x.cod)===K,dv:x=>__nz(x.codigo)===K});
+  __fAbre(String(cod)+' — '+desc,h,voltar);
+}
+function fichaOf(of,voltar){
+  const K=__nz(of),L=(data||[]).filter(r=>__nz(val(r,'of'))===K);
+  let h='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px">'+__fResumo(L)+'</div>';
+  h+=__fH('Produtos desta OF')+__fTab([['Produto'],['Lanç.',1],['Peças',1],['Kg bruto',1]],__fAgrupa(L,r=>String(val(r,'codigo')||'')+' — '+String(val(r,'produto')||''),12).map(o=>['<a href="#" data-fk="peca" data-fv="'+esc(o.k.split(' — ')[0])+'">'+esc(o.k)+'</a>',__f0(o.n),__f0(o.q),__f2(o.kg)]));
+  h+=__fH('Motivos')+__fMotivos(L)+__fH('Por mês')+__fMeses(L)+__fH('Lançamentos (últimos 40)')+__fUltimos(L,40);
+  h+=__fRetDev({rt:x=>__nz(x.of)===K,dv:x=>__nz(x.of)===K});
+  __fAbre('OF '+of,h,voltar);
+}
+function fichaMaterial(mat,voltar){
+  const K=matNorm(mat),L=(data||[]).filter(r=>matNorm(matRec(r))===K||matRec(r)===K),pecas=(cadastros.pecas||[]).filter(p=>matNorm(p.material)===K);
+  let h='<div class="small" style="margin-bottom:6px">'+pecas.length+' produto(s) cadastrado(s) com este material.</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px">'+__fResumo(L)+'</div>';
+  h+=__fH('Produtos com mais refugo')+__fTab([['Produto'],['Lanç.',1],['Peças',1],['Kg bruto',1]],__fAgrupa(L,r=>String(val(r,'codigo')||'')+' — '+String(val(r,'produto')||''),10).map(o=>['<a href="#" data-fk="peca" data-fv="'+esc(o.k.split(' — ')[0])+'">'+esc(o.k)+'</a>',__f0(o.n),__f0(o.q),__f2(o.kg)]));
+  h+=__fH('Motivos')+__fMotivos(L)+__fH('Por mês (últimos 12)')+__fMeses(L)+__fH('Últimos lançamentos')+__fUltimos(L,12);
+  h+=__fRetDev({rt:x=>matNorm(x.mat)===K,dv:()=>false});
+  __fAbre('Material '+mat,h,voltar);
+}
+function fichaAbrir(tipo,valor,voltar){if(tipo==='peca')fichaPeca(valor,voltar);else if(tipo==='of')fichaOf(valor,voltar);else if(tipo==='mat')fichaMaterial(valor,voltar)}
+function fichaBuscar(q0){
+  window.__fichaQ=q0;const q=__nz(q0);if(!q)return;
+  const termos=q.split(/\s+/).filter(Boolean),all=(s)=>{s=__nz(s);return termos.every(t=>s.includes(t))};
+  const porCod=new Map();(cadastros.pecas||[]).forEach(p=>{const k=__nz(p.codigo);if(!k)return;if(!porCod.has(k))porCod.set(k,{cod:String(p.codigo).trim(),desc:p.descricao||'',cli:p.cliente||'',mat:p.material||''})});
+  const exato=porCod.has(q)?q:((data||[]).some(r=>__nz(val(r,'codigo'))===q)?q:'');
+  if(exato){fichaPeca(porCod.has(exato)?porCod.get(exato).cod:q0.trim(),false);return}
+  const pecas=Array.from(porCod.values()).filter(o=>__nz(o.cod).includes(q)||all(o.desc)||all(o.cod+' '+o.desc+' '+o.cli)).slice(0,40);
+  const ofs=new Map();(data||[]).forEach(r=>{const o=String(val(r,'of')||'').trim();if(o&&__nz(o).includes(q))ofs.set(o,(ofs.get(o)||0)+1)});
+  const mats=matList().filter(m=>matNorm(m)===matNorm(q)||(q.length>=3&&matNorm(m).includes(matNorm(q))));
+  const total=pecas.length+ofs.size+mats.length;
+  if(!total){const o=bkPopup('',true);o.querySelector('#appPopupTitulo').textContent='🔎 '+q0;o.querySelector('#appPopupCorpo').innerHTML='<div>Nada encontrado para "<b>'+esc(q0)+'</b>" em código, OF, descrição ou material.</div><div style="margin-top:10px"><button type="button" class="btn secondary" onclick="document.getElementById(\'appPopup\').remove();navigate(\'historico\');setTimeout(function(){var s=document.getElementById(\'search\');if(s){s.value=window.__fichaQ;s.dispatchEvent(new Event(\'input\',{bubbles:true}))}},250)">Procurar no Histórico</button></div>';return}
+  if(total===1){if(pecas.length)fichaPeca(pecas[0].cod,false);else if(ofs.size)fichaOf(Array.from(ofs.keys())[0],false);else fichaMaterial(mats[0],false);return}
+  let h='<div class="small" style="margin-bottom:6px">Escolha para ver tudo sobre o item.</div>';
+  if(mats.length)h+=__fH('Material')+mats.map(m=>'<div style="padding:6px 0;border-top:1px solid var(--border,#ddd)"><a href="#" data-fk="mat" data-fv="'+esc(m)+'"><b>'+esc(m)+'</b></a></div>').join('');
+  if(ofs.size)h+=__fH('OF ('+ofs.size+')')+Array.from(ofs.entries()).slice(0,30).map(([o,c])=>'<div style="padding:6px 0;border-top:1px solid var(--border,#ddd)"><a href="#" data-fk="of" data-fv="'+esc(o)+'"><b>'+esc(o)+'</b></a> <span class="small">· '+c+' lançamento(s)</span></div>').join('');
+  if(pecas.length)h+=__fH('Produtos ('+pecas.length+(pecas.length>=40?'+':'')+')')+pecas.map(o=>'<div style="padding:6px 0;border-top:1px solid var(--border,#ddd)"><a href="#" data-fk="peca" data-fv="'+esc(o.cod)+'"><b>'+esc(o.cod)+'</b> — '+esc(o.desc)+'</a> <span class="small">· '+esc(o.cli)+(o.mat?' · '+esc(o.mat):'')+'</span></div>').join('');
+  __fAbre('🔎 "'+q0+'"',h,false);
+}
+window.fichaBuscar=fichaBuscar;window.fichaAbrir=fichaAbrir;
+
+/* ===== Sincronização por lançamento (v189) =====
    Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
    fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
    A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
@@ -1687,13 +1783,14 @@ function draw(id,labels,values,horizontal=false,unit='kg'){
  ctx.font='11px Segoe UI';ctx.lineWidth=1;ctx.strokeStyle=grid;ctx.fillStyle=text;
  if(horizontal){
    let longest=Math.max(0,...labels.map(x=>String(x??'').length));
-   let left=Math.min(205,Math.max(145,110+longest*2.2)),right=92,top=12,bottom=10,chartW=Math.max(120,w-left-right),chartH=Math.max(100,h-top-bottom),row=chartH/Math.max(labels.length,1),bh=Math.min(24,Math.max(13,row-7));
+   const __narrow=w<560;
+   let left=__narrow?Math.round(w*.42):Math.min(205,Math.max(145,110+longest*2.2)),right=__narrow?70:92,top=12,bottom=10,chartW=Math.max(120,w-left-right),chartH=Math.max(100,h-top-bottom),row=chartH/Math.max(labels.length,1),bh=Math.min(24,Math.max(13,row-7));
    labels.forEach((lab,i)=>{
      let y=top+i*row+(row-bh)/2,bw=values[i]/max*chartW;
      if(id==='qChartMotivo'){c._motivoHits.push({index:i,x:0,y:y-5,w:w,h:bh+10});} c._chartHits.push({index:i,x:0,y:y-5,w:w,h:bh+10});
      mFillBar(ctx,accent,left,y,bw,bh,6,false);
      ctx.fillStyle=text;ctx.textAlign='right';ctx.font='10px Segoe UI';
-     let name=String(lab??'').trim(); if(name.length>32) name=name.slice(0,31)+'…';
+     let name=__fitTxt(ctx,String(lab??'').trim(),left-14);
      ctx.fillText(name,left-9,y+bh/2+4);
      ctx.textAlign='left';ctx.font='700 10px Segoe UI';
      let valueText=fmt(values[i])+' '+unit;
@@ -1708,44 +1805,42 @@ function draw(id,labels,values,horizontal=false,unit='kg'){
  ctx.textAlign='left';
  attachChartInteraction(c,id);
 }
+function __fmtC(v){v=Number(v)||0;const x=Math.abs(v);if(x>=10000)return (v/1000).toLocaleString('pt-BR',{maximumFractionDigits:0})+' mil';if(x>=1000)return (v/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil';return v.toLocaleString('pt-BR',{maximumFractionDigits:(x<10&&v%1)?1:0})}
+function __fitTxt(ctx,s,maxW){s=String(s??'').trim();if(ctx.measureText(s).width<=maxW)return s;while(s.length>2&&ctx.measureText(s+'…').width>maxW)s=s.slice(0,-1);return s.trim()+'…'}
 function drawLine(id,labels,seriesList){
  let c=document.getElementById(id);if(!c)return;let ctx=c.getContext('2d'),dpr=canvasDpr(),w=c.clientWidth||600,h=c.clientHeight||340;
  c.width=w*dpr;c.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);c._chartHits=[];
- let left=45,right=16,top=34,bottom=34,cw=w-left-right,ch=h-top-bottom,all=seriesList.flatMap(s=>s.values),max=Math.max(...all,1);
+ const compact=w<560,F=v=>compact?__fmtC(v):fmt(v);
+ let left=compact?40:45,right=compact?14:16,top=34,bottom=34,cw=w-left-right,ch=h-top-bottom,all=seriesList.flatMap(s=>s.values),max=Math.max(...all,1);
  let grid=cssVar('--canvas-grid','#e8edf2'),text=cssVar('--canvas-text','#4c5864'),accent=cssVar('--orange','#ff5a18'),secondary=cssVar('--canvas-secondary','#142b49');
- ctx.font='11px Segoe UI';ctx.fillStyle=text;ctx.strokeStyle=grid;for(let g=0;g<=4;g++){let y=top+ch-g*ch/4;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(w-right,y);ctx.stroke();ctx.fillText(fmt(max*g/4),5,y+4)}
- const points=[];
+ ctx.font='11px Segoe UI';ctx.fillStyle=text;ctx.strokeStyle=grid;ctx.textAlign='left';for(let g=0;g<=4;g++){let y=top+ch-g*ch/4;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(w-right,y);ctx.stroke();ctx.fillText(F(max*g/4),5,y+4)}
+ const XP=i=>left+(labels.length===1?cw/2:i*cw/(labels.length-1)),YP=v=>top+ch-v/(max||1)*ch;
  seriesList.forEach((s,si)=>{
    const color=si===0?accent:secondary;
    ctx.strokeStyle=color;ctx.lineWidth=3;mGlow(ctx,color);ctx.beginPath();
-   s.values.forEach((v,i)=>{let x=left+(labels.length===1?cw/2:i*cw/(labels.length-1)),y=top+ch-v/(max||1)*ch;i?ctx.lineTo(x,y):ctx.moveTo(x,y);points.push({x,y,v:Number(v)||0,si});});
+   s.values.forEach((v,i)=>{const x=XP(i),y=YP(v);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
    ctx.stroke();mGlowOff(ctx);
    ctx.fillStyle=color;
-   s.values.forEach((v,i)=>{let x=left+(labels.length===1?cw/2:i*cw/(labels.length-1)),y=top+ch-v/(max||1)*ch;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill()});
-   s.values.forEach((v,i)=>{let x=left+(labels.length===1?cw/2:i*cw/(labels.length-1)),y=top+ch-v/(max||1)*ch;c._chartHits.push({index:i,seriesIndex:si,x:x-10,y:y-10,w:20,h:20});});
-   // Mostra o valor de cada ponto, priorizando a série principal.
-   ctx.textAlign='center';ctx.font='700 10px Segoe UI';
-   s.values.forEach((v,i)=>{
-     const n=Number(v)||0;
-     // Não repetir uma linha-meta zerada ou idêntica ao ponto principal.
-     if(si>0 && (n===0 || (seriesList[0]&&Number(seriesList[0].values[i])===n))) return;
-     const x=left+(labels.length===1?cw/2:i*cw/(labels.length-1));
-     const y=top+ch-n/(max||1)*ch;
-     const unit=s.unit||'';
-     const label=fmt(n)+(unit?' '+unit:'');
-     let ly=y-10;
-     // Mantém o texto dentro do gráfico.
-     if(ly<14) ly=y+16;
-     // Evita choque com a linha-meta quando ela estiver próxima.
-     if(si===0 && seriesList.length>1){
-       const other=Number(seriesList[1].values[i])||0;
-       const oy=top+ch-other/(max||1)*ch;
-       if(Math.abs(ly-oy)<14 && other!==0) ly=Math.min(h-bottom-8,y+18);
-     }
-     ctx.fillStyle=text;ctx.fillText(label,x,ly);
-   });
+   s.values.forEach((v,i)=>{ctx.beginPath();ctx.arc(XP(i),YP(v),4,0,Math.PI*2);ctx.fill()});
+   s.values.forEach((v,i)=>{c._chartHits.push({index:i,seriesIndex:si,x:XP(i)-10,y:YP(v)-10,w:20,h:20})});
  });
- ctx.fillStyle=text;ctx.textAlign='center';ctx.font='11px Segoe UI';labels.forEach((lab,i)=>{let x=left+(labels.length===1?cw/2:i*cw/(labels.length-1));ctx.fillText(lab,x,h-12)})
+ /* valores: sem sobreposição. Meta aparece uma vez (à direita); os pontos entram por prioridade (último, maior, menor, demais) */
+ const placed=[];ctx.textAlign='center';ctx.font='700 10px Segoe UI';
+ const put=(txt,x,y)=>{const tw=ctx.measureText(txt).width,cx=Math.min(Math.max(x,left+tw/2),w-right-tw/2),b={x0:cx-tw/2-2,x1:cx+tw/2+2,y0:y-11,y1:y+3};if(y<12||y>h-bottom+2)return false;if(placed.some(p=>b.x0<p.x1&&b.x1>p.x0&&b.y0<p.y1&&b.y1>p.y0))return false;placed.push(b);ctx.fillText(txt,cx,y);return true};
+ const unitOf=s=>(!compact&&s.unit)?' '+s.unit:(s.unit==='%'?'%':'');
+ seriesList.forEach((s,si)=>{
+   if(si===0)return;const n=Number(s.values[s.values.length-1])||0;if(!n)return;
+   ctx.fillStyle=secondary===text?text:text;put((s.name||'Meta')+' '+F(n)+unitOf(s),w-right,YP(n)-8);
+ });
+ const s0=seriesList[0];
+ if(s0){
+   const vals=s0.values.map(v=>Number(v)||0),idx=vals.map((_,i)=>i),last=vals.length-1;
+   let imax=0,imin=-1;vals.forEach((v,i)=>{if(v>vals[imax])imax=i;if(v>0&&(imin<0||v<vals[imin]))imin=i});
+   const ordem=[last,imax,imin].filter((v,i,arr)=>v>=0&&arr.indexOf(v)===i).concat(idx.filter(i=>i!==last&&i!==imax&&i!==imin).sort((p,q)=>(vals[q]>0)-(vals[p]>0)||vals[q]-vals[p]));
+   ctx.fillStyle=text;
+   ordem.forEach(i=>{const n=vals[i],x=XP(i),y=YP(n),t=F(n)+unitOf(s0);if(!put(t,x,y-10))put(t,x,y+17)});
+ }
+ ctx.fillStyle=text;ctx.textAlign='center';ctx.font='11px Segoe UI';labels.forEach((lab,i)=>{ctx.fillText(lab,XP(i),h-12)})
  attachChartInteraction(c,id);
 }
 function drawStackedQty(id,labels,series){
@@ -3359,7 +3454,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v186) =====
+/* ===== Pesos novos valem só a partir de uma data (v189) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -3466,7 +3561,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v186) =====
+/* ===== Backup COMPLETO do sistema (v189) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{
@@ -3535,6 +3630,23 @@ function compResumo(){
   const us=(cadastros.pecas||[]).filter(p=>String(p.planta||'').toUpperCase()==='USINAGEM'),ok=us.filter(p=>String(p.origemCod??'').trim());
   el.textContent=us.length?`🔗 Composição: ${ok.length.toLocaleString('pt-BR')} de ${us.length.toLocaleString('pt-BR')} itens da usinagem com peça fundida de origem definida.`:'';
 }
+function exportCadastroXlsx(){
+  const g=window.__gestao;if(!g||!g.xlsxBlob){alert('Exportação em Excel indisponível (gestao.js não carregou).');return}
+  const c=cadastros||{},num=v=>{if(v===''||v==null)return '';const x=Number(String(v).replace(',','.'));return Number.isFinite(x)?x:String(v)};
+  const nome=x=>typeof x==='string'?x:(x&&(x.nome||x.name||x.descricao))||'';
+  const pecas=[['Código','Descrição','Cliente','Planta','Material','Peso bruto fracionado (kg)','Peso árvore (kg)','Peso líq. Fund./bruto Usin. (kg)','Peso usinado (kg)','Fundida de origem','Peças usinadas por fundida'],
+    ...(c.pecas||[]).map(p=>[p.codigo||'',p.descricao||'',p.cliente||'',p.planta||'',p.material||'',num(p.pesoPrincipal),num(p.pesoArvore),num(p.pesoFundUsin),num(p.pesoUsinado),p.origemCod||'',num(p.origemQtd)])];
+  const motivos=[['Código','Descrição','Planta','Causa (6M)'],...(c.motivos||[]).map(m=>[m.codigo||'',m.descricao||'',m.planta||'',m.causa||''])];
+  const setores=[['Código','Tipo','Planta'],...(c.setores||[]).map(s=>[s.codigo||'',s.tipo||'',s.planta||''])];
+  const lista=(t,a)=>[[t],...(a||[]).map(x=>[nome(x)])];
+  const part=[['Nome','E-mail'],...(c.participantes||[]).map(p=>[nome(p),(p&&p.email)||''])];
+  const cus=[['Vigente desde','Item','Valor']];
+  (c.custosHist||[]).forEach(h=>{const v=h&&h.valores;if(v&&typeof v==='object')Object.keys(v).forEach(k=>cus.push([h.desde||'',k,typeof v[k]==='object'?JSON.stringify(v[k]):num(v[k])]))});
+  const sheets=[{name:'Produtos',rows:pecas},{name:'Motivos',rows:motivos},{name:'Setores',rows:setores},{name:'Clientes',rows:lista('Cliente',c.clientes)},{name:'Responsáveis',rows:lista('Responsável',c.responsaveis)},{name:'Participantes',rows:part},{name:'Materiais',rows:lista('Material',c.materiais)}];
+  if(cus.length>1)sheets.push({name:'Custos',rows:cus});
+  g.baixar(g.xlsxBlob(sheets),'cadastro-completo-'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+window.exportCadastroXlsx=exportCadastroXlsx;
 function exportComposicaoXlsx(){
   const g=window.__gestao;if(!g||!g.xlsxBlob){alert('Exportação em Excel indisponível (gestao.js não carregou).');return}
   const us=(cadastros.pecas||[]).filter(p=>String(p.planta||'').toUpperCase()==='USINAGEM');
