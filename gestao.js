@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.gestao='v190';
+window.__V=window.__V||{};window.__V.gestao='v192';
 /* ==================================================================
    GESTÃO — alertas e metas, comparativo de períodos, cruzamento
    refugo × devolução e relatório mensal (PDF / Excel .xlsx).
@@ -749,7 +749,7 @@ function quadroDados(cfg){
     const v=somar(rr,vv),prod=prodDe(k),kgF=somar(rr.filter(r=>qpl(r.pl)==='F'),r=>N(r.kg));
     out[k]={k,v,n:rr.length,pecas:somar(rr,r=>N(r.qtd)),rs:somar(rr,r=>N(r.rs)),prod,perc:(mt==='kg'&&(PL.length?PF:true)&&PF&&prod)?kgF/prod*100:null,
       dv:somar(dd,vv),dvQ:somar(dd,r=>N(r.qtd)),dvRs:somar(dd,r=>N(r.rs)),rtQ:somar(rt,r=>N(r.qtd)),rtN:rt.length,
-      pF:somar(rr.filter(r=>qpl(r.pl)==='F'),vv),pU:somar(rr.filter(r=>qpl(r.pl)==='U'),vv),
+      pF:somar(rr.filter(r=>qpl(r.pl)==='F'),vv),pX:somar(rr.filter(r=>qpl(r.pl)==='X'),vv),pU:somar(rr.filter(r=>qpl(r.pl)==='U'),vv),
       mot:rk(rr,r=>r.mot,vv),cli:rk(rr,r=>r.cli,vv),pec:rk(rr,r=>(r.cod?r.cod+' - ':'')+(r.pec||''),vv),causa:rk(rr,r=>r.causa,vv),dvCli:rk(dd,r=>r.cli,vv,3)};
   });
   return {mt,PF,PU,PL,mix:!PL.length||PL.length>1,cu,M:out,un:mt==='qtd'?'peças':'kg'};
@@ -777,7 +777,7 @@ function quadroDet(cfg,k,g){
    '<div><span>Refugo ('+un+')</span><b>'+qf(x.v,g.mt==='qtd'?0:1)+'</b></div>'+
    '<div><span>Peças refugadas</span><b>'+qf(x.pecas)+'</b></div>'+
    (x.perc!=null?'<div><span>% da produção (Fundição)</span><b>'+qf(x.perc,2)+'%</b></div><div><span>Produção Fundição (kg)</span><b>'+qf(x.prod)+'</b></div>':'')+
-   (g.mix&&g.PF&&g.PU?'<div><span>Fundição / Usinagem ('+un+')</span><b>'+qf(x.pF)+' / '+qf(x.pU)+'</b></div>':'')+
+   (g.mix&&g.PF&&g.PU?(x.pX>0?'<div><span>Fundição / Fund. na Usinagem / Usinagem ('+un+')</span><b>'+qf(x.pF)+' / '+qf(x.pX)+' / '+qf(x.pU)+'</b></div>':'<div><span>Fundição / Usinagem ('+un+')</span><b>'+qf(x.pF)+' / '+qf(x.pU)+'</b></div>'):'')+
    '<div><span>Devolução procedente ('+un+')</span><b>'+qf(x.dv,g.mt==='qtd'?0:1)+'</b></div>'+
    '<div><span>Peças devolvidas</span><b>'+qf(x.dvQ)+'</b></div>'+
    '<div><span>Retrabalho (peças)</span><b>'+qf(x.rtQ)+'</b></div>'+

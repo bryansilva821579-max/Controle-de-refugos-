@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v190';
+window.__V=window.__V||{};window.__V.app='v192';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -181,13 +181,13 @@ async function pullRemoteQuietLegacy(){
     if(cfgSnap.exists&&firebaseKnownDataId){
       const cs=fsDesanitize(cfgSnap.data());
       if(cs.dataId&&cs.dataId===firebaseKnownDataId){
-        const dMeta=cs.meta&&fsStable(cs.meta)!==fsStable(meta),dCad=cs.cadastros&&fsStable(cs.cadastros)!==fsStable(cadastros),dProd=Array.isArray(cs.producaoFundicao)&&fsStable(cs.producaoFundicao)!==fsStable(producaoFundicao),dReu=Array.isArray(cs.reunioes)&&fsStable(cs.reunioes)!==fsStable(window.reunioes||[]);
+        const dMeta=cs.meta&&fsStable(cs.meta)!==fsStable(meta),dCad=cs.cadastros&&fsStable(cs.cadastros)!==fsStable(cadastros),prodR=Array.isArray(cs.producaoFundicao)?prodAplicar(cs.producaoFundicao,cs.producaoDel):{local:false,nuvem:false},dProd=prodR.local||prodR.nuvem,dReu=Array.isArray(cs.reunioes)&&fsStable(cs.reunioes)!==fsStable(window.reunioes||[]);
         if(!dCad&&!cadBase)cadBaseSet();
         if(!dMeta&&!dCad&&!dProd&&!dReu)return;
         firebaseApplyingRemote=true;
         try{
           if(dMeta){meta=cs.meta;localStorage.setItem(KEY+'_meta',JSON.stringify(meta))}
-          if(dProd){producaoFundicao=cs.producaoFundicao.map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao))}
+          
           if(dCad){cadastros=cs.cadastros;saveCad();cadBaseSet()}
           if(dReu){window.reunioes=cs.reunioes;try{localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}catch(e){}}
           refresh();
@@ -224,7 +224,7 @@ async function pullRemoteQuietLegacy(){
     try{
       data=juntados||remote;
       if(cloudState.meta)meta=cloudState.meta;
-      if(Array.isArray(cloudState.producaoFundicao))producaoFundicao=cloudState.producaoFundicao;
+      if(Array.isArray(cloudState.producaoFundicao))prodAplicar(cloudState.producaoFundicao,cloudState.producaoDel);
       if(cloudState.cadastros){cadastros=cloudState.cadastros;cadBaseSet()}
       if(Array.isArray(cloudState.reunioes)){window.reunioes=cloudState.reunioes;localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}
       if(cloudState.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cloudState.historicoFonte))}catch(e){}}
@@ -243,10 +243,10 @@ async function pullRemoteQuietLegacy(){
   finally{firebasePulling=false}
 }
 async function uploadLocalToFirebaseLegacy(showMessage=true,cadOnly=false){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Enviando dados locais para o Firebase...');const root=firebaseRoot();if(!showMessage){try{await cadPreMerge(root)}catch(e){console.warn('Mescla do cadastro:',e)}}const fonteHistorico={versao:'v79',custoRefugoKg:2.60,producaoFundicao:Array.isArray(producaoFundicao)?producaoFundicao.map(x=>({...x,custoKg:2.6})):[],reunioes:Array.isArray(window.reunioes)?window.reunioes:[]};if(showMessage){const _c=await root.collection('config').doc('estado').get();const _k=await root.collection('lancamentos').orderBy('index').get();const _a=fsAssemble(_c,_k);if(_a.ok&&_a.remote.length&&(_a.remote.length!==data.length||Math.abs(fsKgTotal(_a.remote)-fsKgTotal(data))>0.5)){if(!confirm('ATENÇÃO: a nuvem já tem dados DIFERENTES dos deste computador.\n\nNuvem: '+_a.remote.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(_a.remote))+' kg\nEste computador: '+data.length.toLocaleString('pt-BR')+' lançamentos, '+fsFmt(fsKgTotal(data))+' kg\n\nSubstituir os dados da nuvem pelos deste computador?')){setFirebaseStatus('Envio cancelado. A nuvem não foi alterada.','');return}}}
-if(!showMessage&&!firebaseDataDirty&&(firebaseKnownDataId||cadOnly)){await root.collection('config').doc('estado').set(fsSanitize({meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()}),{merge:true});cadBaseSet();setFirebaseStatus('Cadastros enviados ao Firebase.','ok');return}
-const dataId=Date.now().toString(36)+Math.random().toString(36).slice(2,8);const metaPayload={meta,producaoFundicao,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,dataId,totalRecords:data.length,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()};const chunks=[];for(let i=0;i<data.length;i+=FIREBASE_CHUNK_SIZE)chunks.push({index:Math.floor(i/FIREBASE_CHUNK_SIZE),records:data.slice(i,i+FIREBASE_CHUNK_SIZE),uploadId:dataId,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()});metaPayload.totalChunks=chunks.length;for(let i=0;i<chunks.length;i+=20){const batch=firebaseDbOnline.batch();chunks.slice(i,i+20).forEach(ch=>batch.set(root.collection('lancamentos').doc('chunk_'+String(ch.index).padStart(4,'0')),fsSanitize(ch)));await batch.commit()}const existing=await root.collection('lancamentos').get();const valid=new Set(chunks.map(ch=>'chunk_'+String(ch.index).padStart(4,'0')));let batch=firebaseDbOnline.batch(),count=0;existing.docs.forEach(d=>{if(!valid.has(d.id)){batch.delete(d.ref);count++}});if(count)await batch.commit();await root.collection('config').doc('estado').set(fsSanitize(metaPayload),{merge:true});firebaseSyncPaused=false;firebaseFirstPullDone=true;firebaseKnownDataId=dataId;firebaseDataDirty=false;cadBaseSet();setFirebaseStatus('Dados locais enviados para o Firebase.','ok');if(showMessage)alert('Sincronização concluída: '+data.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao enviar: '+(e?.message||e),'err');alert('Erro ao enviar os dados para o Firebase.\n\n'+(e?.message||e))}}
+if(!showMessage&&!firebaseDataDirty&&(firebaseKnownDataId||cadOnly)){await root.collection('config').doc('estado').set(fsSanitize({meta,producaoFundicao,producaoDel,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()}),{merge:true});cadBaseSet();setFirebaseStatus('Cadastros enviados ao Firebase.','ok');return}
+const dataId=Date.now().toString(36)+Math.random().toString(36).slice(2,8);const metaPayload={meta,producaoFundicao,producaoDel,cadastros,reunioes:window.reunioes||[],historicoFonte:fonteHistorico,dataId,totalRecords:data.length,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()};const chunks=[];for(let i=0;i<data.length;i+=FIREBASE_CHUNK_SIZE)chunks.push({index:Math.floor(i/FIREBASE_CHUNK_SIZE),records:data.slice(i,i+FIREBASE_CHUNK_SIZE),uploadId:dataId,updatedAt:window.firebase.firestore.FieldValue.serverTimestamp()});metaPayload.totalChunks=chunks.length;for(let i=0;i<chunks.length;i+=20){const batch=firebaseDbOnline.batch();chunks.slice(i,i+20).forEach(ch=>batch.set(root.collection('lancamentos').doc('chunk_'+String(ch.index).padStart(4,'0')),fsSanitize(ch)));await batch.commit()}const existing=await root.collection('lancamentos').get();const valid=new Set(chunks.map(ch=>'chunk_'+String(ch.index).padStart(4,'0')));let batch=firebaseDbOnline.batch(),count=0;existing.docs.forEach(d=>{if(!valid.has(d.id)){batch.delete(d.ref);count++}});if(count)await batch.commit();await root.collection('config').doc('estado').set(fsSanitize(metaPayload),{merge:true});firebaseSyncPaused=false;firebaseFirstPullDone=true;firebaseKnownDataId=dataId;firebaseDataDirty=false;cadBaseSet();setFirebaseStatus('Dados locais enviados para o Firebase.','ok');if(showMessage)alert('Sincronização concluída: '+data.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao enviar: '+(e?.message||e),'err');alert('Erro ao enviar os dados para o Firebase.\n\n'+(e?.message||e))}}
 async function downloadFromFirebaseLegacy(){try{const cfg=getFirebaseConfig()||firebaseCfgFields();if(!cfg.projectId){openFirebaseModal();setFirebaseStatus('Informe e salve a configuração primeiro.','err');return}if(!firebaseOnlineConnected)await connectFirebase(cfg,false);if(!firebaseDbOnline)return;setFirebaseStatus('Baixando dados do Firebase...');const root=firebaseRoot();const cfgSnap=await root.collection('config').doc('estado').get();const chunkSnap=await root.collection('lancamentos').orderBy('index').get();if(!cfgSnap.exists&&!chunkSnap.size){throw new Error('Não existem dados publicados neste Firebase para este sistema.')}
- const _asm=fsAssemble(cfgSnap,chunkSnap);if(!_asm.ok)throw new Error('A nuvem está sendo atualizada por outro computador. Tente de novo em alguns segundos.');const cloudState=_asm.cloudState;const remote=_asm.remote;if(!remote.length&&!data.length)throw new Error('O Firebase está conectado, mas não há lançamentos para baixar.');if(remote.length){data=remote;if(cloudState.meta)meta=cloudState.meta;if(Array.isArray(cloudState.producaoFundicao))producaoFundicao=cloudState.producaoFundicao;if(cloudState.cadastros){cadastros=cloudState.cadastros;cadBaseSet()}if(Array.isArray(cloudState.reunioes)){window.reunioes=cloudState.reunioes;localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}if(cloudState.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cloudState.historicoFonte))}catch(e){}}producaoFundicao=(Array.isArray(producaoFundicao)?producaoFundicao:[]).map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));salvarHistoricoFonte();localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'_meta',JSON.stringify(meta));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));saveCad();refresh();}firebaseSyncPaused=false;firebaseFirstPullDone=true;setFirebaseStatus('Dados do Firebase carregados neste navegador.','ok');alert('Dados do Firebase carregados: '+remote.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao baixar: '+(e?.message||e),'err');alert('Erro ao baixar os dados do Firebase.\n\n'+(e?.message||e))}}
+ const _asm=fsAssemble(cfgSnap,chunkSnap);if(!_asm.ok)throw new Error('A nuvem está sendo atualizada por outro computador. Tente de novo em alguns segundos.');const cloudState=_asm.cloudState;const remote=_asm.remote;if(!remote.length&&!data.length)throw new Error('O Firebase está conectado, mas não há lançamentos para baixar.');if(remote.length){data=remote;if(cloudState.meta)meta=cloudState.meta;if(Array.isArray(cloudState.producaoFundicao))prodAplicar(cloudState.producaoFundicao,cloudState.producaoDel);if(cloudState.cadastros){cadastros=cloudState.cadastros;cadBaseSet()}if(Array.isArray(cloudState.reunioes)){window.reunioes=cloudState.reunioes;localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}if(cloudState.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cloudState.historicoFonte))}catch(e){}}producaoFundicao=(Array.isArray(producaoFundicao)?producaoFundicao:[]).map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));salvarHistoricoFonte();localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'_meta',JSON.stringify(meta));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));saveCad();refresh();}firebaseSyncPaused=false;firebaseFirstPullDone=true;setFirebaseStatus('Dados do Firebase carregados neste navegador.','ok');alert('Dados do Firebase carregados: '+remote.length.toLocaleString('pt-BR')+' lançamento(s).')}catch(e){console.error(e);setFirebaseStatus('Erro ao baixar: '+(e?.message||e),'err');alert('Erro ao baixar os dados do Firebase.\n\n'+(e?.message||e))}}
 function disconnectFirebase(){try{stopFirebaseListener();if(firebaseAuthOnline)firebaseAuthOnline.signOut();if(firebaseAppOnline&&firebaseAppOnline.delete)firebaseAppOnline.delete()}catch{}firebaseOnlineConnected=false;firebaseAuthOnline=null;firebaseDbOnline=null;firebaseAppOnline=null;localStorage.removeItem(FIREBASE_CONFIG_KEY);localStorage.removeItem(FIREBASE_SYNC_KEY);setFirebaseStatus('Desconectado. O sistema voltou para o modo local.','')}
 /* Compara este aparelho com a nuvem e mostra o que existe só aqui / só na nuvem; permite juntar os dois */
 async function compararComNuvem(){
@@ -330,7 +330,7 @@ function removerDuplicadosPeso(){
 }
 window.removerDuplicadosPeso=removerDuplicadosPeso;
 
-/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v190) ===== */
+/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v192) ===== */
 const BKN_MAX=600000,BKN_DIAS=30;
 let bkRodando=false;
 function bkCol(){return firebaseRoot().collection('backups')}
@@ -345,7 +345,7 @@ function bkPacote(){
 function bkB64(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s)}
 async function bkGz(txt){const cs=new CompressionStream('gzip'),w=cs.writable.getWriter();w.write(new TextEncoder().encode(txt));w.close();return bkB64(new Uint8Array(await new Response(cs.readable).arrayBuffer()))}
 async function bkUnGz(b64){const bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);const ds=new DecompressionStream('gzip'),w=ds.writable.getWriter();w.write(u);w.close();return await new Response(ds.readable).text()}
-function bkCarimbar(d){const agora=Date.now();if(d&&Array.isArray(d.lancamentos))d.lancamentos.forEach(r=>{if(r&&typeof r==='object'){r._rts=agora;delete r._del}})}
+function bkCarimbar(d){const agora=Date.now();if(d&&Array.isArray(d.producaoFundicao))d.producaoFundicao.forEach(r=>{if(r&&typeof r==='object')r._ts=agora});if(d&&Array.isArray(d.lancamentos))d.lancamentos.forEach(r=>{if(r&&typeof r==='object'){r._rts=agora;delete r._del}})}
 async function bkNuvem(manual){
   if(bkRodando)return;
   if(!firebaseDbOnline){if(manual)alert('A nuvem (Firebase) ainda não está conectada.');return}
@@ -464,7 +464,7 @@ function confPesosAviso(){
 }
 setTimeout(confPesosAviso,9000);
 
-/* ===== Ficha completa: busca por código, OF, descrição ou material (v190) ===== */
+/* ===== Ficha completa: busca por código, OF, descrição ou material (v192) ===== */
 const __nz=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
 const __f2=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:2});
 const __f0=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
@@ -639,7 +639,7 @@ function fichaBuscar(q0){
 }
 window.fichaBuscar=fichaBuscar;window.fichaAbrir=fichaAbrir;
 
-/* ===== Sincronização por lançamento (v190) =====
+/* ===== Sincronização por lançamento (v192) =====
    Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
    fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
    A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
@@ -787,8 +787,12 @@ async function reuPreMerge(root){
   try{window.reunioes=merged;try{localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(merged))}catch(e){}try{window.reuLists&&window.reuLists()}catch(e){}}finally{firebaseApplyingRemote=false}
 }
 async function refEnviarConfig(root,forcar){
-  const estado={meta,producaoFundicao};
-  const sig=fsStable(estado);
+  let estado={meta,producaoFundicao,producaoDel};
+  let sig=fsStable(estado);
+  if(forcar||sig!==refCfgSig||!refLegadoLimpo){
+    try{const sn=await root.collection('config').doc('estado').get();if(sn.exists){const c0=fsDesanitize(sn.data());if(Array.isArray(c0.producaoFundicao)){const r=prodAplicar(c0.producaoFundicao,c0.producaoDel);if(r.local){try{renderProducao()}catch(e){}}}}}catch(e){console.warn('Mescla da produção:',e)}
+    estado={meta,producaoFundicao,producaoDel};sig=fsStable(estado);
+  }
   await blobEnviar('cadastros',cadastros,forcar);
   await blobEnviar('reunioes',window.reunioes||[],forcar);
   if(forcar||sig!==refCfgSig||!refLegadoLimpo){
@@ -801,7 +805,7 @@ async function refEnviarConfig(root,forcar){
 function refAplicarConfig(cs,ex){
   ex=ex||{};if(ex.cadastros!==undefined)cs=Object.assign({},cs,{cadastros:ex.cadastros});if(ex.reunioes!==undefined)cs=Object.assign({},cs,{reunioes:ex.reunioes});
   if(cs.meta){meta=cs.meta}
-  if(Array.isArray(cs.producaoFundicao))producaoFundicao=cs.producaoFundicao.map(x=>({...x,custoKg:2.6}));
+  if(Array.isArray(cs.producaoFundicao))prodAplicar(cs.producaoFundicao,cs.producaoDel);
   if(cs.cadastros){cadastros=cs.cadastros;cadBaseSet()}
   if(Array.isArray(cs.reunioes)){window.reunioes=cs.reunioes;try{localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}catch(e){}}
   if(cs.historicoFonte){try{localStorage.setItem(FONTE_HIST_KEY,JSON.stringify(cs.historicoFonte))}catch(e){}}
@@ -876,17 +880,18 @@ async function pullRemoteQuiet(){
     const cs=fsDesanitize(cfgSnap.data());
     const _B=blobMontar((await blobCol().get()).docs);
     if(_B.cadastros)cs.cadastros=_B.cadastros.valor;if(_B.reunioes)cs.reunioes=_B.reunioes.valor;
-    const dMeta=cs.meta&&fsStable(cs.meta)!==fsStable(meta),dCad=cs.cadastros&&fsStable(cs.cadastros)!==fsStable(cadastros),dProd=Array.isArray(cs.producaoFundicao)&&fsStable(cs.producaoFundicao)!==fsStable(producaoFundicao),dReu=Array.isArray(cs.reunioes)&&fsStable(cs.reunioes)!==fsStable(window.reunioes||[]);
+    const dMeta=cs.meta&&fsStable(cs.meta)!==fsStable(meta),dCad=cs.cadastros&&fsStable(cs.cadastros)!==fsStable(cadastros),prodR=Array.isArray(cs.producaoFundicao)?prodAplicar(cs.producaoFundicao,cs.producaoDel):{local:false,nuvem:false},dProd=prodR.local||prodR.nuvem,dReu=Array.isArray(cs.reunioes)&&fsStable(cs.reunioes)!==fsStable(window.reunioes||[]);
     if(!dCad&&!cadBase)cadBaseSet();if(!dReu&&!reuBase)reuBaseSet();
     if(!dMeta&&!dCad&&!dProd&&!dReu)return;
     firebaseApplyingRemote=true;
     try{
       if(dMeta){meta=cs.meta;localStorage.setItem(KEY+'_meta',JSON.stringify(meta))}
-      if(dProd){producaoFundicao=cs.producaoFundicao.map(x=>({...x,custoKg:2.6}));localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao))}
+      
       if(dCad){cadastros=cs.cadastros;saveCad();cadBaseSet();blobSig.cadastros=fsStable(cadastros)}
       if(dReu){window.reunioes=cs.reunioes;blobSig.reunioes=fsStable(cs.reunioes);try{localStorage.setItem('controle_refugos_2026_reunioes',JSON.stringify(window.reunioes))}catch(e){}reuBaseSet();try{window.reuLists&&window.reuLists()}catch(e){}}
-      refresh();
+      refresh();try{renderProducao()}catch(e){}
     }finally{firebaseApplyingRemote=false}
+    if(prodR&&prodR.nuvem)scheduleFirebasePush();
     setFirebaseStatus('Atualizado em tempo real às '+new Date().toLocaleTimeString('pt-BR')+'.','ok');
   }catch(e){console.error('Atualização remota:',e)}
   finally{firebasePulling=false}
@@ -1546,6 +1551,31 @@ function save(){
   limparRegistrosZeradosHistorico();
   localStorage.setItem(KEY,JSON.stringify(data));
   dashboardDirty=true;dashboardQtdDirty=true;
+}
+/* --- produção: mescla por dia (nunca substitui o conjunto inteiro) --- */
+const PRODDEL_KEY='controle_refugos_2026_producao_del_v1',PRODSEG_KEY='controle_refugos_2026_producao_seguranca';
+let producaoDel=[];try{producaoDel=JSON.parse(localStorage.getItem(PRODDEL_KEY)||'[]')||[]}catch(e){producaoDel=[]}
+function prodChave(p){return p&&p.data?'d:'+p.data:'m:'+Number(p&&p.ano)+'-'+Number(p&&p.mes)}
+function prodMesclar(remArr,remDel){
+  const mp=new Map(),del=new Map();
+  [producaoDel,remDel].forEach(L=>(Array.isArray(L)?L:[]).forEach(x=>{if(x&&x.k&&(del.get(x.k)||0)<(+x.ts||0))del.set(x.k,+x.ts||0)}));
+  const put=p=>{if(!p||typeof p!=='object')return;const k=prodChave(p),a=mp.get(k);if(!a||(+p._ts||0)>(+a._ts||0))mp.set(k,p)};
+  (Array.isArray(producaoFundicao)?producaoFundicao:[]).forEach(put);(Array.isArray(remArr)?remArr:[]).forEach(put);
+  const arr=[];mp.forEach((p,k)=>{const t=del.get(k);if(t!=null&&(+p._ts||0)<=t)return;arr.push(p)});
+  const lim=Date.now()-400*864e5,dl=[];del.forEach((ts,k)=>{if(ts>lim)dl.push({k,ts})});
+  arr.sort((a,b)=>String(a.data||'').localeCompare(String(b.data||''))||(Number(a.ano)-Number(b.ano))||(Number(a.mes)-Number(b.mes)));dl.sort((a,b)=>a.ts-b.ts);
+  return{arr:arr.map(x=>({...x,custoKg:2.6})),del:dl};
+}
+/* aplica a mescla neste aparelho; devolve {local:mudou aqui, nuvem:a nuvem precisa receber} */
+function prodAplicar(remArr,remDel){
+  const m=prodMesclar(remArr,remDel),local=fsStable(m.arr)!==fsStable(producaoFundicao)||fsStable(m.del)!==fsStable(producaoDel);
+  const nuvem=Array.isArray(remArr)&&(fsStable(m.arr)!==fsStable(remArr.map(x=>({...x,custoKg:2.6})))||fsStable(m.del)!==fsStable(Array.isArray(remDel)?remDel:[]));
+  if(local){
+    try{if(Array.isArray(producaoFundicao)&&producaoFundicao.length)localStorage.setItem(PRODSEG_KEY,JSON.stringify({em:new Date().toISOString(),producaoFundicao}))}catch(e){}
+    producaoFundicao=m.arr;producaoDel=m.del;
+    try{localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));localStorage.setItem(PRODDEL_KEY,JSON.stringify(producaoDel))}catch(e){}
+  }
+  return{local,nuvem};
 }
 function saveMeta(){if(!cadastroAccessAllowed()){alert('A meta só pode ser alterada na aba Cadastro, com a senha liberada.');return}meta={perc:n(metaPerc.value),kg:n(metaKg.value)};localStorage.setItem(KEY+'_meta',JSON.stringify(meta));dashboardDirty=true;if(document.getElementById('dashboard')?.classList.contains('active'))dashboard();alert('Meta salva.')}
 function productionYear(p){const y=Number(p?.ano);return Number.isFinite(y)?y:null}
@@ -2878,14 +2908,14 @@ function prodCalSelecionar(iso){
   set('producaoEditIndex',i>=0?String(i):'');
   set('producaoCorridas',r?r.corridas??'':'');
   set('producaoKg',r?r.kg??'':'');
-  set('producaoKgLiq',r&&r.kgLiq!=null?r.kgLiq:'');
+  set('producaoKgLiq',r&&r.kgLiq!=null?r.kgLiq:'');set('producaoLing',r&&r.kgLing!=null?r.kgLing:'');set('producaoGotas',r&&r.kgGotas!=null?r.kgGotas:'');
   set('producaoFundido',r?r.fundido||'':'');
   set('producaoObs',r?r.observacao||'':'');
   renderProducao();
 }
 function clearProducaoForm(){
   prodCalSelecionar(document.getElementById('producaoData')?.value||prodHojeISO());
-  ['producaoCorridas','producaoKg','producaoKgLiq','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['producaoCorridas','producaoKg','producaoKgLiq','producaoLing','producaoGotas','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const idx=document.getElementById('producaoEditIndex');if(idx)idx.value='';
   updateSecurityUI();
 }
@@ -2916,7 +2946,7 @@ function renderProducao(){
   const kgMes=dias.reduce((a,x)=>a+productionValue(x.r),0),corrMes=dias.reduce((a,x)=>a+n(x.r.corridas),0);
   const resumo=document.getElementById('prodCalResumo');
   if(resumo){
-    if(dias.length)resumo.innerHTML=`<b>Total do mês:</b> ${fmt(kgMes)} kg &nbsp;|&nbsp; <b>Corridas:</b> ${fmt(corrMes)} &nbsp;|&nbsp; <b>Dias lançados:</b> ${dias.length}${dias.some(x=>x.r.kgLiq!=null)?` &nbsp;|&nbsp; <b>Líquido:</b> ${fmt(dias.reduce((s,x)=>s+n(x.r.kgLiq),0))} kg &nbsp;|&nbsp; <b>Rendimento:</b> ${fmt(dias.reduce((s,x)=>s+n(x.r.kgLiq),0)/Math.max(1,dias.filter(x=>x.r.kgLiq!=null).reduce((s,x)=>s+productionValue(x.r),0))*100)}%`:''}${refMes?` &nbsp;|&nbsp; <b>Refugo Fundição:</b> ${fmt(refMes)} kg (${fmt(refMes/Math.max(1e-9,dias.reduce((s,x)=>s+prodVal(x.r),0))*100)}%${pesoTipo()==='liquido'?' sobre o líquido':''})${costAccessAllowed()?' • R$ '+fmt(refMesCusto):''}`:''}`;
+    if(dias.length)resumo.innerHTML=`<b>Total do mês:</b> ${fmt(kgMes)} kg &nbsp;|&nbsp; <b>Corridas:</b> ${fmt(corrMes)} &nbsp;|&nbsp; <b>Dias lançados:</b> ${dias.length}${dias.some(x=>x.r.kgLiq!=null)?` &nbsp;|&nbsp; <b>Líquido:</b> ${fmt(dias.reduce((s,x)=>s+n(x.r.kgLiq),0))} kg &nbsp;|&nbsp; <b>Rendimento:</b> ${fmt(dias.reduce((s,x)=>s+n(x.r.kgLiq),0)/Math.max(1,dias.filter(x=>x.r.kgLiq!=null).reduce((s,x)=>s+productionValue(x.r),0))*100)}%`:''}${dias.some(x=>x.r.kgLing!=null||x.r.kgGotas!=null)?` &nbsp;|&nbsp; <b>Lingotada:</b> ${fmt(dias.reduce((s,x)=>s+n(x.r.kgLing),0))} kg &nbsp;|&nbsp; <b>Gotas:</b> ${fmt(dias.reduce((s,x)=>s+n(x.r.kgGotas),0))} kg`:''}${refMes?` &nbsp;|&nbsp; <b>Refugo Fundição:</b> ${fmt(refMes)} kg (${fmt(refMes/Math.max(1e-9,dias.reduce((s,x)=>s+prodVal(x.r),0))*100)}%${pesoTipo()==='liquido'?' sobre o líquido':''})${costAccessAllowed()?' • R$ '+fmt(refMesCusto):''}`:''}`;
     else if(legado.length)resumo.innerHTML=`<b>Total mensal cadastrado:</b> ${fmt(legado.reduce((a,x)=>a+productionValue(x.r),0))} kg. Ao lançar o primeiro dia, o total do mês passa a ser a soma dos dias.`;
     else resumo.innerHTML=refMes?`Nenhum dia lançado neste mês. <b>Refugo Fundição:</b> ${fmt(refMes)} kg`:'Nenhum dia lançado neste mês.';
   }
@@ -2924,11 +2954,12 @@ function renderProducao(){
   const count=document.getElementById('producaoCount');
   if(count)count.textContent=dias.length?`${dias.length} ${dias.length===1?'dia lançado':'dias lançados'}`:(legado.length?'total mensal antigo':'sem lançamentos');
   const ordenados=[...dias].sort((a,b)=>String(b.r.data).localeCompare(String(a.r.data)));
-  const linhasDia=ordenados.map(({r,i})=>`<tr><td>${esc(String(r.data).split('-').reverse().join('/'))}</td><td style="white-space:normal;min-width:140px">${esc(r.fundido||'—')}</td><td>${esc(r.corridas??0)}</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>${r.kgLiq!=null?fmt(n(r.kgLiq))+' kg':'—'}</td><td>${esc(r.observacao||'')}</td><td><button class="btn secondary" onclick="editProducao(${i})">Editar</button> <button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
-  const linhasLeg=dias.length?[]:legado.map(({r,i})=>`<tr><td>${String(m).padStart(2,'0')}/${y} (total mensal)</td><td>—</td><td>—</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>—</td><td>${esc(r.observacao||'')}</td><td><button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
+  const linhasDia=ordenados.map(({r,i})=>`<tr><td>${esc(String(r.data).split('-').reverse().join('/'))}</td><td style="white-space:normal;min-width:140px">${esc(r.fundido||'—')}</td><td>${esc(r.corridas??0)}</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>${r.kgLiq!=null?fmt(n(r.kgLiq))+' kg':'—'}</td><td>${r.kgLing!=null?fmt(n(r.kgLing))+' kg':'—'}</td><td>${r.kgGotas!=null?fmt(n(r.kgGotas))+' kg':'—'}</td><td>${esc(r.observacao||'')}</td><td><button class="btn secondary" onclick="editProducao(${i})">Editar</button> <button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
+  const linhasLeg=dias.length?[]:legado.map(({r,i})=>`<tr><td>${String(m).padStart(2,'0')}/${y} (total mensal)</td><td>—</td><td>—</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>—</td><td>—</td><td>—</td><td>${esc(r.observacao||'')}</td><td><button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
   const linhas=[...linhasDia,...linhasLeg];
-  body.innerHTML=linhas.length?linhas.join(''):'<tr><td colspan="7" style="text-align:center" class="small">Nenhum dia lançado neste mês.</td></tr>';
+  body.innerHTML=linhas.length?linhas.join(''):'<tr><td colspan="9" style="text-align:center" class="small">Nenhum dia lançado neste mês.</td></tr>';
   try{renderRendimento()}catch(e){console.error(e)}
+  try{renderLingGotas()}catch(e){console.error(e)}
   updateSecurityUI();
 }
 /* Rendimento = peso líquido ÷ bruto fundido, mês a mês (só dias com líquido informado) */
@@ -2946,11 +2977,42 @@ function renderRendimento(){
   }
   box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento da Fundição — '+y+'</h3><div class="small">Peso líquido produzido ÷ kg fundidos (bruto), só nos dias em que o líquido foi informado.</div></div><div class="cad-count">'+(tB?'Ano: '+fmt(tL/tB*100)+'%':'sem líquido')+'</div></div>'+(lin.length?'<div class="tablewrap"><table><thead><tr><th>Mês</th><th>Kg fundidos</th><th>Kg líquido</th><th>Rendimento</th><th>Dias com líquido</th></tr></thead><tbody>'+lin.join('')+'</tbody></table></div>':'<div class="small">Nenhum dia lançado em '+y+'.</div>');
 }
+/* Lingotada × Gotas: kg por mês no ano exibido, gráfico separado */
+function renderLingGotas(){
+  const host=document.getElementById('producaoTableBody');if(!host)return;
+  let box=document.getElementById('prodLingGotas');
+  if(!box){const ref=document.getElementById('prodRendimento')||host.closest('.panel');if(!ref)return;box=document.createElement('div');box.id='prodLingGotas';box.className='panel';box.style.marginTop='16px';ref.parentNode.insertBefore(box,ref.nextSibling)}
+  const y=prodCalAno,M=MESES_PRODUCAO,L=Array(12).fill(0),G=Array(12).fill(0);let temL=false,temG=false;
+  producaoFundicao.forEach(p=>{if(!isProdDia(p)||productionYear(p)!==y)return;const m=productionMonth(p);if(!m)return;if(p.kgLing!=null&&p.kgLing!==''){L[m-1]+=n(p.kgLing);temL=true}if(p.kgGotas!=null&&p.kgGotas!==''){G[m-1]+=n(p.kgGotas);temG=true}});
+  const tl=L.reduce((a,b)=>a+b,0),tg=G.reduce((a,b)=>a+b,0);
+  box.innerHTML='<div class="cad-section-head"><div><h3>Lingotada e gotas — '+y+'</h3><div class="small">Kg lingotados e kg de gotas lançados por dia, somados por mês.</div></div><div class="cad-count">'+(temL||temG?'Ano: '+fmt(tl)+' kg lingotados • '+fmt(tg)+' kg de gotas':'sem lançamentos')+'</div></div>'+
+    (temL||temG?'<div style="position:relative;height:300px"><canvas id="chartLingGotas" style="width:100%;height:300px"></canvas></div><div class="small" style="margin-top:6px"><span style="color:var(--orange,#ff5a18)">●</span> Kg lingotados &nbsp; <span style="color:var(--canvas-secondary,#142b49)">●</span> Kg de gotas</div>':'<div class="small">Preencha “Kg lingotados” e “Kg de gotas” ao lançar a produção do dia para ver o gráfico.</div>');
+  if(temL||temG){try{drawLine('chartLingGotas',M.map(x=>x.slice(0,3)),[{values:L,unit:'kg'},{values:G,unit:'kg'}])}catch(e){console.error(e)}}
+}
+/* recuperar produções de um arquivo de backup (só soma o que faltar; não mexe no resto) */
+function prodRecuperarArquivo(file){
+  if(!file)return;const fr=new FileReader();
+  fr.onload=()=>{try{
+    const j=JSON.parse(fr.result),arr=(j&&j.dados&&j.dados.producaoFundicao)||(j&&j.producaoFundicao)||(j&&j.producao)||null;
+    if(!Array.isArray(arr)||!arr.length){alert('Este arquivo não tem produções salvas.');return}
+    const antes=producaoFundicao.filter(isProdDia).length,t=Date.now();
+    prodAplicar(arr.map(x=>({...x,_ts:t})),[]);
+    saveProducao();renderProducao();try{dashboard()}catch(e){}
+    const dep=producaoFundicao.filter(isProdDia).length;
+    alert('Recuperação concluída: '+antes+' → '+dep+' dias de produção neste aparelho.'+(dep>antes?'':'\n(Nenhum dia novo encontrado nesse arquivo.)'));
+  }catch(e){alert('Arquivo inválido: '+(e&&e.message||e))}};
+  fr.readAsText(file);
+}
+function prodDesfazerSeguranca(){
+  try{const j=JSON.parse(localStorage.getItem(PRODSEG_KEY)||'null');if(!j||!Array.isArray(j.producaoFundicao)||!j.producaoFundicao.length){alert('Não há cópia de segurança de produção neste aparelho.');return}
+    if(!confirm('Trazer de volta as produções guardadas neste aparelho em '+new Date(j.em).toLocaleString('pt-BR')+' ('+j.producaoFundicao.filter(isProdDia).length+' dias)?'))return;
+    const t=Date.now();prodAplicar(j.producaoFundicao.map(x=>({...x,_ts:t})),[]);saveProducao();renderProducao();try{dashboard()}catch(e){}alert('Produções recuperadas.')}catch(e){alert('Erro: '+e.message)}
+}
 function editProducao(i){const r=producaoFundicao[i];if(!r||!isProdDia(r))return;navigate('lancamentos');switchLaunchTab('producao');prodCalSelecionar(r.data);document.getElementById('producaoKg')?.focus();}
 function removeProducao(i){
   const r=producaoFundicao[i];if(!r)return;
   const msg=isProdDia(r)?`Excluir a produção do dia ${String(r.data).split('-').reverse().join('/')}?`:'Excluir o total produzido deste mês?';
-  if(confirm(msg)){producaoFundicao.splice(i,1);saveProducao();clearProducaoForm();renderProducao();dashboardDirty=true;dashboard();}
+  if(confirm(msg)){producaoDel.push({k:prodChave(r),ts:Date.now()});try{localStorage.setItem(PRODDEL_KEY,JSON.stringify(producaoDel))}catch(e){}producaoFundicao.splice(i,1);saveProducao();clearProducaoForm();renderProducao();dashboardDirty=true;dashboard();}
 }
 const producaoForm=document.getElementById('producaoForm');
 producaoForm?.addEventListener('submit',e=>{
@@ -2966,15 +3028,18 @@ producaoForm?.addEventListener('submit',e=>{
   const kgLiqRaw=String(document.getElementById('producaoKgLiq')?.value||'').replace(',','.').trim(),kgLiqVal=kgLiqRaw===''?null:Number(kgLiqRaw);
   if(kgLiqVal!==null&&(!Number.isFinite(kgLiqVal)||kgLiqVal<0))return alert('Informe um peso líquido válido.');
   if(kgLiqVal!==null&&kgLiqVal>kgVal&&!confirm('O peso líquido é maior que o bruto fundido. Salvar mesmo assim?'))return;
+  const lerKg=id=>{const raw=String(document.getElementById(id)?.value||'').replace(',','.').trim();return raw===''?null:Number(raw)};
+  const kgLingVal=lerKg('producaoLing'),kgGotasVal=lerKg('producaoGotas');
+  if((kgLingVal!==null&&(!Number.isFinite(kgLingVal)||kgLingVal<0))||(kgGotasVal!==null&&(!Number.isFinite(kgGotasVal)||kgGotasVal<0)))return alert('Informe kg válidos para lingotada e gotas.');
   const fundido=document.getElementById('producaoFundido').value.trim(),obs=document.getElementById('producaoObs').value.trim();
   const editIdx=document.getElementById('producaoEditIndex').value;
   const dup=prodIdxDia(iso);
   if(dup>=0&&String(dup)!==editIdx&&!confirm('Já existe produção lançada neste dia. Substituir?'))return;
-  const obj={data:iso,ano,mes,dia,fundido,corridas,kg:kgVal,kgLiq:kgLiqVal,custoKg:2.6,observacao:obs};
+  const obj={data:iso,ano,mes,dia,fundido,corridas,kg:kgVal,kgLiq:kgLiqVal,kgLing:kgLingVal,kgGotas:kgGotasVal,custoKg:2.6,observacao:obs,_ts:Date.now()};
   if(dup>=0)producaoFundicao[dup]=obj;else producaoFundicao.push(obj);
   saveProducao();
   prodCalAno=ano;prodCalMes=mes;
-  ['producaoCorridas','producaoKg','producaoKgLiq','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['producaoCorridas','producaoKg','producaoKgLiq','producaoLing','producaoGotas','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('producaoEditIndex').value='';
   renderProducao();dashboardDirty=true;dashboard();
   alert(`Produção de ${String(iso).split('-').reverse().join('/')} salva: ${fmt(kgVal)} kg em ${corridas} ${corridas===1?'corrida':'corridas'}${kgLiqVal!==null?' (líquido '+fmt(kgLiqVal)+' kg)':''}.`);
@@ -3533,7 +3598,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v190) =====
+/* ===== Pesos novos valem só a partir de uma data (v192) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -3640,7 +3705,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v190) =====
+/* ===== Backup COMPLETO do sistema (v192) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{

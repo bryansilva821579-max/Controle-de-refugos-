@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.previsao='v190';
+window.__V=window.__V||{};window.__V.previsao='v192';
 /* ==================================================================
    VISÃO GERAL: filtro por período + PREVISÃO + APRESENTAÇÃO animada
    Lê os mesmos dados dos módulos (refugo, retrabalho, devolução).
@@ -317,6 +317,104 @@ function pdf(){
   Promise.all([...w.images].map(im=>im.complete?Promise.resolve():new Promise(r=>{im.onload=im.onerror=r}))).then(()=>setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.print()}catch(e){alert('Não foi possível abrir a impressão.')}setTimeout(()=>f.remove(),60000)},400));
 }
 
+/* PowerPoint (.pptx): objetos nativos (gráficos, tabelas, textos) para o usuário aplicar as animações do PowerPoint */
+function loadPptx(){return new Promise((ok,err)=>{if(window.PptxGenJS)return ok();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js';s.onload=()=>window.PptxGenJS?ok():err(new Error('biblioteca não carregou'));s.onerror=()=>err(new Error('sem acesso à biblioteca do PowerPoint (verifique a internet)'));document.head.appendChild(s)})}
+function htmlTxt(h){const t=document.createElement('div');t.innerHTML=String(h||'').replace(/<\/(p|li)>/gi,'</$1>\n');return t.textContent.split('\n').map(x=>x.trim()).filter(Boolean)}
+function imgData(src){return new Promise(r=>{if(!src)return r(null);if(/^data:/.test(src))return r(src);const im=new Image();im.crossOrigin='anonymous';im.onload=()=>{try{const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;c.getContext('2d').drawImage(im,0,0);r(c.toDataURL('image/png'))}catch(e){r(null)}};im.onerror=()=>r(null);im.src=src})}
+function svgPng(svg,w,h){return new Promise(r=>{try{if(!/xmlns=/.test(svg))svg=svg.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');const im=new Image();im.onload=()=>{try{const c=document.createElement('canvas');c.width=w*2;c.height=h*2;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);const k=Math.min(c.width/im.width,c.height/im.height)||1;const iw=im.width*k,ih=im.height*k;x.drawImage(im,(c.width-iw)/2,(c.height-ih)/2,iw,ih);r(c.toDataURL('image/png'))}catch(e){r(null)}};im.onerror=()=>r(null);im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)}catch(e){r(null)}})}
+async function pptx(){
+  const o=lerUIg();if(!o.a||!o.b||o.a>o.b){alert('Escolha um período válido.');return}
+  const bt=$('prPpt');if(bt){bt.disabled=true;bt.textContent='⏳ Gerando…'}
+  try{
+    await loadPptx();
+    const d=collect(o.a,o.b,o),S=slides(d),g=G(),per=g.lblM(d.a)+' a '+g.lblM(d.b);
+    const X=new window.PptxGenJS();X.layout='LAYOUT_WIDE';X.title='Reunião de resultados '+per;
+    const H=c=>String(c).replace('#',''),W=13.33,FONT='Arial';
+    const logo=await imgData((S[0]&&S[0].logo)||'');
+    const base=(s,i)=>{
+      const sl=X.addSlide();sl.background={color:'FFFFFF'};
+      sl.addShape('rect',{x:0,y:0,w:W,h:0.95,fill:{color:H(INK)}});
+      sl.addShape('rect',{x:0,y:0.95,w:W,h:0.06,fill:{color:H(OR)}});
+      sl.addText(s.t,{x:0.5,y:0.1,w:W-2.2,h:0.5,fontFace:FONT,fontSize:24,bold:true,color:'FFFFFF',margin:0});
+      sl.addText(s.st||'',{x:0.5,y:0.58,w:W-2.2,h:0.3,fontFace:FONT,fontSize:12,color:'D5DCE4',margin:0});
+      sl.addText((i+1)+' / '+S.length,{x:W-1.6,y:0.3,w:1.1,h:0.35,fontFace:FONT,fontSize:12,color:'FFFFFF',align:'right',margin:0});
+      sl.addText('Controle de Refugos • '+per+'   |   Gerado em '+new Date().toLocaleDateString('pt-BR'),{x:0.5,y:7.1,w:W-1,h:0.3,fontFace:FONT,fontSize:10,color:'6B7785',margin:0});
+      return sl;
+    };
+    const note=(sl,txt,x,y,w,h)=>{const L=htmlTxt(txt);if(!L.length)return;sl.addText(L.map(t=>({text:t,options:{breakLine:true,paraSpaceAfter:6}})),{x,y,w,h,fontFace:FONT,fontSize:14,color:H(INK),valign:'top',margin:4})};
+    for(let i=0;i<S.length;i++){
+      const s=S[i];
+      if(s.k==='capa'){
+        const sl=X.addSlide();sl.background={color:H(INK)};
+        sl.addShape('rect',{x:0.8,y:3.55,w:2.4,h:0.07,fill:{color:H(OR)}});
+        if(logo)sl.addImage({data:logo,x:0.8,y:0.7,w:2.2,h:1.1,sizing:{type:'contain',w:2.2,h:1.1}});
+        sl.addText(s.t,{x:0.8,y:1.9,w:11.5,h:1.4,fontFace:FONT,fontSize:40,bold:true,color:'FFFFFF',valign:'bottom',margin:0});
+        sl.addText(s.st,{x:0.8,y:3.75,w:11.5,h:0.6,fontFace:FONT,fontSize:18,color:'D5DCE4',margin:0});
+        sl.addText(s.per,{x:0.8,y:4.5,w:11.5,h:0.6,fontFace:FONT,fontSize:26,bold:true,color:H(OR),margin:0});
+        if(s.nota)sl.addText(s.nota,{x:0.8,y:5.4,w:11.5,h:0.8,fontFace:FONT,fontSize:12,color:'9FB0C2',margin:0,valign:'top'});
+        continue;
+      }
+      const sl=base(s,i);
+      if(s.k==='kpi'){
+        const n=s.kpis.length,gap=0.25,bw=(W-1-gap*(n-1))/n;
+        s.kpis.forEach((x,q)=>{
+          const bx=0.5+q*(bw+gap);
+          sl.addShape('roundRect',{x:bx,y:1.35,w:bw,h:2.3,fill:{color:'F4F6F8'},line:{color:'DCE2E8',width:1},rectRadius:0.1});
+          sl.addShape('rect',{x:bx,y:1.35,w:0.09,h:2.3,fill:{color:H(OR)}});
+          sl.addText(x.n,{x:bx+0.25,y:1.45,w:bw-0.4,h:0.7,fontFace:FONT,fontSize:13,bold:true,color:'6B7785',valign:'top',margin:0});
+          sl.addText(x.v==null?'—':x.f(x.v),{x:bx+0.25,y:2.1,w:bw-0.4,h:0.8,fontFace:FONT,fontSize:34,bold:true,color:H(INK),margin:0});
+          sl.addText(htmlTxt(x.d).join(' ')||'',{x:bx+0.25,y:3.0,w:bw-0.4,h:0.5,fontFace:FONT,fontSize:13,bold:true,color:H(INK),margin:0});
+        });
+        note(sl,s.txt,0.5,4.0,W-1,2.9);
+      }
+      else if(s.k==='quadro'){
+        const gq=g.quadroDados({ms:s.ms,mt:s.mt,f:s.f,u:s.u});const un=gq.un,qf=v=>(Math.round(+v||0)).toLocaleString('pt-BR');
+        const mix=gq.mix&&gq.PF&&gq.PU;const hasX=s.ms.some(k=>gq.M[k].pX>0);
+        const hd={bold:true,color:'FFFFFF',fill:{color:H(INK)},align:'center',fontFace:FONT,fontSize:11};
+        const rows=[[{text:'Mês',options:{...hd,align:'left'}},{text:'Refugo ('+un+')',options:hd},...(mix?[{text:'Fundição',options:hd}]:[]),...(mix&&hasX?[{text:'Fund. na Usinagem',options:hd}]:[]),...(mix?[{text:'Usinagem',options:hd}]:[]),{text:'Peças',options:hd},{text:'Registros',options:hd},{text:'Devolução ('+un+')',options:hd},{text:'Retrabalho (pç)',options:hd}]];
+        s.ms.forEach(k=>{const m=gq.M[k],c={fontFace:FONT,fontSize:11,align:'right',color:H(INK)};
+          rows.push([{text:g.lblM(k),options:{...c,align:'left',bold:true}},{text:qf(m.v),options:{...c,bold:true,color:H(OR)}},...(mix?[{text:qf(m.pF),options:c}]:[]),...(mix&&hasX?[{text:qf(m.pX),options:c}]:[]),...(mix?[{text:qf(m.pU),options:c}]:[]),{text:qf(m.pecas),options:c},{text:qf(m.n),options:c},{text:qf(m.dv),options:c},{text:qf(m.rtQ),options:c}])});
+        sl.addTable(rows,{x:0.5,y:1.4,w:W-1,rowH:0.36,border:{type:'solid',color:'DCE2E8',pt:0.75}});
+      }
+      else if(s.k==='chart'){
+        const sp=s.ch[0];
+        if(sp.type==='hbar'){
+          const L=sp.labels.slice().reverse(),V=sp.values.slice().reverse();
+          sl.addChart(X.charts.BAR,[{name:'Valor',labels:L,values:V}],{x:0.4,y:1.2,w:8.6,h:5.8,barDir:'bar',chartColors:[H(sp.cor||OR)],showValue:true,dataLabelFontSize:11,dataLabelFontFace:FONT,catAxisLabelFontSize:11,catAxisLabelFontFace:FONT,valAxisHidden:true,valGridLine:{style:'none'},showLegend:false,dataLabelFormatCode:'#,##0'});
+        }else{
+          const lab=sp.labels,n=lab.length,nA=sp.nAct||n,sr=sp.series,ser=[];
+          sr.forEach(z=>{ser.push({name:z.name,labels:lab,values:lab.map((_,q)=>q<nA?(z.values[q]==null?null:z.values[q]):null)});
+            if(z.fc){let li=-1;z.values.forEach((v,q)=>{if(v!=null)li=q});ser.push({name:'Previsão',labels:lab,values:lab.map((_,q)=>q===li?z.values[li]:(q>=nA&&z.fc.v[q-nA]!=null?z.fc.v[q-nA]:null))});
+              ser.push({name:'Previsão — mínimo',labels:lab,values:lab.map((_,q)=>q>=nA&&z.fc.lo[q-nA]!=null?z.fc.lo[q-nA]:null)});ser.push({name:'Previsão — máximo',labels:lab,values:lab.map((_,q)=>q>=nA&&z.fc.hi[q-nA]!=null?z.fc.hi[q-nA]:null)})}});
+          if(sp.meta)ser.push({name:'Meta',labels:lab,values:lab.map(()=>sp.meta)});
+          const cols=[];sr.forEach(z=>{cols.push(H(z.cor));if(z.fc)cols.push(H(OR),'F7B58F','F7B58F')});if(sp.meta)cols.push(H(RD));
+          const dash=[];sr.forEach(z=>{dash.push('solid');if(z.fc)dash.push('dash','sysDot','sysDot')});if(sp.meta)dash.push('dash');
+          sl.addChart(X.charts.LINE,ser,{x:0.4,y:1.2,w:8.6,h:5.8,chartColors:cols,lineDataSymbolSize:8,lineSize:3,lineDash:dash,showLegend:true,legendPos:'b',legendFontSize:11,legendFontFace:FONT,catAxisLabelFontSize:11,catAxisLabelFontFace:FONT,valAxisLabelFontSize:11,valAxisLabelFontFace:FONT,valGridLine:{color:'E3E8EE',size:0.75},showValue:false,dispBlanksAs:'gap'});
+        }
+        note(sl,s.txt,9.2,1.3,3.7,5.6);
+      }
+      else if(s.k==='peixe'){
+        let img=null;try{const P=window.__painel360;img=await svgPng(P.fishSvg({rows:P.fishRows(s.a,s.b,s.pl),tema:'lt',cost:s.cost}),1240,600)}catch(e){}
+        if(img)sl.addImage({data:img,x:0.4,y:1.2,w:W-0.8,h:5.8,sizing:{type:'contain',w:W-0.8,h:5.8}});else sl.addText('Não foi possível gerar a espinha de peixe neste arquivo.',{x:0.5,y:1.5,w:W-1,h:0.6,fontFace:FONT,fontSize:16,color:H(MUT)});
+      }
+      else if(s.k==='tabela'){
+        const hd={bold:true,color:'FFFFFF',fill:{color:H(INK)},align:'center',fontFace:FONT,fontSize:12};
+        const rows=[s.cab.map((c,q)=>({text:c,options:{...hd,align:q?'center':'left'}})),...s.rows.map(r=>r.map((c,q)=>({text:String(c==null?'':c),options:{fontFace:FONT,fontSize:12,color:H(INK),align:q?'center':'left',bold:q===0}})))];
+        sl.addTable(rows,{x:0.5,y:1.4,w:W-1,rowH:0.4,border:{type:'solid',color:'DCE2E8',pt:0.75}});
+        note(sl,s.txt,0.5,Math.min(6.2,1.4+0.4*rows.length+0.3),W-1,1.0);
+      }
+      else if(s.k==='lista'){
+        const col=(tt,L,x,cor)=>{sl.addText(tt,{x,y:1.3,w:6,h:0.45,fontFace:FONT,fontSize:18,bold:true,color:H(cor),margin:0});
+          const it=L.length?L.map(h=>({text:htmlTxt(h).join(' '),options:{bullet:true,breakLine:true,paraSpaceAfter:8}})):[{text:'Nenhum item.',options:{}}];
+          sl.addText(it,{x,y:1.85,w:6,h:5.1,fontFace:FONT,fontSize:14,color:H(INK),valign:'top',margin:4})};
+        col('⚠ Pontos de atenção',s.a,0.5,RD);col('✔ Ações sugeridas',s.b,6.85,GR);
+      }
+    }
+    await X.writeFile({fileName:'Reuniao_resultados_'+o.a+'_a_'+o.b+'.pptx'});
+  }catch(e){console.error(e);alert('Não foi possível gerar o PowerPoint: '+(e&&e.message||e))}
+  finally{if(bt){bt.disabled=false;bt.textContent='📊 PowerPoint (.pptx)'}}
+}
+
 /* ---------- painel na Visão geral (filtro + previsão + botões) ---------- */
 function lerUIg(){const v=$('prPl').value;return{a:$('prA').value,b:$('prB').value,f:v!=='u',u:v!=='f',mt:$('prMt').value==='qtd'?'qtd':'kg'}}
 function painel(){
@@ -326,7 +424,7 @@ function painel(){
     const p=perLer();
     box.innerHTML='<div class="pp"><div class="bar2"><strong>📅 Período da análise</strong><label>De <input type="month" id="prA"></label><label>Até <input type="month" id="prB"></label><label><strong>Planta</strong> <select id="prPl"><option value="fu">Fundição + Usinagem</option><option value="f">Fundição</option><option value="u">Usinagem</option></select></label><label><strong>Medir por</strong> <select id="prMt"><option value="kg">Peso (kg)</option><option value="qtd">Quantidade (peças)</option></select></label><label><strong>Tipo de peso</strong> <select id="prPs" onchange="setPesoTipo(this.value)"><option value="bruto">Bruto fracionado</option><option value="liquido">Líquido Fund. / bruto Usin.</option><option value="usinado">Usinado</option></select></label><span class="pesoAviso small" style="display:none;color:#d97706"></span>'+
     '<button class="btn secondary" type="button" data-pr="3">3 meses</button><button class="btn secondary" type="button" data-pr="6">6 meses</button><button class="btn secondary" type="button" data-pr="12">12 meses</button><button class="btn secondary" type="button" data-pr="ano">Ano</button>'+
-    '<span style="flex:1"></span><button class="btn primary" type="button" id="prGo">🎬 Apresentar</button><button class="btn secondary" type="button" id="prPdf">📄 PDF da apresentação</button></div>'+
+    '<span style="flex:1"></span><button class="btn primary" type="button" id="prGo">🎬 Apresentar</button><button class="btn secondary" type="button" id="prPdf">📄 PDF da apresentação</button><button class="btn secondary" type="button" id="prPpt">📊 PowerPoint (.pptx)</button></div>'+
     '<div class="hint" style="margin-top:8px">O período vale para a <b>previsão</b> e para a <b>apresentação animada</b> (←/→ para navegar, F tela cheia, R repete a animação, A avança sozinho). O relatório mensal abaixo continua por mês. Para prever, o sistema precisa de pelo menos 4 meses e ignora o mês em andamento.</div></div>'+
     '<div class="pp" id="prFc"></div>';
     $('prA').value=p.a;$('prB').value=p.b;try{$('prPs').value=pesoTipo()}catch(e){}$('prPl').value=(p.f!==false&&p.u!==false)?'fu':(p.f!==false?'f':'u');$('prMt').value=p.mt==='qtd'?'qtd':'kg';
@@ -336,6 +434,7 @@ function painel(){
     $('prA').addEventListener('change',mud);$('prB').addEventListener('change',mud);
     box.querySelectorAll('[data-pr]').forEach(bt=>bt.addEventListener('click',()=>{const b=$('prB').value||hojeK(),k=bt.dataset.pr;let a;if(k==='ano'){a=b.slice(0,4)+'-01'}else a=G().addM(b,-(+k-1));$('prA').value=a;mud()}));
     $('prGo').addEventListener('click',()=>{const o=lerUI();if(!o.a||!o.b||o.a>o.b){alert('Escolha um período válido.');return}mud();abrir(o.a,o.b)});
+    $('prPpt').addEventListener('click',()=>{const o=lerUI();if(!o.a||!o.b||o.a>o.b){alert('Escolha um período válido.');return}mud();pptx()});
     $('prPdf').addEventListener('click',()=>{const o=lerUI();if(!o.a||!o.b||o.a>o.b){alert('Escolha um período válido.');return}mud();cur=null;pdf()});
   }
   prev();
