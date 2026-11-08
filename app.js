@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v192';
+window.__V=window.__V||{};window.__V.app='v193';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -330,7 +330,7 @@ function removerDuplicadosPeso(){
 }
 window.removerDuplicadosPeso=removerDuplicadosPeso;
 
-/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v192) ===== */
+/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v193) ===== */
 const BKN_MAX=600000,BKN_DIAS=30;
 let bkRodando=false;
 function bkCol(){return firebaseRoot().collection('backups')}
@@ -464,7 +464,7 @@ function confPesosAviso(){
 }
 setTimeout(confPesosAviso,9000);
 
-/* ===== Ficha completa: busca por código, OF, descrição ou material (v192) ===== */
+/* ===== Ficha completa: busca por código, OF, descrição ou material (v193) ===== */
 const __nz=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
 const __f2=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:2});
 const __f0=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
@@ -639,7 +639,7 @@ function fichaBuscar(q0){
 }
 window.fichaBuscar=fichaBuscar;window.fichaAbrir=fichaAbrir;
 
-/* ===== Sincronização por lançamento (v192) =====
+/* ===== Sincronização por lançamento (v193) =====
    Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
    fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
    A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
@@ -2908,14 +2908,15 @@ function prodCalSelecionar(iso){
   set('producaoEditIndex',i>=0?String(i):'');
   set('producaoCorridas',r?r.corridas??'':'');
   set('producaoKg',r?r.kg??'':'');
-  set('producaoKgLiq',r&&r.kgLiq!=null?r.kgLiq:'');set('producaoLing',r&&r.kgLing!=null?r.kgLing:'');set('producaoGotas',r&&r.kgGotas!=null?r.kgGotas:'');
+  set('producaoKgLiq',r&&r.kgLiq!=null?r.kgLiq:'');set('producaoCorrNum',r&&r.corridasNum?r.corridasNum:'');set('producaoLing',r&&r.kgLing!=null?r.kgLing:'');set('producaoGotas',r&&r.kgGotas!=null?r.kgGotas:'');
   set('producaoFundido',r?r.fundido||'':'');
   set('producaoObs',r?r.observacao||'':'');
+  if(!r&&window.BOLETIM_FUSAO&&Array.isArray(window.BOLETIM_FUSAO.corridas)){const L=window.BOLETIM_FUSAO.corridas.filter(c=>c[1]===iso);if(L.length){set('producaoCorridas',L.length);set('producaoCorrNum',corrRanges(L.map(c=>c[0])));set('producaoLing',Math.round(L.reduce((a,c)=>a+c[3],0)*100)/100);set('producaoGotas',Math.round(L.reduce((a,c)=>a+c[4],0)*100)/100);set('producaoKg',Math.round(L.reduce((a,c)=>a+c[5],0)*100)/100)}}
   renderProducao();
 }
 function clearProducaoForm(){
   prodCalSelecionar(document.getElementById('producaoData')?.value||prodHojeISO());
-  ['producaoCorridas','producaoKg','producaoKgLiq','producaoLing','producaoGotas','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['producaoCorridas','producaoCorrNum','producaoKg','producaoKgLiq','producaoLing','producaoGotas','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const idx=document.getElementById('producaoEditIndex');if(idx)idx.value='';
   updateSecurityUI();
 }
@@ -2954,7 +2955,7 @@ function renderProducao(){
   const count=document.getElementById('producaoCount');
   if(count)count.textContent=dias.length?`${dias.length} ${dias.length===1?'dia lançado':'dias lançados'}`:(legado.length?'total mensal antigo':'sem lançamentos');
   const ordenados=[...dias].sort((a,b)=>String(b.r.data).localeCompare(String(a.r.data)));
-  const linhasDia=ordenados.map(({r,i})=>`<tr><td>${esc(String(r.data).split('-').reverse().join('/'))}</td><td style="white-space:normal;min-width:140px">${esc(r.fundido||'—')}</td><td>${esc(r.corridas??0)}</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>${r.kgLiq!=null?fmt(n(r.kgLiq))+' kg':'—'}</td><td>${r.kgLing!=null?fmt(n(r.kgLing))+' kg':'—'}</td><td>${r.kgGotas!=null?fmt(n(r.kgGotas))+' kg':'—'}</td><td>${esc(r.observacao||'')}</td><td><button class="btn secondary" onclick="editProducao(${i})">Editar</button> <button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
+  const linhasDia=ordenados.map(({r,i})=>`<tr><td>${esc(String(r.data).split('-').reverse().join('/'))}</td><td style="white-space:normal;min-width:140px">${esc(r.fundido||'—')}</td><td>${esc(r.corridas??0)}${r.corridasNum?`<div class="small">nº ${esc(r.corridasNum)}</div>`:''}</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>${r.kgLiq!=null?fmt(n(r.kgLiq))+' kg':'—'}</td><td>${r.kgLing!=null?fmt(n(r.kgLing))+' kg':'—'}</td><td>${r.kgGotas!=null?fmt(n(r.kgGotas))+' kg':'—'}</td><td>${esc(r.observacao||'')}</td><td><button class="btn secondary" onclick="editProducao(${i})">Editar</button> <button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
   const linhasLeg=dias.length?[]:legado.map(({r,i})=>`<tr><td>${String(m).padStart(2,'0')}/${y} (total mensal)</td><td>—</td><td>—</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>—</td><td>—</td><td>—</td><td>${esc(r.observacao||'')}</td><td><button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
   const linhas=[...linhasDia,...linhasLeg];
   body.innerHTML=linhas.length?linhas.join(''):'<tr><td colspan="9" style="text-align:center" class="small">Nenhum dia lançado neste mês.</td></tr>';
@@ -2983,11 +2984,41 @@ function renderLingGotas(){
   let box=document.getElementById('prodLingGotas');
   if(!box){const ref=document.getElementById('prodRendimento')||host.closest('.panel');if(!ref)return;box=document.createElement('div');box.id='prodLingGotas';box.className='panel';box.style.marginTop='16px';ref.parentNode.insertBefore(box,ref.nextSibling)}
   const y=prodCalAno,M=MESES_PRODUCAO,L=Array(12).fill(0),G=Array(12).fill(0);let temL=false,temG=false;
-  producaoFundicao.forEach(p=>{if(!isProdDia(p)||productionYear(p)!==y)return;const m=productionMonth(p);if(!m)return;if(p.kgLing!=null&&p.kgLing!==''){L[m-1]+=n(p.kgLing);temL=true}if(p.kgGotas!=null&&p.kgGotas!==''){G[m-1]+=n(p.kgGotas);temG=true}});
+  const dia=new Map(),Bz=(window.BOLETIM_FUSAO&&Array.isArray(window.BOLETIM_FUSAO.corridas))?window.BOLETIM_FUSAO.corridas:[];
+  Bz.forEach(c=>{if(String(c[1]).slice(0,4)!==String(y))return;const o=dia.get(c[1])||{l:0,g:0};o.l+=c[3];o.g+=c[4];dia.set(c[1],o)});
+  producaoFundicao.forEach(p=>{if(!isProdDia(p)||productionYear(p)!==y)return;const o=dia.get(p.data)||{l:0,g:0};if(p.kgLing!=null&&p.kgLing!==''){o.l=n(p.kgLing)}if(p.kgGotas!=null&&p.kgGotas!==''){o.g=n(p.kgGotas)}dia.set(p.data,o)});
+  dia.forEach((o,d)=>{const m=Number(d.slice(5,7));if(!m)return;L[m-1]+=o.l;G[m-1]+=o.g;if(o.l)temL=true;if(o.g)temG=true});
   const tl=L.reduce((a,b)=>a+b,0),tg=G.reduce((a,b)=>a+b,0);
   box.innerHTML='<div class="cad-section-head"><div><h3>Lingotada e gotas — '+y+'</h3><div class="small">Kg lingotados e kg de gotas lançados por dia, somados por mês.</div></div><div class="cad-count">'+(temL||temG?'Ano: '+fmt(tl)+' kg lingotados • '+fmt(tg)+' kg de gotas':'sem lançamentos')+'</div></div>'+
     (temL||temG?'<div style="position:relative;height:300px"><canvas id="chartLingGotas" style="width:100%;height:300px"></canvas></div><div class="small" style="margin-top:6px"><span style="color:var(--orange,#ff5a18)">●</span> Kg lingotados &nbsp; <span style="color:var(--canvas-secondary,#142b49)">●</span> Kg de gotas</div>':'<div class="small">Preencha “Kg lingotados” e “Kg de gotas” ao lançar a produção do dia para ver o gráfico.</div>');
   if(temL||temG){try{drawLine('chartLingGotas',M.map(x=>x.slice(0,3)),[{values:L,unit:'kg'},{values:G,unit:'kg'}])}catch(e){console.error(e)}}
+  let cd=[];producaoFundicao.filter(p=>isProdDia(p)&&productionYear(p)===y&&productionMonth(p)===prodCalMes&&Array.isArray(p.corridasDet)).sort((a,b)=>String(a.data).localeCompare(b.data)).forEach(p=>p.corridasDet.forEach(c=>cd.push(c)));
+  if(!cd.length)cd=Bz.filter(c=>String(c[1]).slice(0,7)===y+'-'+String(prodCalMes).padStart(2,'0')).sort((a,b)=>a[0]-b[0]).map(c=>[c[0],c[3],c[4]]);
+  let b2=document.getElementById('prodPorCorrida');if(!b2){b2=document.createElement('div');b2.id='prodPorCorrida';b2.className='panel';b2.style.marginTop='16px';box.parentNode.insertBefore(b2,box.nextSibling)}
+  if(!cd.length){b2.innerHTML='<div class="cad-section-head"><div><h3>Lingotes e respingos por corrida — '+(M[prodCalMes-1]||'')+'</h3><div class="small">Sem corridas do boletim neste mês.</div></div></div>';return}
+  const sl=cd.reduce((a,c)=>a+n(c[1]),0),sg=cd.reduce((a,c)=>a+n(c[2]),0);
+  b2.innerHTML='<div class="cad-section-head"><div><h3>Lingotes e respingos por corrida — '+(M[prodCalMes-1]||'')+'/'+y+'</h3><div class="small">Cada ponto é uma corrida (nº do boletim). Média por corrida: '+fmt(sl/cd.length)+' kg de lingotes e '+fmt(sg/cd.length)+' kg de respingos.</div></div><div class="cad-count">'+cd.length+' corridas • '+fmt(sl)+' kg lingotes • '+fmt(sg)+' kg respingos</div></div><div style="position:relative;height:300px"><canvas id="chartPorCorrida" style="width:100%;height:300px"></canvas></div><div class="small" style="margin-top:6px"><span style="color:var(--orange,#ff5a18)">●</span> Kg de lingotes &nbsp; <span style="color:var(--canvas-secondary,#142b49)">●</span> Kg de respingos</div>';
+  try{drawLine('chartPorCorrida',cd.map(c=>corrFmt(c[0])),[{values:cd.map(c=>n(c[1])),unit:'kg'},{values:cd.map(c=>n(c[2])),unit:'kg'}])}catch(e){console.error(e)}
+}
+function corrFmt(x){return String(x).padStart(3,'0')}
+function corrRanges(L){L=[...new Set(L)].sort((a,b)=>a-b);const o=[];let i=0;while(i<L.length){let j=i;while(j+1<L.length&&L[j+1]===L[j]+1)j++;o.push(j>i?corrFmt(L[i])+'–'+corrFmt(L[j]):corrFmt(L[i]));i=j+1}return o.join(', ')}
+function prodAplicarBoletim(){
+  const B=window.BOLETIM_FUSAO;if(!B||!Array.isArray(B.corridas)||!B.corridas.length){alert('O arquivo boletim.js não foi carregado. Suba o boletim.js no GitHub e recarregue com Ctrl+F5.');return}
+  const dias=new Map();B.corridas.forEach(c=>{if(!dias.has(c[1]))dias.set(c[1],[]);dias.get(c[1]).push(c)});
+  let exist=0,falta=0;dias.forEach((L,d)=>{if(prodIdxDia(d)>=0)exist++;else falta++});
+  const ate=B.ate.split('-').reverse().join('/');let criar=false;
+  if(falta)criar=confirm('Boletim de Fusão: '+dias.size+' dias ('+B.corridas.length+' corridas, até '+ate+').\n\n• '+exist+' dias já existem na produção: só acrescento nº das corridas, kg de lingotes e kg de respingos (não mexo nos kg fundidos).\n• '+falta+' dias ainda não existem.\n\nOK = criar também esses '+falta+' dias (kg fundidos = soma dos panelões do boletim).\nCancelar = só preencher os dias que já existem (os gráficos de lingotes e respingos já usam o boletim inteiro de qualquer forma; criar os dias só muda o total de produção).');
+  else if(!confirm('Acrescentar nº das corridas, kg de lingotes e kg de respingos aos '+exist+' dias de produção (até '+ate+')?'))return;
+  const t=Date.now(),novos=[];
+  dias.forEach((L,d)=>{
+    L.sort((a,b)=>a[0]-b[0]);
+    const ling=L.reduce((a,c)=>a+c[3],0),resp=L.reduce((a,c)=>a+c[4],0),pan=L.reduce((a,c)=>a+c[5],0),i=prodIdxDia(d);
+    const campos={corridasNum:corrRanges(L.map(c=>c[0])),corridasDet:L.map(c=>[c[0],c[3],c[4]]),kgLing:ling||resp?Math.round(ling*100)/100:null,kgGotas:ling||resp?Math.round(resp*100)/100:null,_ts:t};
+    if(i>=0)novos.push({...producaoFundicao[i],...campos});
+    else if(criar)novos.push({data:d,ano:+d.slice(0,4),mes:+d.slice(5,7),dia:+d.slice(8,10),fundido:'',corridas:L.length,kg:Math.round(pan*100)/100,kgLiq:null,custoKg:2.6,observacao:'Importado do Boletim de Fusão',...campos});
+  });
+  prodAplicar(novos,[]);saveProducao();renderProducao();try{dashboard()}catch(e){}
+  alert('Boletim aplicado em '+novos.length+' dias. Veja os gráficos de lingotes e respingos na aba Produção.');
 }
 /* recuperar produções de um arquivo de backup (só soma o que faltar; não mexe no resto) */
 function prodRecuperarArquivo(file){
@@ -3035,11 +3066,11 @@ producaoForm?.addEventListener('submit',e=>{
   const editIdx=document.getElementById('producaoEditIndex').value;
   const dup=prodIdxDia(iso);
   if(dup>=0&&String(dup)!==editIdx&&!confirm('Já existe produção lançada neste dia. Substituir?'))return;
-  const obj={data:iso,ano,mes,dia,fundido,corridas,kg:kgVal,kgLiq:kgLiqVal,kgLing:kgLingVal,kgGotas:kgGotasVal,custoKg:2.6,observacao:obs,_ts:Date.now()};
+  const obj={data:iso,ano,mes,dia,fundido,corridas,kg:kgVal,kgLiq:kgLiqVal,kgLing:kgLingVal,kgGotas:kgGotasVal,corridasNum:String(document.getElementById('producaoCorrNum')?.value||'').trim(),corridasDet:(producaoFundicao[Number(document.getElementById('producaoEditIndex').value)]||{}).corridasDet,custoKg:2.6,observacao:obs,_ts:Date.now()};
   if(dup>=0)producaoFundicao[dup]=obj;else producaoFundicao.push(obj);
   saveProducao();
   prodCalAno=ano;prodCalMes=mes;
-  ['producaoCorridas','producaoKg','producaoKgLiq','producaoLing','producaoGotas','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['producaoCorridas','producaoCorrNum','producaoKg','producaoKgLiq','producaoLing','producaoGotas','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('producaoEditIndex').value='';
   renderProducao();dashboardDirty=true;dashboard();
   alert(`Produção de ${String(iso).split('-').reverse().join('/')} salva: ${fmt(kgVal)} kg em ${corridas} ${corridas===1?'corrida':'corridas'}${kgLiqVal!==null?' (líquido '+fmt(kgLiqVal)+' kg)':''}.`);
@@ -3598,7 +3629,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v192) =====
+/* ===== Pesos novos valem só a partir de uma data (v193) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -3705,7 +3736,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v192) =====
+/* ===== Backup COMPLETO do sistema (v193) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{
