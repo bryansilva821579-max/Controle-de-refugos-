@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.relatorios='v193';
+window.__V=window.__V||{};window.__V.relatorios='v199';
 /* ==================================================================
    RELATÓRIOS MENSAIS — Retrabalhos e Devoluções
    Mesmo formato do relatório mensal de refugos: gráficos com análise
@@ -410,7 +410,7 @@ function hbar(items,fmtv,tot,c){const mx=Math.max(1,...items.map(e=>e.v));return
 function delta(c,p,bad){if(p==null||!(p>0)||c==null)return '<small class="mu">sem base anterior</small>';const d=(c-p)/p*100;const up=d>0;return '<small class="'+((up===(bad!==false))?'up':'dn')+'">'+(up?'▲ +':'▼ ')+fm(Math.abs(d),0)+'% vs período anterior</small>'}
 
 /* ---------- abas ---------- */
-const TABS=[['exec','🏁 Executivo'],['pareto','📉 Pareto e causas'],['heat','🔥 Mapa de calor'],['pecas','🧩 Peças críticas'],['cli','👥 Clientes'],['cal','📅 Calendário'],['peixe','🐟 Espinha 6M']];
+const TABS=[['exec','🏁 Executivo'],['pareto','📉 Pareto e causas'],['heat','🔥 Mapa de calor'],['pecas','🧩 Peças críticas'],['cli','👥 Clientes'],['cal','📅 Calendário'],['peixe','🐟 Espinha 6M'],['ling','🧲 Lingotes e respingos']];
 function kpi(l,v,sub,sp,c){return '<div class="p3k" style="--c:'+(c||OR)+'"><span>'+l+'</span><b>'+v+'</b>'+sub+'<div class="p3sk">'+(sp||'')+'</div></div>'}
 function tExec(d){
   const g=G(),lb=d.ms.map(g.lblM),U=d.un,mt=d.mt==='qtd';
@@ -531,6 +531,27 @@ function fishSvg(o){
 }
 function fishRows(a,b,pl){const PF=pl!=='u',PU=pl!=='f',ms=range(a,b);return G().refAll().filter(r=>ms.includes(r.k)&&(plc(r.pl)==='F'?PF:plc(r.pl)==='U'?PU:(PF&&PU)))}
 function costOk(){try{return costAccessAllowed()}catch(e){return false}}
+function tLing(d){
+  const L=window.__ling;if(!L)return '<div class="p3c"><span class="mu">Dados de lingotes indisponíveis.</span></div>';
+  const dias=L.dias(),ms=[];for(let m=S.a;m<=S.b&&ms.length<36;m=G().addM(m,1))ms.push(m);
+  const li=ms.map(()=>0),re=ms.map(()=>0),nc=ms.map(()=>0);
+  dias.forEach((o,dt)=>{const i=ms.indexOf(dt.slice(0,7));if(i<0)return;li[i]+=o.l;re[i]+=o.g;nc[i]+=o.det.length});
+  const tl=li.reduce((a,b)=>a+b,0),tr=re.reduce((a,b)=>a+b,0),tn=nc.reduce((a,b)=>a+b,0);
+  if(!tl&&!tr)return '<div class="p3c"><span class="mu">Sem lingotes/respingos lançados no período.</span></div>';
+  const mk=S.b,cor=[];[...dias.keys()].filter(dt=>dt.slice(0,7)===mk).sort().forEach(dt=>dias.get(dt).det.forEach(c=>cor.push(c)));
+  let tp=0,tlR=0,trR=0;dias.forEach((o,dt)=>{if(ms.indexOf(dt.slice(0,7))>=0&&o.p>0){tp+=o.p;tlR+=o.l;trR+=o.g}});
+  const pm=ms.map(()=>0),lR=ms.map(()=>0),rR=ms.map(()=>0);dias.forEach((o,dt)=>{const i=ms.indexOf(dt.slice(0,7));if(i>=0&&o.p>0){pm[i]+=o.p;lR[i]+=o.l;rR[i]+=o.g}});
+  const dm=[...dias.keys()].filter(dt=>dt.slice(0,7)===S.b&&dias.get(dt).p>0).sort(),ult=dm[dm.length-1];
+  const ren=(tp+tlR+trR)?tp/(tp+tlR+trR)*100:0;
+  const rendHtml='<div class="p3c"><h4>Rendimento do forno — peso bruto + lingotes + respingos = total fundido (kg)</h4>'+
+    (ult&&window.__ling.rendResumoHtml?window.__ling.rendResumoHtml(ult,dias.get(ult)):'')+
+    '<div style="margin-top:12px">'+combo({labels:ms.map(m=>G().lblM(m)),stack:true,bars:[{name:'Peso bruto',color:GR,values:pm},{name:'Lingotes',color:OR,values:lR},{name:'Respingos',color:ST,values:rR}],unit:'kg'})+'</div>'+
+    (dm.length?'<h4 style="margin-top:14px">Por dia — '+G().lblM(S.b)+'</h4>'+combo({labels:dm.map(x=>x.slice(8)),stack:true,bars:[{name:'Peso bruto',color:GR,values:dm.map(x=>dias.get(x).p||0)},{name:'Lingotes',color:OR,values:dm.map(x=>dias.get(x).l)},{name:'Respingos',color:ST,values:dm.map(x=>dias.get(x).g)}],unit:'kg'}):'')+
+    '<p class="p3hint">Rendimento no período: <b>'+fm(ren,1)+'%</b> do metal fundido virou peça (peso bruto); <b>'+fm(100-ren,1)+'%</b> foi lingote e respingo. Considera só os dias com “Kg fundidos” lançados (peso do formulário = TOTAL PANELÕES). O resumo do dia e o gráfico diário são do mês do campo “até”.</p></div>';
+  return '<div class="p3kp">'+kpi('Lingotes',fm(tl)+' kg','<small>no período</small>','',OR)+kpi('Respingos',fm(tr)+' kg','<small>no período</small>','',ST)+kpi('Lingotes + respingos',fm(tl+tr)+' kg','<small>'+fm(tn)+' corridas</small>','',BL)+kpi('Média por corrida',tn?fm((tl+tr)/tn,1)+' kg':'—','<small>'+(tn?fm(tl/tn,1)+' lingotes + '+fm(tr/tn,1)+' respingos':'')+'</small>','',GR)+kpi('Rendimento do forno',fm(ren,1)+'%','<small>peso bruto ÷ total fundido</small>','',GR)+'</div>'+rendHtml+
+   '<div class="p3c"><h4>Lingotes e respingos por mês (kg)</h4>'+combo({labels:ms.map(m=>G().lblM(m)),bars:[{name:'Lingotes',color:OR,values:li},{name:'Respingos',color:ST,values:re}],unit:'kg',vals:true})+'</div>'+
+   '<div class="p3c"><h4>Por corrida — '+G().lblM(mk)+' (kg)</h4>'+(cor.length?combo({labels:cor.map(c=>String(c[0]).padStart(3,'0')),bars:[{name:'Lingotes',color:OR,values:cor.map(c=>c[1])},{name:'Respingos',color:ST,values:cor.map(c=>c[2])}],unit:'kg',rot:true})+(window.__ling.matTabelaHtml?window.__ling.matTabelaHtml(cor):'')+'<p class="p3hint">Média no mês: <b>'+fm(sum(cor,c=>c[1])/cor.length,1)+' kg</b> de lingotes e <b>'+fm(sum(cor,c=>c[2])/cor.length,1)+' kg</b> de respingos por corrida. O mês exibido é o do campo “até”.</p>':'<span class="mu">Sem corridas neste mês.</span>')+'</div>';
+}
 function tPeixe(d){
   const dk=document.documentElement.getAttribute('data-theme')==='dark';
   return '<div class="p3c"><h4>Espinha de peixe — causa e efeito (6M)</h4><div class="p3hint">O problema é o refugo do período. Cada espinha é um dos 6M, com quantidade, peso bruto fracionado e valor. Nas espinhas menores ficam os principais motivos. Clique em um M para detalhar.</div><div class="p3fish">'+fishSvg({rows:d.R,tema:dk?'dk':'lt',cost:d.cu})+'</div><div class="p3bar" style="margin-top:8px"><button class="btn secondary" type="button" data-a="png">⬇ Baixar imagem (PNG)</button>'+(d.cu?'':'<button class="btn secondary" type="button" data-a="cost">🔐 Mostrar valores (R$)</button>')+'</div><div id="p3det"></div></div>';
@@ -570,14 +591,14 @@ function build(){
 }
 function render(force){
   const sec=$('painel360');if(!sec||!sec.classList.contains('active'))return;
-  let sig='';try{sig=[Array.isArray(data)?data.length:0,pesoTipo(),window.devDados?window.devDados().length:0,(typeof rtLoad==='function'?rtLoad().length:0),S.a,S.b,S.pl,S.mt,S.tab].join('|')}catch(e){}
+  let sig='';try{sig=[Array.isArray(data)?data.length:0,pesoTipo(),window.devDados?window.devDados().length:0,(typeof rtLoad==='function'?rtLoad().length:0),S.a,S.b,S.pl,S.mt,S.tab,window.__ling?window.__ling.sig():''].join('|')}catch(e){}
   if(!force&&sig===SIG&&sec.firstChild)return;SIG=sig;
   const g=G();let d;try{d=dados()}catch(e){console.error(e);sec.innerHTML='<div class="p3c">Não foi possível montar o painel.</div>';return}
   const pesoOpts=['bruto','liquido','usinado'].map(t=>'<option value="'+t+'"'+(pesoTipo()===t?' selected':'')+'>'+((typeof PESO_CURTO!=='undefined'&&PESO_CURTO[t])||t)+'</option>').join('');
   const f=document.activeElement&&document.activeElement.id==='p3q';
   let h=(window.__dbSubHtml?window.__dbSubHtml('painel360'):'')+'<div class="p3bar"><label>De</label><input type="month" id="p3a" value="'+S.a+'"><label>até</label><input type="month" id="p3b" value="'+S.b+'"><select id="p3pl"><option value="ab"'+(S.pl==='ab'?' selected':'')+'>Fundição + Usinagem</option><option value="f"'+(S.pl==='f'?' selected':'')+'>Só Fundição</option><option value="u"'+(S.pl==='u'?' selected':'')+'>Só Usinagem</option></select><select id="p3mt"><option value="kg"'+(S.mt==='kg'?' selected':'')+'>Peso (kg)</option><option value="qtd"'+(S.mt==='qtd'?' selected':'')+'>Quantidade (peças)</option></select><select id="p3pe" title="Tipo de peso">'+pesoOpts+'</select><button class="btn secondary" type="button" data-a="m6">Últimos 6 meses</button><button class="btn secondary" type="button" data-a="m12">12 meses</button><button class="btn secondary" type="button" data-a="ano">Ano atual</button><button class="btn primary" type="button" data-a="pdf">🖨 Imprimir / PDF</button></div>';
   h+='<div class="p3tabs">'+TABS.map(t=>'<button type="button" data-t="'+t[0]+'" class="'+(S.tab===t[0]?'on':'')+'">'+t[1]+'</button>').join('')+'</div>';
-  h+={exec:tExec,pareto:tPareto,heat:tHeat,pecas:tPecas,cli:tCli,cal:tCal,peixe:tPeixe}[S.tab](d);
+  h+={exec:tExec,pareto:tPareto,heat:tHeat,pecas:tPecas,cli:tCli,cal:tCal,peixe:tPeixe,ling:tLing}[S.tab](d);
   sec.innerHTML=h;sec._d=d;
   if(f){const q=$('p3q');if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length)}}
 }

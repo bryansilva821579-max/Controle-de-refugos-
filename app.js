@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v193';
+window.__V=window.__V||{};window.__V.app='v199';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -330,7 +330,7 @@ function removerDuplicadosPeso(){
 }
 window.removerDuplicadosPeso=removerDuplicadosPeso;
 
-/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v193) ===== */
+/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v199) ===== */
 const BKN_MAX=600000,BKN_DIAS=30;
 let bkRodando=false;
 function bkCol(){return firebaseRoot().collection('backups')}
@@ -464,7 +464,7 @@ function confPesosAviso(){
 }
 setTimeout(confPesosAviso,9000);
 
-/* ===== Ficha completa: busca por código, OF, descrição ou material (v193) ===== */
+/* ===== Ficha completa: busca por código, OF, descrição ou material (v199) ===== */
 const __nz=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
 const __f2=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:2});
 const __f0=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
@@ -639,7 +639,7 @@ function fichaBuscar(q0){
 }
 window.fichaBuscar=fichaBuscar;window.fichaAbrir=fichaAbrir;
 
-/* ===== Sincronização por lançamento (v193) =====
+/* ===== Sincronização por lançamento (v199) =====
    Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
    fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
    A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
@@ -795,6 +795,8 @@ async function refEnviarConfig(root,forcar){
   }
   await blobEnviar('cadastros',cadastros,forcar);
   await blobEnviar('reunioes',window.reunioes||[],forcar);
+  if(forcar||fsStable(bolImpLer())!==blobSig['boletim']){try{const r=await blobLerRemoto('boletim',root);if(r&&Array.isArray(r.valor)){const x=bolAplicarRemoto(r.valor);if(x.local){try{renderLingGotas()}catch(e){}}}}catch(e){console.warn('Mescla do boletim:',e)}}
+  await blobEnviar('boletim',bolImpLer(),forcar);
   if(forcar||sig!==refCfgSig||!refLegadoLimpo){
     const F=window.firebase.firestore.FieldValue;
     await root.collection('config').doc('estado').set(Object.assign(fsSanitize(Object.assign({},estado)),{updatedAt:F.serverTimestamp(),cadastros:F.delete(),reunioes:F.delete(),historicoFonte:F.delete()}),{merge:true});
@@ -880,6 +882,8 @@ async function pullRemoteQuiet(){
     const cs=fsDesanitize(cfgSnap.data());
     const _B=blobMontar((await blobCol().get()).docs);
     if(_B.cadastros)cs.cadastros=_B.cadastros.valor;if(_B.reunioes)cs.reunioes=_B.reunioes.valor;
+    try{const bolR=(_B.boletim&&Array.isArray(_B.boletim.valor))?bolAplicarRemoto(_B.boletim.valor):{local:false,nuvem:bolImpLer().length>0};
+      if(bolR.nuvem)scheduleFirebasePush();if(bolR.local){try{renderLingGotas()}catch(e){}}}catch(e){console.warn('Boletim da nuvem:',e)}
     const dMeta=cs.meta&&fsStable(cs.meta)!==fsStable(meta),dCad=cs.cadastros&&fsStable(cs.cadastros)!==fsStable(cadastros),prodR=Array.isArray(cs.producaoFundicao)?prodAplicar(cs.producaoFundicao,cs.producaoDel):{local:false,nuvem:false},dProd=prodR.local||prodR.nuvem,dReu=Array.isArray(cs.reunioes)&&fsStable(cs.reunioes)!==fsStable(window.reunioes||[]);
     if(!dCad&&!cadBase)cadBaseSet();if(!dReu&&!reuBase)reuBaseSet();
     if(!dMeta&&!dCad&&!dProd&&!dReu)return;
@@ -2911,13 +2915,14 @@ function prodCalSelecionar(iso){
   set('producaoKgLiq',r&&r.kgLiq!=null?r.kgLiq:'');set('producaoCorrNum',r&&r.corridasNum?r.corridasNum:'');set('producaoLing',r&&r.kgLing!=null?r.kgLing:'');set('producaoGotas',r&&r.kgGotas!=null?r.kgGotas:'');
   set('producaoFundido',r?r.fundido||'':'');
   set('producaoObs',r?r.observacao||'':'');
+  corrCarregar(r&&Array.isArray(r.corridasDet)&&r.corridasDet.length?r.corridasDet:(lingBase().get(iso)||{det:[]}).det);
   if(!r&&window.BOLETIM_FUSAO&&Array.isArray(window.BOLETIM_FUSAO.corridas)){const L=window.BOLETIM_FUSAO.corridas.filter(c=>c[1]===iso);if(L.length){set('producaoCorridas',L.length);set('producaoCorrNum',corrRanges(L.map(c=>c[0])));set('producaoLing',Math.round(L.reduce((a,c)=>a+c[3],0)*100)/100);set('producaoGotas',Math.round(L.reduce((a,c)=>a+c[4],0)*100)/100);set('producaoKg',Math.round(L.reduce((a,c)=>a+c[5],0)*100)/100)}}
   renderProducao();
 }
 function clearProducaoForm(){
   prodCalSelecionar(document.getElementById('producaoData')?.value||prodHojeISO());
   ['producaoCorridas','producaoCorrNum','producaoKg','producaoKgLiq','producaoLing','producaoGotas','producaoFundido','producaoObs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  const idx=document.getElementById('producaoEditIndex');if(idx)idx.value='';
+  corrCarregar([]);const idx=document.getElementById('producaoEditIndex');if(idx)idx.value='';
   updateSecurityUI();
 }
 function renderProducao(){
@@ -2955,12 +2960,13 @@ function renderProducao(){
   const count=document.getElementById('producaoCount');
   if(count)count.textContent=dias.length?`${dias.length} ${dias.length===1?'dia lançado':'dias lançados'}`:(legado.length?'total mensal antigo':'sem lançamentos');
   const ordenados=[...dias].sort((a,b)=>String(b.r.data).localeCompare(String(a.r.data)));
-  const linhasDia=ordenados.map(({r,i})=>`<tr><td>${esc(String(r.data).split('-').reverse().join('/'))}</td><td style="white-space:normal;min-width:140px">${esc(r.fundido||'—')}</td><td>${esc(r.corridas??0)}${r.corridasNum?`<div class="small">nº ${esc(r.corridasNum)}</div>`:''}</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>${r.kgLiq!=null?fmt(n(r.kgLiq))+' kg':'—'}</td><td>${r.kgLing!=null?fmt(n(r.kgLing))+' kg':'—'}</td><td>${r.kgGotas!=null?fmt(n(r.kgGotas))+' kg':'—'}</td><td>${esc(r.observacao||'')}</td><td><button class="btn secondary" onclick="editProducao(${i})">Editar</button> <button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
+  const linhasDia=ordenados.map(({r,i})=>`<tr><td>${esc(String(r.data).split('-').reverse().join('/'))}</td><td style="white-space:normal;min-width:140px">${esc(r.fundido||'—')}</td><td>${esc(r.corridas??0)}${r.corridasNum?`<div class="small">nº ${esc(r.corridasNum)}${r.materiais?' • '+esc(r.materiais):''}</div>`:''}</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>${r.kgLiq!=null?fmt(n(r.kgLiq))+' kg':'—'}</td><td>${r.kgLing!=null?fmt(n(r.kgLing))+' kg':'—'}</td><td>${r.kgGotas!=null?fmt(n(r.kgGotas))+' kg':'—'}</td><td>${esc(r.observacao||'')}</td><td><button class="btn secondary" onclick="editProducao(${i})">Editar</button> <button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
   const linhasLeg=dias.length?[]:legado.map(({r,i})=>`<tr><td>${String(m).padStart(2,'0')}/${y} (total mensal)</td><td>—</td><td>—</td><td><strong>${fmt(productionValue(r))} kg</strong></td><td>—</td><td>—</td><td>—</td><td>${esc(r.observacao||'')}</td><td><button class="btn danger" onclick="removeProducao(${i})">Excluir</button></td></tr>`);
   const linhas=[...linhasDia,...linhasLeg];
   body.innerHTML=linhas.length?linhas.join(''):'<tr><td colspan="9" style="text-align:center" class="small">Nenhum dia lançado neste mês.</td></tr>';
   try{renderRendimento()}catch(e){console.error(e)}
   try{renderLingGotas()}catch(e){console.error(e)}
+  try{renderRendForno()}catch(e){console.error(e)}
   updateSecurityUI();
 }
 /* Rendimento = peso líquido ÷ bruto fundido, mês a mês (só dias com líquido informado) */
@@ -2978,42 +2984,176 @@ function renderRendimento(){
   }
   box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento da Fundição — '+y+'</h3><div class="small">Peso líquido produzido ÷ kg fundidos (bruto), só nos dias em que o líquido foi informado.</div></div><div class="cad-count">'+(tB?'Ano: '+fmt(tL/tB*100)+'%':'sem líquido')+'</div></div>'+(lin.length?'<div class="tablewrap"><table><thead><tr><th>Mês</th><th>Kg fundidos</th><th>Kg líquido</th><th>Rendimento</th><th>Dias com líquido</th></tr></thead><tbody>'+lin.join('')+'</tbody></table></div>':'<div class="small">Nenhum dia lançado em '+y+'.</div>');
 }
+/* base de lingotes/respingos por dia: boletim + lançamentos (o que foi lançado manda) */
+function lingBase(){
+  const dia=new Map(),B=(window.BOLETIM_FUSAO&&Array.isArray(window.BOLETIM_FUSAO.corridas))?window.BOLETIM_FUSAO.corridas:[];
+  B.forEach(c=>{const o=dia.get(c[1])||{l:0,g:0,p:0,det:[]};o.l+=c[3];o.g+=c[4];o.det.push([c[0],c[3],c[4],c[7]||'']);dia.set(c[1],o)});
+  producaoFundicao.forEach(p=>{if(!isProdDia(p))return;const o=dia.get(p.data)||{l:0,g:0,p:0,det:[]};if(p.kg!=null&&p.kg!=='')o.p=n(p.kg);
+    if(p.kgLing!=null&&p.kgLing!=='')o.l=n(p.kgLing);if(p.kgGotas!=null&&p.kgGotas!=='')o.g=n(p.kgGotas);
+    if(Array.isArray(p.corridasDet)&&p.corridasDet.length){o.det=p.corridasDet.map(c=>[c[0],n(c[1]),n(c[2]),c[3]||'']);}
+    dia.set(p.data,o)});
+  dia.forEach(o=>o.det.sort((a,b)=>a[0]-b[0]));
+  return dia;
+}
+window.__ling={dias:lingBase,sig:()=>producaoFundicao.length+':'+producaoFundicao.reduce((a,p)=>a+(+p._ts||0)%100000,0)+':'+((window.BOLETIM_FUSAO&&window.BOLETIM_FUSAO.gerado)||'')+':'+((window.BOLETIM_FUSAO&&window.BOLETIM_FUSAO.corridas||[]).length)};
+/* rendimento do forno: peso bruto das corridas (sem lingotes e respingos) + lingotes + respingos = total fundido */
+function rendDia(o){const p=+o.p||0,l=+o.l||0,g=+o.g||0,t=p+l+g;return{p,l,g,t,pp:t?p/t*100:0,lp:t?l/t*100:0,gp:t?g/t*100:0}}
+function rendResumoHtml(iso,o){
+  const r=rendDia(o),f=v=>fmt(Math.round(v*10)/10),pc=v=>(Math.round(v*10)/10).toLocaleString('pt-BR')+'%';
+  return '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end"><div><div class="small">Dia '+iso.split('-').reverse().join('/')+'</div>'+
+    '<div style="font-size:15px;line-height:1.7"><b>'+f(r.p)+' kg</b> peso bruto das corridas <b style="color:#1f9d55">'+pc(r.pp)+'</b><br>+ <b>'+f(r.l)+' kg</b> de lingotes <b style="color:var(--orange,#ff5a18)">'+pc(r.lp)+'</b><br>+ <b>'+f(r.g)+' kg</b> de gotas/respingos <b style="color:#8fa6bd">'+pc(r.gp)+'</b><br>= <b style="font-size:18px">'+f(r.t)+' kg</b> fundidos no dia</div></div>'+
+    '<div style="min-width:220px;flex:1"><div style="display:flex;height:26px;border-radius:6px;overflow:hidden;border:1px solid var(--border,#ccc)"><div style="width:'+r.pp+'%;background:#22c55e" title="Peso bruto"></div><div style="width:'+r.lp+'%;background:#ff6a1f" title="Lingotes"></div><div style="width:'+r.gp+'%;background:#8fa6bd" title="Gotas/respingos"></div></div><div class="small" style="margin-top:4px">Rendimento do forno (peso bruto ÷ total fundido): <b>'+pc(r.pp)+'</b> • perda em lingotes e gotas: <b>'+pc(r.lp+r.gp)+'</b></div></div></div>';
+}
+function rendEmpilhado(labels,P,L,G,h){
+  const W=760,H=h||280,Lm=50,T=14,B=26,cw=W-Lm-10,ch=H-T-B,n=labels.length||1,st=cw/n,bw=Math.min(40,st*.72);
+  const tot=labels.map((_,i)=>P[i]+L[i]+G[i]);let mx=Math.max(1,...tot);const nice=v=>{const e=Math.pow(10,Math.floor(Math.log10(v))),m=v/e;return(m<=1?1:m<=2?2:m<=5?5:10)*e};mx=nice(mx*1.05);
+  let sv='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;max-height:'+H+'px" role="img">';
+  for(let g=0;g<=4;g++){const y=T+ch-g*ch/4;sv+='<line x1="'+Lm+'" x2="'+(W-10)+'" y1="'+y+'" y2="'+y+'" stroke="#8884" stroke-width="1"/><text x="'+(Lm-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="11" fill="currentColor">'+fmt(mx*g/4)+'</text>'}
+  labels.forEach((lb,i)=>{const x=Lm+i*st+(st-bw)/2;let y=T+ch;
+    [[P[i],'#22c55e','Peso bruto'],[L[i],'#ff6a1f','Lingotes'],[G[i],'#8fa6bd','Gotas/respingos']].forEach(([v,c,nm])=>{const h2=v/mx*ch;if(h2<=0)return;y-=h2;sv+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h2+'" fill="'+c+'"><title>'+lb+' — '+nm+': '+fmt(Math.round(v*10)/10)+' kg ('+(tot[i]?Math.round(v/tot[i]*1000)/10:0)+'%)</title></rect>'});
+    sv+='<text x="'+(x+bw/2)+'" y="'+(H-8)+'" text-anchor="middle" font-size="'+(n>20?9:11)+'" fill="currentColor">'+lb+'</text>'});
+  return sv+'</svg><div class="small" style="margin-top:4px"><span style="color:#22c55e">●</span> Peso bruto das corridas &nbsp; <span style="color:#ff6a1f">●</span> Lingotes &nbsp; <span style="color:#8fa6bd">●</span> Gotas/respingos</div>';
+}
+window.__ling.rendDia=rendDia;window.__ling.rendResumoHtml=rendResumoHtml;window.__ling.rendEmpilhado=rendEmpilhado;
+function renderRendForno(){
+  const base=document.getElementById('prodLingGotas');if(!base)return;
+  let box=document.getElementById('prodRendForno');if(!box){box=document.createElement('div');box.id='prodRendForno';box.className='panel';box.style.marginTop='16px';base.parentNode.insertBefore(box,base.nextSibling)}
+  const y=prodCalAno,m=prodCalMes,ym=y+'-'+String(m).padStart(2,'0'),B=lingBase(),dias=[...B.keys()].filter(d=>d.slice(0,7)===ym&&B.get(d).p>0).sort();
+  const M=MESES_PRODUCAO[m-1]||'';
+  if(!dias.length){box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+M+'/'+y+'</h3><div class="small">Sem dias com “Kg fundidos” lançados neste mês (use o Boletim para preencher).</div></div></div>';return}
+  const sel=document.getElementById('producaoData')?.value,dia=dias.includes(sel)?sel:dias[dias.length-1];
+  const P=dias.map(d=>B.get(d).p),L=dias.map(d=>B.get(d).l),G=dias.map(d=>B.get(d).g),sp=P.reduce((a,b)=>a+b,0),sl=L.reduce((a,b)=>a+b,0),sg=G.reduce((a,b)=>a+b,0),tt=sp+sl+sg;
+  box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+M+'/'+y+'</h3><div class="small">Peso bruto (“Kg fundidos no dia” do formulário = TOTAL PANELÕES do boletim) + lingotes + gotas/respingos = total fundido. Mostra o dia selecionado no calendário (ou o último do mês).</div></div><div class="cad-count">Mês: '+fmt(Math.round(tt))+' kg fundidos • rendimento '+(tt?(Math.round(sp/tt*1000)/10).toLocaleString('pt-BR'):'0')+'%</div></div>'+
+    rendResumoHtml(dia,B.get(dia))+'<div style="margin-top:14px">'+rendEmpilhado(dias.map(d=>d.slice(8)),P,L,G)+'</div>';
+}
+/* editor de corridas do dia (nº, lingotes, respingos) */
+function corrAdd(nn,l,r,mat){const box=document.getElementById('producaoCorrList');if(!box)return;const d=document.createElement('div');d.className='corrRow';d.style.cssText='display:flex;gap:6px;margin:4px 0;align-items:center';
+  d.innerHTML='<input type="number" class="cN" min="1" placeholder="Nº" style="width:90px"><input type="number" class="cL" step="0.01" min="0" placeholder="Lingotes (kg)"><input type="number" class="cR" step="0.01" min="0" placeholder="Respingos (kg)"><input type="text" class="cM" placeholder="Material (GGG50…)" style="width:140px"><button type="button" class="btn secondary" title="Remover" style="padding:6px 10px">✕</button>';
+  d.querySelector('.cN').value=nn??'';d.querySelector('.cL').value=l??'';d.querySelector('.cR').value=r??'';d.querySelector('.cM').value=mat||'';d.querySelector('button').onclick=()=>{d.remove();corrSync()};box.appendChild(d)}
+function corrLer(){return [...document.querySelectorAll('#producaoCorrList .corrRow')].map(d=>[Number(d.querySelector('.cN').value),Number(d.querySelector('.cL').value)||0,Number(d.querySelector('.cR').value)||0,d.querySelector('.cM').value.trim()]).filter(x=>x[0]>0)}
+function corrSync(){const L=corrLer();if(!L.length)return;const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v};
+  set('producaoCorrNum',corrRanges(L.map(c=>c[0])));set('producaoCorridas',L.length);set('producaoLing',Math.round(L.reduce((a,c)=>a+c[1],0)*100)/100);set('producaoGotas',Math.round(L.reduce((a,c)=>a+c[2],0)*100)/100)}
+function corrCarregar(det){const box=document.getElementById('producaoCorrList');if(!box)return;box.innerHTML='';(det||[]).forEach(c=>corrAdd(c[0],c[1],c[2],c[3]))}
+document.getElementById('producaoCorrList')?.addEventListener('input',corrSync);
 /* Lingotada × Gotas: kg por mês no ano exibido, gráfico separado */
 function renderLingGotas(){
   const host=document.getElementById('producaoTableBody');if(!host)return;
   let box=document.getElementById('prodLingGotas');
   if(!box){const ref=document.getElementById('prodRendimento')||host.closest('.panel');if(!ref)return;box=document.createElement('div');box.id='prodLingGotas';box.className='panel';box.style.marginTop='16px';ref.parentNode.insertBefore(box,ref.nextSibling)}
   const y=prodCalAno,M=MESES_PRODUCAO,L=Array(12).fill(0),G=Array(12).fill(0);let temL=false,temG=false;
-  const dia=new Map(),Bz=(window.BOLETIM_FUSAO&&Array.isArray(window.BOLETIM_FUSAO.corridas))?window.BOLETIM_FUSAO.corridas:[];
-  Bz.forEach(c=>{if(String(c[1]).slice(0,4)!==String(y))return;const o=dia.get(c[1])||{l:0,g:0};o.l+=c[3];o.g+=c[4];dia.set(c[1],o)});
-  producaoFundicao.forEach(p=>{if(!isProdDia(p)||productionYear(p)!==y)return;const o=dia.get(p.data)||{l:0,g:0};if(p.kgLing!=null&&p.kgLing!==''){o.l=n(p.kgLing)}if(p.kgGotas!=null&&p.kgGotas!==''){o.g=n(p.kgGotas)}dia.set(p.data,o)});
-  dia.forEach((o,d)=>{const m=Number(d.slice(5,7));if(!m)return;L[m-1]+=o.l;G[m-1]+=o.g;if(o.l)temL=true;if(o.g)temG=true});
+  const dia=lingBase(),Bz=(window.BOLETIM_FUSAO&&Array.isArray(window.BOLETIM_FUSAO.corridas))?window.BOLETIM_FUSAO.corridas:[];
+  dia.forEach((o,d)=>{if(d.slice(0,4)!==String(y))return;const m=Number(d.slice(5,7));if(!m)return;L[m-1]+=o.l;G[m-1]+=o.g;if(o.l)temL=true;if(o.g)temG=true});
   const tl=L.reduce((a,b)=>a+b,0),tg=G.reduce((a,b)=>a+b,0);
   box.innerHTML='<div class="cad-section-head"><div><h3>Lingotada e gotas — '+y+'</h3><div class="small">Kg lingotados e kg de gotas lançados por dia, somados por mês.</div></div><div class="cad-count">'+(temL||temG?'Ano: '+fmt(tl)+' kg lingotados • '+fmt(tg)+' kg de gotas':'sem lançamentos')+'</div></div>'+
     (temL||temG?'<div style="position:relative;height:300px"><canvas id="chartLingGotas" style="width:100%;height:300px"></canvas></div><div class="small" style="margin-top:6px"><span style="color:var(--orange,#ff5a18)">●</span> Kg lingotados &nbsp; <span style="color:var(--canvas-secondary,#142b49)">●</span> Kg de gotas</div>':'<div class="small">Preencha “Kg lingotados” e “Kg de gotas” ao lançar a produção do dia para ver o gráfico.</div>');
   if(temL||temG){try{drawLine('chartLingGotas',M.map(x=>x.slice(0,3)),[{values:L,unit:'kg'},{values:G,unit:'kg'}])}catch(e){console.error(e)}}
-  let cd=[];producaoFundicao.filter(p=>isProdDia(p)&&productionYear(p)===y&&productionMonth(p)===prodCalMes&&Array.isArray(p.corridasDet)).sort((a,b)=>String(a.data).localeCompare(b.data)).forEach(p=>p.corridasDet.forEach(c=>cd.push(c)));
-  if(!cd.length)cd=Bz.filter(c=>String(c[1]).slice(0,7)===y+'-'+String(prodCalMes).padStart(2,'0')).sort((a,b)=>a[0]-b[0]).map(c=>[c[0],c[3],c[4]]);
+  const ymK=y+'-'+String(prodCalMes).padStart(2,'0');let cd=[];[...lingBase().keys()].filter(d=>d.slice(0,7)===ymK).sort().forEach(d=>lingBase().get(d).det.forEach(c=>cd.push(c)));
   let b2=document.getElementById('prodPorCorrida');if(!b2){b2=document.createElement('div');b2.id='prodPorCorrida';b2.className='panel';b2.style.marginTop='16px';box.parentNode.insertBefore(b2,box.nextSibling)}
   if(!cd.length){b2.innerHTML='<div class="cad-section-head"><div><h3>Lingotes e respingos por corrida — '+(M[prodCalMes-1]||'')+'</h3><div class="small">Sem corridas do boletim neste mês.</div></div></div>';return}
   const sl=cd.reduce((a,c)=>a+n(c[1]),0),sg=cd.reduce((a,c)=>a+n(c[2]),0);
   b2.innerHTML='<div class="cad-section-head"><div><h3>Lingotes e respingos por corrida — '+(M[prodCalMes-1]||'')+'/'+y+'</h3><div class="small">Cada ponto é uma corrida (nº do boletim). Média por corrida: '+fmt(sl/cd.length)+' kg de lingotes e '+fmt(sg/cd.length)+' kg de respingos.</div></div><div class="cad-count">'+cd.length+' corridas • '+fmt(sl)+' kg lingotes • '+fmt(sg)+' kg respingos</div></div><div style="position:relative;height:300px"><canvas id="chartPorCorrida" style="width:100%;height:300px"></canvas></div><div class="small" style="margin-top:6px"><span style="color:var(--orange,#ff5a18)">●</span> Kg de lingotes &nbsp; <span style="color:var(--canvas-secondary,#142b49)">●</span> Kg de respingos</div>';
+  b2.insertAdjacentHTML('beforeend',matTabelaHtml(cd));
   try{drawLine('chartPorCorrida',cd.map(c=>corrFmt(c[0])),[{values:cd.map(c=>n(c[1])),unit:'kg'},{values:cd.map(c=>n(c[2])),unit:'kg'}])}catch(e){console.error(e)}
 }
+function matTabelaHtml(cd){
+  const g=new Map();cd.forEach(c=>{const k=String(c[3]||'').trim()||'(sem material)',o=g.get(k)||{n:0,l:0,r:0};o.n++;o.l+=n(c[1]);o.r+=n(c[2]);g.set(k,o)});
+  if(!g.size)return '';const rows=[...g.entries()].sort((a,b)=>b[1].n-a[1].n);
+  return '<h4 style="margin:14px 0 6px">Por material</h4><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:4px 8px">Material</th><th style="text-align:right;padding:4px 8px">Corridas</th><th style="text-align:right;padding:4px 8px">Lingotes (kg)</th><th style="text-align:right;padding:4px 8px">Respingos (kg)</th><th style="text-align:right;padding:4px 8px">Lingote/corrida</th><th style="text-align:right;padding:4px 8px">Respingo/corrida</th></tr></thead><tbody>'+
+    rows.map(([k,o])=>'<tr style="border-top:1px solid var(--border,#8883)"><td style="padding:4px 8px"><b>'+esc(k)+'</b></td><td style="text-align:right;padding:4px 8px">'+o.n+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.l*10)/10)+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.r*10)/10)+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.l/o.n*10)/10)+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.r/o.n*10)/10)+'</td></tr>').join('')+'</tbody></table></div>';
+}
+window.__ling.matTabelaHtml=matTabelaHtml;
 function corrFmt(x){return String(x).padStart(3,'0')}
 function corrRanges(L){L=[...new Set(L)].sort((a,b)=>a-b);const o=[];let i=0;while(i<L.length){let j=i;while(j+1<L.length&&L[j+1]===L[j]+1)j++;o.push(j>i?corrFmt(L[i])+'–'+corrFmt(L[j]):corrFmt(L[i]));i=j+1}return o.join(', ')}
+/* ---- importar a planilha do Boletim de Fusão (.xlsx) direto no navegador, sem biblioteca ---- */
+const BOLIMP_KEY='controle_refugos_2026_boletim_import_v1';
+function bolImpLer(){try{const a=JSON.parse(localStorage.getItem(BOLIMP_KEY)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
+function bolImpGravar(a){try{localStorage.setItem(BOLIMP_KEY,JSON.stringify(a))}catch(e){}}
+/* une as corridas importadas deste aparelho com as da nuvem (a mais recente de cada corrida vale) */
+function bolAplicarRemoto(rem){
+  const loc=bolImpLer(),m=new Map(),key=c=>String(c[1]).slice(0,4)+'-'+c[0];
+  loc.forEach(c=>m.set(key(c),c));rem.forEach(c=>{if(!Array.isArray(c)||c.length<6)return;const o=m.get(key(c));if(!o||(+c[6]||0)>(+o[6]||0))m.set(key(c),c)});
+  const out=[...m.values()].sort((a,b)=>String(a[1]).localeCompare(String(b[1]))||a[0]-b[0]);
+  const local=fsStable(out)!==fsStable(loc),nuvem=fsStable(out)!==fsStable(rem);
+  if(local){bolImpGravar(out);bolMesclar()}
+  return{local,nuvem};
+}
+function bolMesclar(){
+  const B=window.BOLETIM_FUSAO=window.BOLETIM_FUSAO||{corridas:[]};if(!Array.isArray(B.corridas))B.corridas=[];
+  if(!B._base)B._base=B.corridas.slice();
+  const m=new Map();[...B._base,...bolImpLer()].forEach(c=>{const k=String(c[1]).slice(0,4)+'-'+c[0],o=m.get(k);if(!o||(+c[6]||0)>=(+o[6]||0))m.set(k,c)});
+  B.corridas=[...m.values()].sort((a,b)=>String(a[1]).localeCompare(String(b[1]))||a[0]-b[0]);
+  B.ate=B.corridas.length?B.corridas[B.corridas.length-1][1]:B.ate;return B;
+}
+async function xlsxLerFolha(file,nomeFolha){
+  const buf=new Uint8Array(await file.arrayBuffer()),dv=new DataView(buf.buffer),td=new TextDecoder();
+  let e=buf.length-22;while(e>=0&&dv.getUint32(e,true)!==0x06054b50)e--;
+  if(e<0)throw new Error('o arquivo não é uma planilha .xlsx válida');
+  const n=dv.getUint16(e+10,true);let off=dv.getUint32(e+16,true);const ent={};
+  for(let i=0;i<n;i++){if(dv.getUint32(off,true)!==0x02014b50)break;const met=dv.getUint16(off+10,true),csz=dv.getUint32(off+20,true),nl=dv.getUint16(off+28,true),el=dv.getUint16(off+30,true),cl=dv.getUint16(off+32,true),lo=dv.getUint32(off+42,true);ent[td.decode(buf.subarray(off+46,off+46+nl))]={met,csz,lo};off+=46+nl+el+cl}
+  const get=async nm=>{const z=ent[nm];if(!z)return null;const lh=z.lo,nl=dv.getUint16(lh+26,true),el=dv.getUint16(lh+28,true),st=lh+30+nl+el,raw=buf.subarray(st,st+z.csz);if(z.met===0)return td.decode(raw);return await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text()};
+  const dec=t=>String(t).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(_,c)=>String.fromCharCode(+c)).replace(/&amp;/g,'&');
+  const wb=await get('xl/workbook.xml'),rels=await get('xl/_rels/workbook.xml.rels');if(!wb||!rels)throw new Error('planilha sem workbook');
+  let rid=null;for(const m of wb.matchAll(/<sheet\b[^>]*>/g)){const nm=(m[0].match(/\bname="([^"]*)"/)||[])[1],id=(m[0].match(/\br:id="([^"]*)"/)||[])[1];if(nm!=null&&dec(nm).trim()===nomeFolha){rid=id;break}}
+  if(!rid)throw new Error('não achei a aba “'+nomeFolha+'”');
+  let alvo=null;for(const m of rels.matchAll(/<Relationship\b[^>]*>/g)){if((m[0].match(/\bId="([^"]*)"/)||[])[1]===rid){alvo=(m[0].match(/\bTarget="([^"]*)"/)||[])[1];break}}
+  if(!alvo)throw new Error('aba sem conteúdo');alvo=alvo.replace(/^\/?(xl\/)?/,'xl/');
+  const ss=[],sx=await get('xl/sharedStrings.xml');if(sx)for(const m of sx.matchAll(/<si>([\s\S]*?)<\/si>/g)){let t='';for(const x of m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g))t+=x[1];ss.push(dec(t))}
+  const xml=await get(alvo);if(!xml)throw new Error('não consegui abrir a aba');
+  const rows=[];
+  for(const rm of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)){
+    const r={};for(const c of rm[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)){
+      const at=c[1],ref=(at.match(/\br="([A-Z]+)\d+"/)||[])[1];if(!ref||c[2]==null)continue;
+      const t=(at.match(/\bt="([^"]*)"/)||[])[1],v=(c[2].match(/<v>([\s\S]*?)<\/v>/)||[])[1];
+      if(t==='inlineStr'){const q=c[2].match(/<t[^>]*>([\s\S]*?)<\/t>/);if(q)r[ref]=dec(q[1]);continue}
+      if(v==null||v==='')continue;
+      r[ref]=t==='s'?ss[+v]:(t==='str'||t==='e'||t==='b')?dec(v):Number(v);
+    }
+    if(Object.keys(r).length)rows.push(r);
+  }
+  return rows;
+}
+async function bolImportarXlsx(file){
+  if(!file)return;
+  try{
+    const rows=await xlsxLerFolha(file,'BOLETIM - Carregamento');if(!rows.length)throw new Error('a aba está vazia');
+    const norm=t=>String(t==null?'':t).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const col={};Object.entries(rows[0]).forEach(([k,v])=>{const t=norm(v);if(t==='corrida')col.n=k;else if(t==='data')col.d=k;else if(t==='cad')col.cad=k;else if(t.startsWith('lingotes')&&!t.includes('respingos'))col.l=k;else if(t.startsWith('respingos'))col.r=k;else if(t.startsWith('totalpanel'))col.p=k;else if(t==='material')col.m=k});
+    if(!col.n||!col.d||!col.l||!col.r)throw new Error('não achei as colunas CORRIDA, DATA, Lingotes e Respingos na primeira linha');
+    const iso=v=>{if(typeof v==='number'&&v>20000&&v<80000)return new Date(Date.UTC(1899,11,30)+Math.round(v)*864e5).toISOString().slice(0,10);const m=String(v||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);return m?m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'):/^\d{4}-\d{2}-\d{2}/.test(String(v))?String(v).slice(0,10):null};
+    const g=new Map(),ign=[];
+    rows.slice(1).forEach(r=>{
+      const cod=String(r[col.n]==null?'':r[col.n]).trim(),d=iso(r[col.d]);if(!cod||!d)return;
+      const num=parseInt(cod,10),suf=(cod.split('/')[1]||'').trim();if(!(num>0))return;
+      if(suf&&String(2000+Number(suf))!==d.slice(0,4)){ign.push(cod+' ('+d.split('-').reverse().join('/')+')');return}
+      const k=d.slice(0,4)+'-'+num,e=g.get(k)||[num,d,String(r[col.cad]||'').trim(),0,0,0,0,[]];if(col.m){const mt=String(r[col.m]||'').trim();if(mt&&!e[7].includes(mt))e[7].push(mt)}
+      e[3]+=Number(r[col.l])||0;e[4]+=Number(r[col.r])||0;e[5]+=col.p?(Number(r[col.p])||0):0;g.set(k,e);
+    });
+    const novas=[...g.values()].map(e=>[e[0],e[1],e[2],Math.round(e[3]*100)/100,Math.round(e[4]*100)/100,Math.round(e[5]*100)/100,0,e[7].join('/')]);
+    if(!novas.length)throw new Error('nenhuma corrida encontrada na planilha');
+    const antes=new Map((window.BOLETIM_FUSAO&&window.BOLETIM_FUSAO.corridas||[]).map(c=>[String(c[1]).slice(0,4)+'-'+c[0],c]));
+    let novos=0,mudou=0;novas.forEach(c=>{const o=antes.get(c[1].slice(0,4)+'-'+c[0]);if(!o)novos++;else if(o[3]!==c[3]||o[4]!==c[4]||o[1]!==c[1]||o[5]!==c[5]||(o[7]||'')!==c[7])mudou++});
+    const m=new Map(bolImpLer().map(c=>[c[1].slice(0,4)+'-'+c[0],c])),agora=Date.now();
+    novas.forEach(c=>{const k=c[1].slice(0,4)+'-'+c[0],o=antes.get(k);if(o&&o[1]===c[1]&&o[3]===c[3]&&o[4]===c[4]&&o[5]===c[5]&&(o[7]||'')===c[7])return;m.set(k,[c[0],c[1],c[2],c[3],c[4],c[5],agora,c[7]])});
+    bolImpGravar([...m.values()]);
+    bolMesclar();scheduleFirebasePush();
+    const ate=novas.map(c=>c[1]).sort().pop().split('-').reverse().join('/');
+    alert('Planilha lida: '+novas.length+' corridas (até '+ate+').\n• '+novos+' corridas novas\n• '+mudou+' corridas com valores alterados'+(ign.length?'\n• Ignoradas por data inconsistente com o nº da corrida: '+ign.join(', '):'')+'\n\nAgora vou aplicar nos dias de produção.');
+    prodAplicarBoletim();
+  }catch(err){console.error(err);alert('Não consegui importar a planilha: '+(err&&err.message||err))}
+}
+try{bolMesclar()}catch(e){console.error(e)}
 function prodAplicarBoletim(){
   const B=window.BOLETIM_FUSAO;if(!B||!Array.isArray(B.corridas)||!B.corridas.length){alert('O arquivo boletim.js não foi carregado. Suba o boletim.js no GitHub e recarregue com Ctrl+F5.');return}
   const dias=new Map();B.corridas.forEach(c=>{if(!dias.has(c[1]))dias.set(c[1],[]);dias.get(c[1]).push(c)});
   let exist=0,falta=0;dias.forEach((L,d)=>{if(prodIdxDia(d)>=0)exist++;else falta++});
   const ate=B.ate.split('-').reverse().join('/');let criar=false;
-  if(falta)criar=confirm('Boletim de Fusão: '+dias.size+' dias ('+B.corridas.length+' corridas, até '+ate+').\n\n• '+exist+' dias já existem na produção: só acrescento nº das corridas, kg de lingotes e kg de respingos (não mexo nos kg fundidos).\n• '+falta+' dias ainda não existem.\n\nOK = criar também esses '+falta+' dias (kg fundidos = soma dos panelões do boletim).\nCancelar = só preencher os dias que já existem (os gráficos de lingotes e respingos já usam o boletim inteiro de qualquer forma; criar os dias só muda o total de produção).');
-  else if(!confirm('Acrescentar nº das corridas, kg de lingotes e kg de respingos aos '+exist+' dias de produção (até '+ate+')?'))return;
+  if(falta)criar=confirm('Boletim de Fusão: '+dias.size+' dias ('+B.corridas.length+' corridas, até '+ate+').\n\n• '+exist+' dias já existem na produção: acrescento nº das corridas, material, lingotes e respingos e atualizo os “Kg fundidos” para o TOTAL PANELÕES do boletim.\n• '+falta+' dias ainda não existem.\n\nOK = criar também esses '+falta+' dias (kg fundidos = TOTAL PANELÕES do boletim).\nCancelar = só preencher os dias que já existem (os gráficos de lingotes e respingos já usam o boletim inteiro de qualquer forma; criar os dias só muda o total de produção).');
+  else if(!confirm('Acrescentar nº das corridas, material, lingotes e respingos aos '+exist+' dias de produção (até '+ate+') e atualizar os “Kg fundidos” para o TOTAL PANELÕES do boletim?'))return;
   const t=Date.now(),novos=[];
   dias.forEach((L,d)=>{
     L.sort((a,b)=>a[0]-b[0]);
     const ling=L.reduce((a,c)=>a+c[3],0),resp=L.reduce((a,c)=>a+c[4],0),pan=L.reduce((a,c)=>a+c[5],0),i=prodIdxDia(d);
-    const campos={corridasNum:corrRanges(L.map(c=>c[0])),corridasDet:L.map(c=>[c[0],c[3],c[4]]),kgLing:ling||resp?Math.round(ling*100)/100:null,kgGotas:ling||resp?Math.round(resp*100)/100:null,_ts:t};
+    const campos={corridasNum:corrRanges(L.map(c=>c[0])),corridasDet:L.map(c=>[c[0],c[3],c[4],c[7]||'']),materiais:[...new Set(L.flatMap(c=>String(c[7]||'').split('/').map(x=>x.trim()).filter(Boolean)))].join(', ')||undefined,kg:Math.round(pan*100)/100,kgLing:ling||resp?Math.round(ling*100)/100:null,kgGotas:ling||resp?Math.round(resp*100)/100:null,_ts:t};
     if(i>=0)novos.push({...producaoFundicao[i],...campos});
     else if(criar)novos.push({data:d,ano:+d.slice(0,4),mes:+d.slice(5,7),dia:+d.slice(8,10),fundido:'',corridas:L.length,kg:Math.round(pan*100)/100,kgLiq:null,custoKg:2.6,observacao:'Importado do Boletim de Fusão',...campos});
   });
@@ -3066,7 +3206,7 @@ producaoForm?.addEventListener('submit',e=>{
   const editIdx=document.getElementById('producaoEditIndex').value;
   const dup=prodIdxDia(iso);
   if(dup>=0&&String(dup)!==editIdx&&!confirm('Já existe produção lançada neste dia. Substituir?'))return;
-  const obj={data:iso,ano,mes,dia,fundido,corridas,kg:kgVal,kgLiq:kgLiqVal,kgLing:kgLingVal,kgGotas:kgGotasVal,corridasNum:String(document.getElementById('producaoCorrNum')?.value||'').trim(),corridasDet:(producaoFundicao[Number(document.getElementById('producaoEditIndex').value)]||{}).corridasDet,custoKg:2.6,observacao:obs,_ts:Date.now()};
+  const obj={data:iso,ano,mes,dia,fundido,corridas,kg:kgVal,kgLiq:kgLiqVal,kgLing:kgLingVal,kgGotas:kgGotasVal,corridasNum:String(document.getElementById('producaoCorrNum')?.value||'').trim(),materiais:[...new Set(corrLer().flatMap(c=>String(c[3]||'').split('/').map(x=>x.trim()).filter(Boolean)))].join(', ')||undefined,corridasDet:(corrLer().length?corrLer():(producaoFundicao[Number(document.getElementById('producaoEditIndex').value)]||{}).corridasDet),custoKg:2.6,observacao:obs,_ts:Date.now()};
   if(dup>=0)producaoFundicao[dup]=obj;else producaoFundicao.push(obj);
   saveProducao();
   prodCalAno=ano;prodCalMes=mes;
@@ -3629,7 +3769,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v193) =====
+/* ===== Pesos novos valem só a partir de uma data (v199) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -3736,7 +3876,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v193) =====
+/* ===== Backup COMPLETO do sistema (v199) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{
