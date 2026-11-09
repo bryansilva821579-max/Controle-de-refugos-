@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v199';
+window.__V=window.__V||{};window.__V.app='v200';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -330,7 +330,7 @@ function removerDuplicadosPeso(){
 }
 window.removerDuplicadosPeso=removerDuplicadosPeso;
 
-/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v199) ===== */
+/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v200) ===== */
 const BKN_MAX=600000,BKN_DIAS=30;
 let bkRodando=false;
 function bkCol(){return firebaseRoot().collection('backups')}
@@ -464,7 +464,7 @@ function confPesosAviso(){
 }
 setTimeout(confPesosAviso,9000);
 
-/* ===== Ficha completa: busca por código, OF, descrição ou material (v199) ===== */
+/* ===== Ficha completa: busca por código, OF, descrição ou material (v200) ===== */
 const __nz=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
 const __f2=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:2});
 const __f0=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
@@ -639,7 +639,7 @@ function fichaBuscar(q0){
 }
 window.fichaBuscar=fichaBuscar;window.fichaAbrir=fichaAbrir;
 
-/* ===== Sincronização por lançamento (v199) =====
+/* ===== Sincronização por lançamento (v200) =====
    Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
    fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
    A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
@@ -3004,17 +3004,37 @@ function rendResumoHtml(iso,o){
     '<div style="font-size:15px;line-height:1.7"><b>'+f(r.p)+' kg</b> peso bruto das corridas <b style="color:#1f9d55">'+pc(r.pp)+'</b><br>+ <b>'+f(r.l)+' kg</b> de lingotes <b style="color:var(--orange,#ff5a18)">'+pc(r.lp)+'</b><br>+ <b>'+f(r.g)+' kg</b> de gotas/respingos <b style="color:#8fa6bd">'+pc(r.gp)+'</b><br>= <b style="font-size:18px">'+f(r.t)+' kg</b> fundidos no dia</div></div>'+
     '<div style="min-width:220px;flex:1"><div style="display:flex;height:26px;border-radius:6px;overflow:hidden;border:1px solid var(--border,#ccc)"><div style="width:'+r.pp+'%;background:#22c55e" title="Peso bruto"></div><div style="width:'+r.lp+'%;background:#ff6a1f" title="Lingotes"></div><div style="width:'+r.gp+'%;background:#8fa6bd" title="Gotas/respingos"></div></div><div class="small" style="margin-top:4px">Rendimento do forno (peso bruto ÷ total fundido): <b>'+pc(r.pp)+'</b> • perda em lingotes e gotas: <b>'+pc(r.lp+r.gp)+'</b></div></div></div>';
 }
+function rendEixo(mx,Lm,T,ch,W,suf){let sv='';for(let g=0;g<=4;g++){const y=T+ch-g*ch/4;sv+='<line x1="'+Lm+'" x2="'+(W-10)+'" y1="'+y+'" y2="'+y+'" stroke="currentColor" stroke-opacity=".18" stroke-width="1"/><text x="'+(Lm-8)+'" y="'+(y+4)+'" text-anchor="end" font-size="12" fill="currentColor" fill-opacity=".75">'+(suf?(Math.round(mx*g/4*10)/10).toLocaleString('pt-BR')+'%':fmt(mx*g/4))+'</text>'}return sv}
+function rendNice(v){const e=Math.pow(10,Math.floor(Math.log10(v||1))),m=v/e;return(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*e}
+const rendPc=v=>(Math.round(v*10)/10).toLocaleString('pt-BR')+'%';
 function rendEmpilhado(labels,P,L,G,h){
-  const W=760,H=h||280,Lm=50,T=14,B=26,cw=W-Lm-10,ch=H-T-B,n=labels.length||1,st=cw/n,bw=Math.min(40,st*.72);
-  const tot=labels.map((_,i)=>P[i]+L[i]+G[i]);let mx=Math.max(1,...tot);const nice=v=>{const e=Math.pow(10,Math.floor(Math.log10(v))),m=v/e;return(m<=1?1:m<=2?2:m<=5?5:10)*e};mx=nice(mx*1.05);
-  let sv='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;max-height:'+H+'px" role="img">';
-  for(let g=0;g<=4;g++){const y=T+ch-g*ch/4;sv+='<line x1="'+Lm+'" x2="'+(W-10)+'" y1="'+y+'" y2="'+y+'" stroke="#8884" stroke-width="1"/><text x="'+(Lm-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="11" fill="currentColor">'+fmt(mx*g/4)+'</text>'}
-  labels.forEach((lb,i)=>{const x=Lm+i*st+(st-bw)/2;let y=T+ch;
-    [[P[i],'#22c55e','Peso bruto'],[L[i],'#ff6a1f','Lingotes'],[G[i],'#8fa6bd','Gotas/respingos']].forEach(([v,c,nm])=>{const h2=v/mx*ch;if(h2<=0)return;y-=h2;sv+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h2+'" fill="'+c+'"><title>'+lb+' — '+nm+': '+fmt(Math.round(v*10)/10)+' kg ('+(tot[i]?Math.round(v/tot[i]*1000)/10:0)+'%)</title></rect>'});
-    sv+='<text x="'+(x+bw/2)+'" y="'+(H-8)+'" text-anchor="middle" font-size="'+(n>20?9:11)+'" fill="currentColor">'+lb+'</text>'});
-  return sv+'</svg><div class="small" style="margin-top:4px"><span style="color:#22c55e">●</span> Peso bruto das corridas &nbsp; <span style="color:#ff6a1f">●</span> Lingotes &nbsp; <span style="color:#8fa6bd">●</span> Gotas/respingos</div>';
+  const W=900,H=h||340,Lm=64,T=34,B=36,cw=W-Lm-10,ch=H-T-B,n=labels.length||1,st=cw/n,bw=Math.min(64,st*.7),big=bw>=40;
+  const tot=labels.map((_,i)=>P[i]+L[i]+G[i]);const mx=rendNice(Math.max(1,...tot)*1.05);
+  let sv='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" role="img">'+rendEixo(mx,Lm,T,ch,W,false);
+  labels.forEach((lb,i)=>{const x=Lm+i*st+(st-bw)/2,t=tot[i]||1;let y=T+ch;
+    if(!tot[i]){sv+='<text x="'+(x+bw/2)+'" y="'+(H-12)+'" text-anchor="middle" font-size="'+(n>16?10:12)+'" fill="currentColor" fill-opacity=".5">'+lb+'</text>';return}
+    [[P[i],'#22c55e','Peso bruto'],[L[i],'#ff6a1f','Lingotes'],[G[i],'#8fa6bd','Gotas/respingos']].forEach(([v,c,nm],k)=>{const h2=v/mx*ch;if(h2<=0)return;y-=h2;
+      sv+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h2,1.5)+'" rx="2" fill="'+c+'"><title>'+lb+' — '+nm+': '+fmt(Math.round(v*10)/10)+' kg ('+rendPc(v/t*100)+')</title></rect>';
+      if(k===0&&big&&h2>=22)sv+='<text x="'+(x+bw/2)+'" y="'+(y+h2/2+4)+'" text-anchor="middle" font-size="12" font-weight="700" fill="#052e16">'+fmt(Math.round(v))+'</text>'});
+    sv+='<text x="'+(x+bw/2)+'" y="'+(y-8)+'" text-anchor="middle" font-size="'+(big?14:11)+'" font-weight="800" fill="#22c55e">'+rendPc(P[i]/t*100)+'</text>';
+    sv+='<text x="'+(x+bw/2)+'" y="'+(H-12)+'" text-anchor="middle" font-size="'+(n>16?10:12)+'" fill="currentColor">'+lb+'</text>'});
+  return sv+'</svg><div class="small" style="margin-top:4px"><span style="color:#22c55e">●</span> Peso bruto das corridas (o % no topo é o rendimento) &nbsp; <span style="color:#ff6a1f">●</span> Lingotes &nbsp; <span style="color:#8fa6bd">●</span> Gotas/respingos</div>';
 }
-window.__ling.rendDia=rendDia;window.__ling.rendResumoHtml=rendResumoHtml;window.__ling.rendEmpilhado=rendEmpilhado;
+/* perdas em % do total fundido: lingotes e gotas lado a lado, com o valor de cada barra */
+function rendPerdas(labels,P,L,G,h){
+  const W=900,H=h||260,Lm=64,T=30,B=36,cw=W-Lm-10,ch=H-T-B,n=labels.length||1,st=cw/n,bw=Math.min(34,st*.34),big=bw>=18;
+  const pl=labels.map((_,i)=>{const t=P[i]+L[i]+G[i];return t?L[i]/t*100:0}),pg=labels.map((_,i)=>{const t=P[i]+L[i]+G[i];return t?G[i]/t*100:0});
+  const mx=rendNice(Math.max(1,...pl,...pg)*1.2);
+  let sv='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" role="img">'+rendEixo(mx,Lm,T,ch,W,true);
+  labels.forEach((lb,i)=>{const cx=Lm+i*st+st/2;
+    if(!(P[i]+L[i]+G[i])){sv+='<text x="'+cx+'" y="'+(H-12)+'" text-anchor="middle" font-size="'+(n>16?10:12)+'" fill="currentColor" fill-opacity=".5">'+lb+'</text>';return}
+    [[pl[i],'#ff6a1f',cx-bw-1,'Lingotes',L[i]],[pg[i],'#8fa6bd',cx+1,'Gotas/respingos',G[i]]].forEach(([v,c,x,nm,kg])=>{const h2=v/mx*ch,y=T+ch-h2;
+      sv+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h2,1.5)+'" rx="2" fill="'+c+'"><title>'+lb+' — '+nm+': '+rendPc(v)+' ('+fmt(Math.round(kg*10)/10)+' kg)</title></rect>';
+      if(big||n<=14)sv+='<text x="'+(x+bw/2)+'" y="'+(y-5)+'" text-anchor="middle" font-size="'+(big?12:10)+'" font-weight="700" fill="'+c+'">'+(Math.round(v*10)/10).toLocaleString('pt-BR')+'</text>'});
+    sv+='<text x="'+cx+'" y="'+(H-12)+'" text-anchor="middle" font-size="'+(n>16?10:12)+'" fill="currentColor">'+lb+'</text>'});
+  return sv+'</svg><div class="small" style="margin-top:4px"><span style="color:#ff6a1f">●</span> Lingotes (% do total fundido) &nbsp; <span style="color:#8fa6bd">●</span> Gotas/respingos (% do total fundido)</div>';
+}
+window.__ling.rendPerdas=rendPerdas;window.__ling.rendDia=rendDia;window.__ling.rendResumoHtml=rendResumoHtml;window.__ling.rendEmpilhado=rendEmpilhado;
 function renderRendForno(){
   const base=document.getElementById('prodLingGotas');if(!base)return;
   let box=document.getElementById('prodRendForno');if(!box){box=document.createElement('div');box.id='prodRendForno';box.className='panel';box.style.marginTop='16px';base.parentNode.insertBefore(box,base.nextSibling)}
@@ -3024,7 +3044,7 @@ function renderRendForno(){
   const sel=document.getElementById('producaoData')?.value,dia=dias.includes(sel)?sel:dias[dias.length-1];
   const P=dias.map(d=>B.get(d).p),L=dias.map(d=>B.get(d).l),G=dias.map(d=>B.get(d).g),sp=P.reduce((a,b)=>a+b,0),sl=L.reduce((a,b)=>a+b,0),sg=G.reduce((a,b)=>a+b,0),tt=sp+sl+sg;
   box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+M+'/'+y+'</h3><div class="small">Peso bruto (“Kg fundidos no dia” do formulário = TOTAL PANELÕES do boletim) + lingotes + gotas/respingos = total fundido. Mostra o dia selecionado no calendário (ou o último do mês).</div></div><div class="cad-count">Mês: '+fmt(Math.round(tt))+' kg fundidos • rendimento '+(tt?(Math.round(sp/tt*1000)/10).toLocaleString('pt-BR'):'0')+'%</div></div>'+
-    rendResumoHtml(dia,B.get(dia))+'<div style="margin-top:14px">'+rendEmpilhado(dias.map(d=>d.slice(8)),P,L,G)+'</div>';
+    rendResumoHtml(dia,B.get(dia))+'<div style="margin-top:14px">'+rendEmpilhado(dias.map(d=>d.slice(8)),P,L,G)+'</div><h4 style="margin:16px 0 6px">Perdas por dia (% do total fundido)</h4>'+rendPerdas(dias.map(d=>d.slice(8)),P,L,G);
 }
 /* editor de corridas do dia (nº, lingotes, respingos) */
 function corrAdd(nn,l,r,mat){const box=document.getElementById('producaoCorrList');if(!box)return;const d=document.createElement('div');d.className='corrRow';d.style.cssText='display:flex;gap:6px;margin:4px 0;align-items:center';
@@ -3769,7 +3789,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v199) =====
+/* ===== Pesos novos valem só a partir de uma data (v200) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -3876,7 +3896,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v199) =====
+/* ===== Backup COMPLETO do sistema (v200) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{
