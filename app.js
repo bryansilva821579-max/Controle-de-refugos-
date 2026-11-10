@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v200';
+window.__V=window.__V||{};window.__V.app='v201';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -330,7 +330,7 @@ function removerDuplicadosPeso(){
 }
 window.removerDuplicadosPeso=removerDuplicadosPeso;
 
-/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v200) ===== */
+/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v201) ===== */
 const BKN_MAX=600000,BKN_DIAS=30;
 let bkRodando=false;
 function bkCol(){return firebaseRoot().collection('backups')}
@@ -464,7 +464,7 @@ function confPesosAviso(){
 }
 setTimeout(confPesosAviso,9000);
 
-/* ===== Ficha completa: busca por código, OF, descrição ou material (v200) ===== */
+/* ===== Ficha completa: busca por código, OF, descrição ou material (v201) ===== */
 const __nz=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
 const __f2=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:2});
 const __f0=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
@@ -639,7 +639,7 @@ function fichaBuscar(q0){
 }
 window.fichaBuscar=fichaBuscar;window.fichaAbrir=fichaAbrir;
 
-/* ===== Sincronização por lançamento (v200) =====
+/* ===== Sincronização por lançamento (v201) =====
    Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
    fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
    A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
@@ -2988,21 +2988,21 @@ function renderRendimento(){
 function lingBase(){
   const dia=new Map(),B=(window.BOLETIM_FUSAO&&Array.isArray(window.BOLETIM_FUSAO.corridas))?window.BOLETIM_FUSAO.corridas:[];
   B.forEach(c=>{const o=dia.get(c[1])||{l:0,g:0,p:0,det:[]};o.l+=c[3];o.g+=c[4];o.det.push([c[0],c[3],c[4],c[7]||'']);dia.set(c[1],o)});
-  producaoFundicao.forEach(p=>{if(!isProdDia(p))return;const o=dia.get(p.data)||{l:0,g:0,p:0,det:[]};if(p.kg!=null&&p.kg!=='')o.p=n(p.kg);
+  producaoFundicao.forEach(p=>{if(!isProdDia(p))return;const o=dia.get(p.data)||{l:0,g:0,p:0,det:[]};if(p.kg!=null&&p.kg!=='')o.kgForm=n(p.kg);
     if(p.kgLing!=null&&p.kgLing!=='')o.l=n(p.kgLing);if(p.kgGotas!=null&&p.kgGotas!=='')o.g=n(p.kgGotas);
     if(Array.isArray(p.corridasDet)&&p.corridasDet.length){o.det=p.corridasDet.map(c=>[c[0],n(c[1]),n(c[2]),c[3]||'']);}
     dia.set(p.data,o)});
-  dia.forEach(o=>o.det.sort((a,b)=>a[0]-b[0]));
+  dia.forEach(o=>{o.det.sort((a,b)=>a[0]-b[0]);o.p=o.kgForm>0?Math.max(0,o.kgForm-o.l-o.g):0});/* o total dos panelões já inclui lingotes e respingos: peso bruto = total − lingotes − respingos */
   return dia;
 }
 window.__ling={dias:lingBase,sig:()=>producaoFundicao.length+':'+producaoFundicao.reduce((a,p)=>a+(+p._ts||0)%100000,0)+':'+((window.BOLETIM_FUSAO&&window.BOLETIM_FUSAO.gerado)||'')+':'+((window.BOLETIM_FUSAO&&window.BOLETIM_FUSAO.corridas||[]).length)};
-/* rendimento do forno: peso bruto das corridas (sem lingotes e respingos) + lingotes + respingos = total fundido */
+/* rendimento do forno: total dos panelões (= kg fundidos do formulário, já com lingotes e respingos) − lingotes − respingos = peso bruto das corridas */
 function rendDia(o){const p=+o.p||0,l=+o.l||0,g=+o.g||0,t=p+l+g;return{p,l,g,t,pp:t?p/t*100:0,lp:t?l/t*100:0,gp:t?g/t*100:0}}
 function rendResumoHtml(iso,o){
   const r=rendDia(o),f=v=>fmt(Math.round(v*10)/10),pc=v=>(Math.round(v*10)/10).toLocaleString('pt-BR')+'%';
   return '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end"><div><div class="small">Dia '+iso.split('-').reverse().join('/')+'</div>'+
-    '<div style="font-size:15px;line-height:1.7"><b>'+f(r.p)+' kg</b> peso bruto das corridas <b style="color:#1f9d55">'+pc(r.pp)+'</b><br>+ <b>'+f(r.l)+' kg</b> de lingotes <b style="color:var(--orange,#ff5a18)">'+pc(r.lp)+'</b><br>+ <b>'+f(r.g)+' kg</b> de gotas/respingos <b style="color:#8fa6bd">'+pc(r.gp)+'</b><br>= <b style="font-size:18px">'+f(r.t)+' kg</b> fundidos no dia</div></div>'+
-    '<div style="min-width:220px;flex:1"><div style="display:flex;height:26px;border-radius:6px;overflow:hidden;border:1px solid var(--border,#ccc)"><div style="width:'+r.pp+'%;background:#22c55e" title="Peso bruto"></div><div style="width:'+r.lp+'%;background:#ff6a1f" title="Lingotes"></div><div style="width:'+r.gp+'%;background:#8fa6bd" title="Gotas/respingos"></div></div><div class="small" style="margin-top:4px">Rendimento do forno (peso bruto ÷ total fundido): <b>'+pc(r.pp)+'</b> • perda em lingotes e gotas: <b>'+pc(r.lp+r.gp)+'</b></div></div></div>';
+    '<div style="font-size:15px;line-height:1.7"><b style="font-size:18px">'+f(r.t)+' kg</b> total dos panelões (fundido no dia)<br>− <b>'+f(r.l)+' kg</b> de lingotes <b style="color:var(--orange,#ff5a18)">'+pc(r.lp)+'</b><br>− <b>'+f(r.g)+' kg</b> de gotas/respingos <b style="color:#8fa6bd">'+pc(r.gp)+'</b><br>= <b>'+f(r.p)+' kg</b> peso bruto das corridas <b style="color:#1f9d55">'+pc(r.pp)+'</b></div></div>'+
+    '<div style="min-width:220px;flex:1"><div style="display:flex;height:26px;border-radius:6px;overflow:hidden;border:1px solid var(--border,#ccc)"><div style="width:'+r.pp+'%;background:#22c55e" title="Peso bruto"></div><div style="width:'+r.lp+'%;background:#ff6a1f" title="Lingotes"></div><div style="width:'+r.gp+'%;background:#8fa6bd" title="Gotas/respingos"></div></div><div class="small" style="margin-top:4px">Rendimento do forno (peso bruto ÷ total dos panelões): <b>'+pc(r.pp)+'</b> • perda em lingotes e gotas: <b>'+pc(r.lp+r.gp)+'</b></div></div></div>';
 }
 function rendEixo(mx,Lm,T,ch,W,suf){let sv='';for(let g=0;g<=4;g++){const y=T+ch-g*ch/4;sv+='<line x1="'+Lm+'" x2="'+(W-10)+'" y1="'+y+'" y2="'+y+'" stroke="currentColor" stroke-opacity=".18" stroke-width="1"/><text x="'+(Lm-8)+'" y="'+(y+4)+'" text-anchor="end" font-size="12" fill="currentColor" fill-opacity=".75">'+(suf?(Math.round(mx*g/4*10)/10).toLocaleString('pt-BR')+'%':fmt(mx*g/4))+'</text>'}return sv}
 function rendNice(v){const e=Math.pow(10,Math.floor(Math.log10(v||1))),m=v/e;return(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*e}
@@ -3043,7 +3043,7 @@ function renderRendForno(){
   if(!dias.length){box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+M+'/'+y+'</h3><div class="small">Sem dias com “Kg fundidos” lançados neste mês (use o Boletim para preencher).</div></div></div>';return}
   const sel=document.getElementById('producaoData')?.value,dia=dias.includes(sel)?sel:dias[dias.length-1];
   const P=dias.map(d=>B.get(d).p),L=dias.map(d=>B.get(d).l),G=dias.map(d=>B.get(d).g),sp=P.reduce((a,b)=>a+b,0),sl=L.reduce((a,b)=>a+b,0),sg=G.reduce((a,b)=>a+b,0),tt=sp+sl+sg;
-  box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+M+'/'+y+'</h3><div class="small">Peso bruto (“Kg fundidos no dia” do formulário = TOTAL PANELÕES do boletim) + lingotes + gotas/respingos = total fundido. Mostra o dia selecionado no calendário (ou o último do mês).</div></div><div class="cad-count">Mês: '+fmt(Math.round(tt))+' kg fundidos • rendimento '+(tt?(Math.round(sp/tt*1000)/10).toLocaleString('pt-BR'):'0')+'%</div></div>'+
+  box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+M+'/'+y+'</h3><div class="small">Total dos panelões (“Kg fundidos no dia” do formulário, já com lingotes e respingos) − lingotes − gotas/respingos = peso bruto das corridas. Mostra o dia selecionado no calendário (ou o último do mês).</div></div><div class="cad-count">Mês: '+fmt(Math.round(tt))+' kg fundidos • rendimento '+(tt?(Math.round(sp/tt*1000)/10).toLocaleString('pt-BR'):'0')+'%</div></div>'+
     rendResumoHtml(dia,B.get(dia))+'<div style="margin-top:14px">'+rendEmpilhado(dias.map(d=>d.slice(8)),P,L,G)+'</div><h4 style="margin:16px 0 6px">Perdas por dia (% do total fundido)</h4>'+rendPerdas(dias.map(d=>d.slice(8)),P,L,G);
 }
 /* editor de corridas do dia (nº, lingotes, respingos) */
@@ -3789,7 +3789,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v200) =====
+/* ===== Pesos novos valem só a partir de uma data (v201) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -3896,7 +3896,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v200) =====
+/* ===== Backup COMPLETO do sistema (v201) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{
