@@ -46,6 +46,15 @@
   .firebase-overlay{padding:6px}
   .page h2,.page h3{line-height:1.25}
 }
+@media (max-width:640px){
+  .topbar{gap:8px!important}
+  .top-title{min-width:0;flex:1 1 auto}
+  .top-title h1{font-size:17px!important;line-height:1.15;white-space:normal}
+  .top-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+  .top-actions .theme-toggle span{display:none}
+  .top-actions .theme-toggle{padding:8px 11px;min-width:44px}
+  .online-status{font-size:12px;padding:6px 10px}
+}
 @media (max-width:480px){
   .top-title p{display:none}
   .cards{grid-template-columns:1fr 1fr!important}

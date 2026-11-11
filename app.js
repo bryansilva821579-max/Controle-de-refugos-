@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v201';
+window.__V=window.__V||{};window.__V.app='v202';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -330,7 +330,7 @@ function removerDuplicadosPeso(){
 }
 window.removerDuplicadosPeso=removerDuplicadosPeso;
 
-/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v201) ===== */
+/* ===== Backup diário na nuvem (30 dias) + conferência de pesos (v202) ===== */
 const BKN_MAX=600000,BKN_DIAS=30;
 let bkRodando=false;
 function bkCol(){return firebaseRoot().collection('backups')}
@@ -464,7 +464,7 @@ function confPesosAviso(){
 }
 setTimeout(confPesosAviso,9000);
 
-/* ===== Ficha completa: busca por código, OF, descrição ou material (v201) ===== */
+/* ===== Ficha completa: busca por código, OF, descrição ou material (v202) ===== */
 const __nz=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
 const __f2=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:2});
 const __f0=v=>Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
@@ -639,7 +639,7 @@ function fichaBuscar(q0){
 }
 window.fichaBuscar=fichaBuscar;window.fichaAbrir=fichaAbrir;
 
-/* ===== Sincronização por lançamento (v201) =====
+/* ===== Sincronização por lançamento (v202) =====
    Cada lançamento vira um documento próprio (apps/controleRefugos2026/refugos/{_rid}) com identificador
    fixo (_rid) e hora da última alteração (_rts). Exclusão grava uma "lápide" (_del). Vale o mais recente.
    A migração é feita uma vez (com backup); antes dela o sistema continua no modo antigo (blocos). */
@@ -2967,6 +2967,7 @@ function renderProducao(){
   try{renderRendimento()}catch(e){console.error(e)}
   try{renderLingGotas()}catch(e){console.error(e)}
   try{renderRendForno()}catch(e){console.error(e)}
+  try{prodTotalRender();prodAbaAplicar()}catch(e){console.error(e)}
   updateSecurityUI();
 }
 /* Rendimento = peso líquido ÷ bruto fundido, mês a mês (só dias com líquido informado) */
@@ -2980,7 +2981,7 @@ function renderRendimento(){
     const com=ds.filter(p=>p.kgLiq!=null&&p.kgLiq!==''),b=com.reduce((s,p)=>s+n(p.kg),0),l=com.reduce((s,p)=>s+n(p.kgLiq),0),tot=ds.reduce((s,p)=>s+n(p.kg),0);
     if(!ds.length)continue;tB+=b;tL+=l;
     const r=b?l/b*100:null;
-    lin.push('<tr><td>'+esc(M[m-1]||m)+'</td><td>'+fmt(tot)+' kg</td><td>'+(com.length?fmt(l)+' kg':'—')+'</td><td><strong>'+(r==null?'—':fmt(r)+'%')+'</strong></td><td class="small">'+com.length+'/'+ds.length+' dias</td></tr>');
+    lin.push('<tr data-pk="'+y+'-'+String(m).padStart(2,'0')+'" style="cursor:pointer" title="Clique para ver os dias"><td>'+esc(M[m-1]||m)+'</td><td>'+fmt(tot)+' kg</td><td>'+(com.length?fmt(l)+' kg':'—')+'</td><td><strong>'+(r==null?'—':fmt(r)+'%')+'</strong></td><td class="small">'+com.length+'/'+ds.length+' dias</td></tr>');
   }
   box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento da Fundição — '+y+'</h3><div class="small">Peso líquido produzido ÷ kg fundidos (bruto), só nos dias em que o líquido foi informado.</div></div><div class="cad-count">'+(tB?'Ano: '+fmt(tL/tB*100)+'%':'sem líquido')+'</div></div>'+(lin.length?'<div class="tablewrap"><table><thead><tr><th>Mês</th><th>Kg fundidos</th><th>Kg líquido</th><th>Rendimento</th><th>Dias com líquido</th></tr></thead><tbody>'+lin.join('')+'</tbody></table></div>':'<div class="small">Nenhum dia lançado em '+y+'.</div>');
 }
@@ -3007,21 +3008,21 @@ function rendResumoHtml(iso,o){
 function rendEixo(mx,Lm,T,ch,W,suf){let sv='';for(let g=0;g<=4;g++){const y=T+ch-g*ch/4;sv+='<line x1="'+Lm+'" x2="'+(W-10)+'" y1="'+y+'" y2="'+y+'" stroke="currentColor" stroke-opacity=".18" stroke-width="1"/><text x="'+(Lm-8)+'" y="'+(y+4)+'" text-anchor="end" font-size="12" fill="currentColor" fill-opacity=".75">'+(suf?(Math.round(mx*g/4*10)/10).toLocaleString('pt-BR')+'%':fmt(mx*g/4))+'</text>'}return sv}
 function rendNice(v){const e=Math.pow(10,Math.floor(Math.log10(v||1))),m=v/e;return(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*e}
 const rendPc=v=>(Math.round(v*10)/10).toLocaleString('pt-BR')+'%';
-function rendEmpilhado(labels,P,L,G,h){
+function rendEmpilhado(labels,P,L,G,h,keys){
   const W=900,H=h||340,Lm=64,T=34,B=36,cw=W-Lm-10,ch=H-T-B,n=labels.length||1,st=cw/n,bw=Math.min(64,st*.7),big=bw>=40;
   const tot=labels.map((_,i)=>P[i]+L[i]+G[i]);const mx=rendNice(Math.max(1,...tot)*1.05);
   let sv='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" role="img">'+rendEixo(mx,Lm,T,ch,W,false);
   labels.forEach((lb,i)=>{const x=Lm+i*st+(st-bw)/2,t=tot[i]||1;let y=T+ch;
     if(!tot[i]){sv+='<text x="'+(x+bw/2)+'" y="'+(H-12)+'" text-anchor="middle" font-size="'+(n>16?10:12)+'" fill="currentColor" fill-opacity=".5">'+lb+'</text>';return}
     [[P[i],'#22c55e','Peso bruto'],[L[i],'#ff6a1f','Lingotes'],[G[i],'#8fa6bd','Gotas/respingos']].forEach(([v,c,nm],k)=>{const h2=v/mx*ch;if(h2<=0)return;y-=h2;
-      sv+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h2,1.5)+'" rx="2" fill="'+c+'"><title>'+lb+' — '+nm+': '+fmt(Math.round(v*10)/10)+' kg ('+rendPc(v/t*100)+')</title></rect>';
+      sv+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h2,1.5)+'" rx="2" fill="'+c+'"'+(keys?' data-pk="'+keys[i]+'" style="cursor:pointer"':'')+'><title>'+lb+' — '+nm+': '+fmt(Math.round(v*10)/10)+' kg ('+rendPc(v/t*100)+')</title></rect>';
       if(k===0&&big&&h2>=22)sv+='<text x="'+(x+bw/2)+'" y="'+(y+h2/2+4)+'" text-anchor="middle" font-size="12" font-weight="700" fill="#052e16">'+fmt(Math.round(v))+'</text>'});
     sv+='<text x="'+(x+bw/2)+'" y="'+(y-8)+'" text-anchor="middle" font-size="'+(big?14:11)+'" font-weight="800" fill="#22c55e">'+rendPc(P[i]/t*100)+'</text>';
     sv+='<text x="'+(x+bw/2)+'" y="'+(H-12)+'" text-anchor="middle" font-size="'+(n>16?10:12)+'" fill="currentColor">'+lb+'</text>'});
   return sv+'</svg><div class="small" style="margin-top:4px"><span style="color:#22c55e">●</span> Peso bruto das corridas (o % no topo é o rendimento) &nbsp; <span style="color:#ff6a1f">●</span> Lingotes &nbsp; <span style="color:#8fa6bd">●</span> Gotas/respingos</div>';
 }
 /* perdas em % do total fundido: lingotes e gotas lado a lado, com o valor de cada barra */
-function rendPerdas(labels,P,L,G,h){
+function rendPerdas(labels,P,L,G,h,keys){
   const W=900,H=h||260,Lm=64,T=30,B=36,cw=W-Lm-10,ch=H-T-B,n=labels.length||1,st=cw/n,bw=Math.min(34,st*.34),big=bw>=18;
   const pl=labels.map((_,i)=>{const t=P[i]+L[i]+G[i];return t?L[i]/t*100:0}),pg=labels.map((_,i)=>{const t=P[i]+L[i]+G[i];return t?G[i]/t*100:0});
   const mx=rendNice(Math.max(1,...pl,...pg)*1.2);
@@ -3029,12 +3030,73 @@ function rendPerdas(labels,P,L,G,h){
   labels.forEach((lb,i)=>{const cx=Lm+i*st+st/2;
     if(!(P[i]+L[i]+G[i])){sv+='<text x="'+cx+'" y="'+(H-12)+'" text-anchor="middle" font-size="'+(n>16?10:12)+'" fill="currentColor" fill-opacity=".5">'+lb+'</text>';return}
     [[pl[i],'#ff6a1f',cx-bw-1,'Lingotes',L[i]],[pg[i],'#8fa6bd',cx+1,'Gotas/respingos',G[i]]].forEach(([v,c,x,nm,kg])=>{const h2=v/mx*ch,y=T+ch-h2;
-      sv+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h2,1.5)+'" rx="2" fill="'+c+'"><title>'+lb+' — '+nm+': '+rendPc(v)+' ('+fmt(Math.round(kg*10)/10)+' kg)</title></rect>';
+      sv+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h2,1.5)+'" rx="2" fill="'+c+'"'+(keys?' data-pk="'+keys[i]+'" style="cursor:pointer"':'')+'><title>'+lb+' — '+nm+': '+rendPc(v)+' ('+fmt(Math.round(kg*10)/10)+' kg)</title></rect>';
       if(big||n<=14)sv+='<text x="'+(x+bw/2)+'" y="'+(y-5)+'" text-anchor="middle" font-size="'+(big?12:10)+'" font-weight="700" fill="'+c+'">'+(Math.round(v*10)/10).toLocaleString('pt-BR')+'</text>'});
     sv+='<text x="'+cx+'" y="'+(H-12)+'" text-anchor="middle" font-size="'+(n>16?10:12)+'" fill="currentColor">'+lb+'</text>'});
   return sv+'</svg><div class="small" style="margin-top:4px"><span style="color:#ff6a1f">●</span> Lingotes (% do total fundido) &nbsp; <span style="color:#8fa6bd">●</span> Gotas/respingos (% do total fundido)</div>';
 }
 window.__ling.rendPerdas=rendPerdas;window.__ling.rendDia=rendDia;window.__ling.rendResumoHtml=rendResumoHtml;window.__ling.rendEmpilhado=rendEmpilhado;
+/* ===== Análise da produção: abas + produção total (kg bruto × líquido) + detalhe ao clicar ===== */
+let prodAba='total';
+function prodNum(v){return fmt(Math.round((+v||0)*10)/10)}
+function prodBarras(labels,keys,series,H){
+  const n=labels.length||1,W=920,HH=H||330,Lm=64,T=30,B=34,cw=W-Lm-10,ch=HH-T-B,st=cw/n,k=series.length,bw=Math.min(44,st*.82/k);
+  const mx=rendNice(Math.max(1,...series.flatMap(s=>s.values.map(v=>+v||0)))*1.14);
+  let sv='<svg viewBox="0 0 '+W+' '+HH+'" style="width:100%;height:auto" role="img">'+rendEixo(mx,Lm,T,ch,W,false);
+  labels.forEach((lb,i)=>{const cx=Lm+i*st+st/2;
+    sv+='<rect data-pk="'+keys[i]+'" x="'+(cx-st/2)+'" y="'+T+'" width="'+st+'" height="'+(ch+B)+'" fill="currentColor" fill-opacity="0" style="cursor:pointer"><title>Clique para ver o detalhe de '+lb+'</title></rect>';
+    series.forEach((s,j)=>{const v=+s.values[i]||0,h2=v/mx*ch,x=cx-k*bw/2+j*bw,y=T+ch-h2;if(v<=0)return;
+      sv+='<rect data-pk="'+keys[i]+'" x="'+x+'" y="'+y+'" width="'+(bw-2)+'" height="'+Math.max(h2,1.5)+'" rx="3" fill="'+s.color+'" style="cursor:pointer"><title>'+lb+' — '+s.name+': '+prodNum(v)+' kg</title></rect>';
+      if(bw>=26)sv+='<text x="'+(x+(bw-2)/2)+'" y="'+(y-5)+'" text-anchor="middle" font-size="'+(n>10?10:11)+'" font-weight="700" fill="'+s.color+'" pointer-events="none">'+fmt(Math.round(v))+'</text>'});
+    sv+='<text x="'+cx+'" y="'+(HH-10)+'" text-anchor="middle" font-size="12" fill="currentColor" pointer-events="none">'+lb+'</text>'});
+  return sv+'</svg><div class="small" style="margin-top:4px">'+series.map(s=>'<span style="color:'+s.color+'">●</span> '+s.name).join(' &nbsp; ')+' &nbsp; • clique em uma barra para ver o detalhe</div>';
+}
+function prodTotalRender(){
+  const base=document.getElementById('prodRendimento');if(!base)return;
+  let box=document.getElementById('prodTotal');if(!box){box=document.createElement('div');box.id='prodTotal';box.className='panel';box.style.marginTop='16px';base.parentNode.insertBefore(box,base)}
+  const y=prodCalAno,M=MESES_PRODUCAO||[],lab=[],keys=[],Bv=[],Lv=[];let tB=0,tL=0,dB=0,dL=0,dias=0;
+  for(let m=1;m<=12;m++){
+    const ds=producaoFundicao.filter(p=>isProdDia(p)&&productionYear(p)===y&&productionMonth(p)===m);if(!ds.length)continue;
+    const b=ds.reduce((s,p)=>s+n(p.kg),0),com=ds.filter(p=>p.kgLiq!=null&&p.kgLiq!==''),l=com.reduce((s,p)=>s+n(p.kgLiq),0);
+    lab.push(String(M[m-1]||m).slice(0,3));keys.push(y+'-'+String(m).padStart(2,'0'));Bv.push(b);Lv.push(l);tB+=b;tL+=l;dias+=ds.length;dB+=com.reduce((s,p)=>s+n(p.kg),0);dL+=l;
+  }
+  const kp=(t,v,s)=>'<div style="flex:1;min-width:150px;border:1px solid var(--border,#8884);border-radius:10px;padding:8px 12px"><div class="small">'+t+'</div><div style="font-size:20px;font-weight:800">'+v+'</div><div class="small">'+(s||'')+'</div></div>';
+  box.innerHTML='<div class="cad-section-head"><div><h3>Produção total — '+y+'</h3><div class="small">Kg bruto = kg fundidos no dia (total dos panelões). Kg líquido = peso líquido informado no dia. Clique em um mês para ver os dias.</div></div></div>'+
+    (lab.length?'<div style="display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 12px">'+kp('Produção bruta no ano',fmt(Math.round(tB))+' kg',dias+' dias lançados')+kp('Produção líquida no ano',tL?fmt(Math.round(tL))+' kg':'—','só nos dias com líquido informado')+kp('Rendimento líquido ÷ bruto',dB?(Math.round(dL/dB*1000)/10).toLocaleString('pt-BR')+'%':'—','nos dias com líquido')+'</div>'+prodBarras(lab,keys,[{name:'Kg bruto (fundido)',color:'#3b82f6',values:Bv},{name:'Kg líquido',color:'#22c55e',values:Lv}]):'<div class="small">Sem produção lançada em '+y+'.</div>');
+}
+function prodDetalheMes(ym){
+  const B=lingBase(),rec=new Map(producaoFundicao.filter(isProdDia).map(p=>[p.data,p]));
+  const ds=[...new Set([...B.keys(),...rec.keys()])].filter(d=>d.slice(0,7)===ym&&rec.has(d)).sort();
+  const o=bkPopup('',true),[yy,mm]=ym.split('-');o.querySelector('#appPopupTitulo').textContent='📦 Produção de '+(MESES_PRODUCAO[+mm-1]||mm)+'/'+yy;
+  let tb=0,tl=0,tL=0,tG=0,tn=0,tc=0;
+  const th='style="text-align:right;padding:5px 8px"',td='style="text-align:right;padding:5px 8px"';
+  const rows=ds.map(d=>{const p=rec.get(d),b=B.get(d)||{l:0,g:0,p:0,det:[]},kb=n(p.kg),kl=p.kgLiq!=null&&p.kgLiq!==''?n(p.kgLiq):null,nc=b.det.length||n(p.corridas);
+    tb+=kb;if(kl!=null)tl+=kl;tL+=b.l;tG+=b.g;tn+=b.p;tc+=nc;
+    return '<tr data-pk="'+d+'" style="cursor:pointer;border-top:1px solid var(--border,#8883)"><td style="padding:5px 8px"><b>'+d.slice(8)+'/'+d.slice(5,7)+'</b></td><td '+td+'>'+nc+'</td><td '+td+'>'+prodNum(kb)+'</td><td '+td+'>'+(b.p?prodNum(b.p):'—')+'</td><td '+td+'>'+(kl!=null?prodNum(kl):'—')+'</td><td '+td+'>'+(kl!=null&&kb?(Math.round(kl/kb*1000)/10).toLocaleString('pt-BR')+'%':'—')+'</td><td '+td+'>'+(b.l?prodNum(b.l):'—')+'</td><td '+td+'>'+(b.g?prodNum(b.g):'—')+'</td></tr>'}).join('');
+  o.querySelector('#appPopupCorpo').innerHTML='<div class="small" style="margin-bottom:8px">Clique em um dia para ver as corridas.</div><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:5px 8px">Dia</th><th '+th+'>Corridas</th><th '+th+'>Kg bruto (total panelões)</th><th '+th+'>Peso bruto sem lingotes/respingos</th><th '+th+'>Kg líquido</th><th '+th+'>Líq. ÷ bruto</th><th '+th+'>Lingotes</th><th '+th+'>Respingos</th></tr></thead><tbody>'+(rows||'<tr><td colspan="8" style="padding:8px">Sem dias lançados.</td></tr>')+
+    '<tr style="border-top:2px solid var(--border,#8886);font-weight:800"><td style="padding:5px 8px">Total</td><td '+td+'>'+tc+'</td><td '+td+'>'+prodNum(tb)+'</td><td '+td+'>'+prodNum(tn)+'</td><td '+td+'>'+(tl?prodNum(tl):'—')+'</td><td '+td+'></td><td '+td+'>'+prodNum(tL)+'</td><td '+td+'>'+prodNum(tG)+'</td></tr></tbody></table></div>';
+}
+function prodDetalheDia(iso){
+  const p=producaoFundicao.find(x=>isProdDia(x)&&x.data===iso)||{},b=lingBase().get(iso)||{l:0,g:0,p:0,det:[]};
+  const o=bkPopup('',true);o.querySelector('#appPopupTitulo').textContent='📅 Produção de '+iso.split('-').reverse().join('/');
+  const kb=n(p.kg),kl=p.kgLiq!=null&&p.kgLiq!==''?n(p.kgLiq):null;
+  o.querySelector('#appPopupCorpo').innerHTML='<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">'+
+    [['Kg bruto (total panelões)',prodNum(kb)+' kg'],['Kg líquido',kl!=null?prodNum(kl)+' kg':'—'],['Líquido ÷ bruto',kl!=null&&kb?(Math.round(kl/kb*1000)/10).toLocaleString('pt-BR')+'%':'—'],['Corridas',b.det.length||n(p.corridas)]].map(x=>'<div style="flex:1;min-width:140px;border:1px solid var(--border,#8884);border-radius:10px;padding:8px 12px"><div class="small">'+x[0]+'</div><div style="font-size:19px;font-weight:800">'+x[1]+'</div></div>').join('')+'</div>'+
+    (b.p>0?rendResumoHtml(iso,b):'')+
+    (b.det.length?'<h4 style="margin:14px 0 6px">Corridas do dia</h4><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:4px 8px">Nº</th><th style="text-align:left;padding:4px 8px">Material</th><th style="text-align:right;padding:4px 8px">Lingotes (kg)</th><th style="text-align:right;padding:4px 8px">Respingos (kg)</th></tr></thead><tbody>'+b.det.map(c=>'<tr style="border-top:1px solid var(--border,#8883)"><td style="padding:4px 8px"><b>'+corrFmt(c[0])+'</b></td><td style="padding:4px 8px">'+esc(c[3]||'—')+'</td><td style="text-align:right;padding:4px 8px">'+prodNum(c[1])+'</td><td style="text-align:right;padding:4px 8px">'+prodNum(c[2])+'</td></tr>').join('')+'</tbody></table>':'')+
+    (p.fundido?'<div class="small" style="margin-top:10px"><b>O que fundiu:</b> '+esc(p.fundido)+'</div>':'')+(p.observacao?'<div class="small"><b>Obs.:</b> '+esc(p.observacao)+'</div>':'');
+}
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-pk]');if(!t)return;const k=t.getAttribute('data-pk');
+  if(/^\d{4}-\d{2}-\d{2}$/.test(k))prodDetalheDia(k);else if(/^\d{4}-\d{2}$/.test(k))prodDetalheMes(k)});
+const PROD_ABAS=[['total','📦 Produção total',['prodTotal']],['rend','🔥 Rendimento do forno',['prodRendForno','prodRendimento']],['ling','🧲 Lingotes e gotas',['prodLingGotas']],['corr','🔢 Por corrida e material',['prodPorCorrida']]];
+function prodAbaAplicar(){
+  const base=document.getElementById('prodTotal');if(!base)return;
+  let bar=document.getElementById('prodAbas');
+  if(!bar){bar=document.createElement('div');bar.id='prodAbas';bar.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin-top:18px';base.parentNode.insertBefore(bar,base)}
+  bar.innerHTML=PROD_ABAS.map(a=>'<button type="button" class="btn '+(a[0]===prodAba?'primary':'secondary')+'" data-aba="'+a[0]+'">'+a[1]+'</button>').join('');
+  bar.querySelectorAll('button').forEach(b=>b.onclick=()=>{prodAba=b.dataset.aba;prodAbaAplicar()});
+  PROD_ABAS.forEach(a=>a[2].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=a[0]===prodAba?'':'none'}));
+}
 function renderRendForno(){
   const base=document.getElementById('prodLingGotas');if(!base)return;
   let box=document.getElementById('prodRendForno');if(!box){box=document.createElement('div');box.id='prodRendForno';box.className='panel';box.style.marginTop='16px';base.parentNode.insertBefore(box,base.nextSibling)}
@@ -3044,7 +3106,7 @@ function renderRendForno(){
   const sel=document.getElementById('producaoData')?.value,dia=dias.includes(sel)?sel:dias[dias.length-1];
   const P=dias.map(d=>B.get(d).p),L=dias.map(d=>B.get(d).l),G=dias.map(d=>B.get(d).g),sp=P.reduce((a,b)=>a+b,0),sl=L.reduce((a,b)=>a+b,0),sg=G.reduce((a,b)=>a+b,0),tt=sp+sl+sg;
   box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+M+'/'+y+'</h3><div class="small">Total dos panelões (“Kg fundidos no dia” do formulário, já com lingotes e respingos) − lingotes − gotas/respingos = peso bruto das corridas. Mostra o dia selecionado no calendário (ou o último do mês).</div></div><div class="cad-count">Mês: '+fmt(Math.round(tt))+' kg fundidos • rendimento '+(tt?(Math.round(sp/tt*1000)/10).toLocaleString('pt-BR'):'0')+'%</div></div>'+
-    rendResumoHtml(dia,B.get(dia))+'<div style="margin-top:14px">'+rendEmpilhado(dias.map(d=>d.slice(8)),P,L,G)+'</div><h4 style="margin:16px 0 6px">Perdas por dia (% do total fundido)</h4>'+rendPerdas(dias.map(d=>d.slice(8)),P,L,G);
+    rendResumoHtml(dia,B.get(dia))+'<div style="margin-top:14px">'+rendEmpilhado(dias.map(d=>d.slice(8)),P,L,G,undefined,dias)+'</div><h4 style="margin:16px 0 6px">Perdas por dia (% do total fundido)</h4>'+rendPerdas(dias.map(d=>d.slice(8)),P,L,G,undefined,dias);
 }
 /* editor de corridas do dia (nº, lingotes, respingos) */
 function corrAdd(nn,l,r,mat){const box=document.getElementById('producaoCorrList');if(!box)return;const d=document.createElement('div');d.className='corrRow';d.style.cssText='display:flex;gap:6px;margin:4px 0;align-items:center';
@@ -3065,8 +3127,8 @@ function renderLingGotas(){
   dia.forEach((o,d)=>{if(d.slice(0,4)!==String(y))return;const m=Number(d.slice(5,7));if(!m)return;L[m-1]+=o.l;G[m-1]+=o.g;if(o.l)temL=true;if(o.g)temG=true});
   const tl=L.reduce((a,b)=>a+b,0),tg=G.reduce((a,b)=>a+b,0);
   box.innerHTML='<div class="cad-section-head"><div><h3>Lingotada e gotas — '+y+'</h3><div class="small">Kg lingotados e kg de gotas lançados por dia, somados por mês.</div></div><div class="cad-count">'+(temL||temG?'Ano: '+fmt(tl)+' kg lingotados • '+fmt(tg)+' kg de gotas':'sem lançamentos')+'</div></div>'+
-    (temL||temG?'<div style="position:relative;height:300px"><canvas id="chartLingGotas" style="width:100%;height:300px"></canvas></div><div class="small" style="margin-top:6px"><span style="color:var(--orange,#ff5a18)">●</span> Kg lingotados &nbsp; <span style="color:var(--canvas-secondary,#142b49)">●</span> Kg de gotas</div>':'<div class="small">Preencha “Kg lingotados” e “Kg de gotas” ao lançar a produção do dia para ver o gráfico.</div>');
-  if(temL||temG){try{drawLine('chartLingGotas',M.map(x=>x.slice(0,3)),[{values:L,unit:'kg'},{values:G,unit:'kg'}])}catch(e){console.error(e)}}
+    (temL||temG?'<div id="chartLingGotasSvg"></div>':'<div class="small">Preencha “Kg lingotados” e “Kg de gotas” ao lançar a produção do dia para ver o gráfico.</div>');
+  if(temL||temG){const ix=[...Array(12).keys()].filter(i=>L[i]||G[i]);document.getElementById('chartLingGotasSvg').innerHTML=prodBarras(ix.map(i=>M[i].slice(0,3)),ix.map(i=>y+'-'+String(i+1).padStart(2,'0')),[{name:'Kg lingotados',color:'#ff6a1f',values:ix.map(i=>L[i])},{name:'Kg de gotas/respingos',color:'#8fa6bd',values:ix.map(i=>G[i])}],300)}
   const ymK=y+'-'+String(prodCalMes).padStart(2,'0');let cd=[];[...lingBase().keys()].filter(d=>d.slice(0,7)===ymK).sort().forEach(d=>lingBase().get(d).det.forEach(c=>cd.push(c)));
   let b2=document.getElementById('prodPorCorrida');if(!b2){b2=document.createElement('div');b2.id='prodPorCorrida';b2.className='panel';b2.style.marginTop='16px';box.parentNode.insertBefore(b2,box.nextSibling)}
   if(!cd.length){b2.innerHTML='<div class="cad-section-head"><div><h3>Lingotes e respingos por corrida — '+(M[prodCalMes-1]||'')+'</h3><div class="small">Sem corridas do boletim neste mês.</div></div></div>';return}
@@ -3789,7 +3851,7 @@ function mapImportedProduct(raw){
   };
 }
 
-/* ===== Pesos novos valem só a partir de uma data (v201) =====
+/* ===== Pesos novos valem só a partir de uma data (v202) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
 function __snapPesosCad(){
@@ -3896,7 +3958,7 @@ async function importExcel(mode){
     alert(status.textContent);
   }
 }
-/* ===== Backup COMPLETO do sistema (v201) =====
+/* ===== Backup COMPLETO do sistema (v202) =====
    Guarda: lançamentos, meta, produção bruta da fundição, cadastros, retrabalhos (etiquetas),
    devoluções, reuniões e histórico da fonte. Aceita também backups antigos (só lançamentos). */
 function __bkChaves(){return{
