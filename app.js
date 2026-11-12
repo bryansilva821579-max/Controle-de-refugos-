@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v204';
+window.__V=window.__V||{};window.__V.app='v205';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -3011,32 +3011,48 @@ function rendResumoHtml(iso,o){
 function rendEixo(mx,Lm,T,ch,W,suf){let sv='';for(let g=0;g<=4;g++){const y=T+ch-g*ch/4;sv+='<line x1="'+Lm+'" x2="'+(W-10)+'" y1="'+y+'" y2="'+y+'" stroke="currentColor" stroke-opacity=".18" stroke-width="1"/><text x="'+(Lm-8)+'" y="'+(y+4)+'" text-anchor="end" font-size="12" fill="currentColor" fill-opacity=".75">'+(suf?(Math.round(mx*g/4*10)/10).toLocaleString('pt-BR')+'%':fmt(mx*g/4))+'</text>'}return sv}
 function rendNice(v){const e=Math.pow(10,Math.floor(Math.log10(v||1))),m=v/e;return(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*e}
 const rendPc=v=>(Math.round(v*10)/10).toLocaleString('pt-BR')+'%';
-function rendEmpilhado(labels,P,L,G,h,keys){
+/* ===== Animações e estilos dos gráficos de rendimento (v205) ===== */
+function rendCss(){if(document.getElementById('rendCss'))return;const s=document.createElement('style');s.id='rendCss';
+  s.textContent='@keyframes rGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}@keyframes rGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}@keyframes rFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}@keyframes rPie{from{transform:scale(.15) rotate(-140deg);opacity:0}to{transform:none;opacity:1}}'+
+  '.rA{transform-box:fill-box;transform-origin:50% 100%;animation:rGrow .75s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s);transition:filter .15s}.rA:hover{filter:brightness(1.18)}'+
+  '.rT{animation:rFade .5s ease both;animation-delay:calc(var(--d,0s) + .5s)}.rPie{transform-box:view-box;transform-origin:110px 110px;animation:rPie .95s cubic-bezier(.2,.7,.2,1) both}'+
+  '.rW{display:block;height:100%;border-radius:4px;transform-origin:left;animation:rGrowX .8s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s)}.rCard{animation:rFade .5s ease both;animation-delay:var(--d,0s)}'+
+  '.rK{flex:1;min-width:150px;border:1px solid var(--border,#8884);border-radius:12px;padding:10px 14px}.rK .rKv{font-size:24px;font-weight:800;line-height:1.25}'+
+  '.rBar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 4px}.rBar input[type=date],.rBar select{padding:6px 8px}'+
+  '@media (prefers-reduced-motion:reduce){.rA,.rT,.rPie,.rW,.rCard{animation:none!important}}';
+  document.head.appendChild(s)}
+function rendAnimNums(root){const rm=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;if(rm)return;
+  root.querySelectorAll('[data-cnt]').forEach(el=>{const v=+el.dataset.cnt,dec=+el.dataset.dec||0,suf=el.dataset.suf||'';if(!isFinite(v))return;
+    const ft=x=>x.toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec})+suf,t0=performance.now();
+    const step=t=>{const k=Math.min(1,(t-t0)/850),e=1-Math.pow(1-k,3);el.textContent=ft(v*e);if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)})}
+function rendPerdaF(o){const pan=(+o.p||0)+(+o.l||0)+(+o.g||0);return(+o.cf>0)?Math.max(0,o.cf-pan):0}
+function rendEmpilhado(labels,P,L,G,h,keys,F){
+  rendCss();F=F||labels.map(()=>0);
   const W=900,H=h||340,Lm=64,T=34,B=36,cw=W-Lm-10,ch=H-T-B,n=labels.length||1,st=cw/n,bw=Math.min(64,st*.7),big=bw>=40;
-  const tot=labels.map((_,i)=>P[i]+L[i]+G[i]);const mx=rendNice(Math.max(1,...tot)*1.05);
+  const tot=labels.map((_,i)=>P[i]+L[i]+G[i]+F[i]);const mx=rendNice(Math.max(1,...tot)*1.05);
   let sv='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" role="img">'+rendEixo(mx,Lm,T,ch,W,false);
   labels.forEach((lb,i)=>{const x=Lm+i*st+(st-bw)/2,t=tot[i]||1;let y=T+ch;
     if(!tot[i]){sv+='<text x="'+(x+bw/2)+'" y="'+(H-12)+'" text-anchor="middle" font-size="'+(n>16?10:12)+'" fill="currentColor" fill-opacity=".5">'+lb+'</text>';return}
-    [[P[i],'#22c55e','Peso bruto'],[L[i],'#ff6a1f','Lingotes'],[G[i],'#8fa6bd','Gotas/respingos']].forEach(([v,c,nm],k)=>{const h2=v/mx*ch;if(h2<=0)return;y-=h2;
-      sv+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h2,1.5)+'" rx="2" fill="'+c+'"'+(keys?' data-pk="'+keys[i]+'" style="cursor:pointer"':'')+'><title>'+lb+' — '+nm+': '+fmt(Math.round(v*10)/10)+' kg ('+rendPc(v/t*100)+')</title></rect>';
-      if(k===0&&big&&h2>=22)sv+='<text x="'+(x+bw/2)+'" y="'+(y+h2/2+4)+'" text-anchor="middle" font-size="12" font-weight="700" fill="#052e16">'+fmt(Math.round(v))+'</text>'});
-    sv+='<text x="'+(x+bw/2)+'" y="'+(y-8)+'" text-anchor="middle" font-size="'+(big?14:11)+'" font-weight="800" fill="#22c55e">'+rendPc(P[i]/t*100)+'</text>';
+    [[P[i],'#22c55e','Peso bruto'],[L[i],'#ff6a1f','Lingotes'],[G[i],'#8fa6bd','Gotas/respingos'],[F[i],'#ef4444','Perda na fusão']].forEach(([v,c,nm],k)=>{const h2=v/mx*ch;if(h2<=0)return;y-=h2;
+      sv+='<rect class="rA" x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h2,1.5)+'" rx="2" fill="'+c+'" style="--d:'+(Math.min(i,40)*0.025).toFixed(3)+'s'+(keys?';cursor:pointer':'')+'"'+(keys?' data-pk="'+keys[i]+'"':'')+'><title>'+lb+' — '+nm+': '+fmt(Math.round(v*10)/10)+' kg ('+rendPc(v/t*100)+')</title></rect>';
+      if(k===0&&big&&h2>=22)sv+='<text class="rT" style="--d:'+(Math.min(i,40)*0.025).toFixed(3)+'s" x="'+(x+bw/2)+'" y="'+(y+h2/2+4)+'" text-anchor="middle" font-size="12" font-weight="700" fill="#052e16">'+fmt(Math.round(v))+'</text>'});
+    sv+='<text class="rT" style="--d:'+(Math.min(i,40)*0.025).toFixed(3)+'s" x="'+(x+bw/2)+'" y="'+(y-8)+'" text-anchor="middle" font-size="'+(big?14:11)+'" font-weight="800" fill="#22c55e">'+rendPc(P[i]/t*100)+'</text>';
     sv+='<text x="'+(x+bw/2)+'" y="'+(H-12)+'" text-anchor="middle" font-size="'+(n>16?10:12)+'" fill="currentColor">'+lb+'</text>'});
-  return sv+'</svg><div class="small" style="margin-top:4px"><span style="color:#22c55e">●</span> Peso bruto das corridas (o % no topo é o rendimento) &nbsp; <span style="color:#ff6a1f">●</span> Lingotes &nbsp; <span style="color:#8fa6bd">●</span> Gotas/respingos</div>';
+  return sv+'</svg><div class="small" style="margin-top:4px"><span style="color:#22c55e">●</span> Peso bruto das corridas (o % no topo é o rendimento sobre a carga fria) &nbsp; <span style="color:#ff6a1f">●</span> Lingotes &nbsp; <span style="color:#8fa6bd">●</span> Gotas/respingos &nbsp; <span style="color:#ef4444">●</span> Perda na fusão (carga fria − panelões)</div>';
 }
-/* perdas em % do total fundido: lingotes e gotas lado a lado, com o valor de cada barra */
-function rendPerdas(labels,P,L,G,h,keys){
-  const W=900,H=h||260,Lm=64,T=30,B=36,cw=W-Lm-10,ch=H-T-B,n=labels.length||1,st=cw/n,bw=Math.min(34,st*.34),big=bw>=18;
-  const pl=labels.map((_,i)=>{const t=P[i]+L[i]+G[i];return t?L[i]/t*100:0}),pg=labels.map((_,i)=>{const t=P[i]+L[i]+G[i];return t?G[i]/t*100:0});
-  const mx=rendNice(Math.max(1,...pl,...pg)*1.2);
+function rendPerdas(labels,P,L,G,h,keys,F){
+  rendCss();F=F||labels.map(()=>0);
+  const W=900,H=h||260,Lm=64,T=30,B=36,cw=W-Lm-10,ch=H-T-B,n=labels.length||1,st=cw/n,bw=Math.min(26,st*.27),big=bw>=15,tt=labels.map((_,i)=>P[i]+L[i]+G[i]+F[i]);
+  const S=[['Lingotes','#ff6a1f',L],['Gotas/respingos','#8fa6bd',G],['Perda na fusão','#ef4444',F]].map(([nm,c,A])=>[nm,c,A,labels.map((_,i)=>tt[i]?A[i]/tt[i]*100:0)]);
+  const mx=rendNice(Math.max(1,...S.flatMap(s=>s[3]))*1.2);
   let sv='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" role="img">'+rendEixo(mx,Lm,T,ch,W,true);
   labels.forEach((lb,i)=>{const cx=Lm+i*st+st/2;
-    if(!(P[i]+L[i]+G[i])){sv+='<text x="'+cx+'" y="'+(H-12)+'" text-anchor="middle" font-size="'+(n>16?10:12)+'" fill="currentColor" fill-opacity=".5">'+lb+'</text>';return}
-    [[pl[i],'#ff6a1f',cx-bw-1,'Lingotes',L[i]],[pg[i],'#8fa6bd',cx+1,'Gotas/respingos',G[i]]].forEach(([v,c,x,nm,kg])=>{const h2=v/mx*ch,y=T+ch-h2;
-      sv+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h2,1.5)+'" rx="2" fill="'+c+'"'+(keys?' data-pk="'+keys[i]+'" style="cursor:pointer"':'')+'><title>'+lb+' — '+nm+': '+rendPc(v)+' ('+fmt(Math.round(kg*10)/10)+' kg)</title></rect>';
-      if(big||n<=14)sv+='<text x="'+(x+bw/2)+'" y="'+(y-5)+'" text-anchor="middle" font-size="'+(big?12:10)+'" font-weight="700" fill="'+c+'">'+(Math.round(v*10)/10).toLocaleString('pt-BR')+'</text>'});
+    if(!tt[i]){sv+='<text x="'+cx+'" y="'+(H-12)+'" text-anchor="middle" font-size="'+(n>16?10:12)+'" fill="currentColor" fill-opacity=".5">'+lb+'</text>';return}
+    S.forEach(([nm,c,A,pc],k)=>{const v=pc[i],x=cx-bw*1.5-1+k*(bw+1),h2=v/mx*ch,y=T+ch-h2;
+      sv+='<rect class="rA" x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h2,1.5)+'" rx="2" fill="'+c+'" style="--d:'+(Math.min(i,40)*0.025).toFixed(3)+'s'+(keys?';cursor:pointer':'')+'"'+(keys?' data-pk="'+keys[i]+'"':'')+'><title>'+lb+' — '+nm+': '+rendPc(v)+' ('+fmt(Math.round(A[i]*10)/10)+' kg)</title></rect>';
+      if((big||n<=14)&&v>0)sv+='<text class="rT" style="--d:'+(Math.min(i,40)*0.025).toFixed(3)+'s" x="'+(x+bw/2)+'" y="'+(y-5)+'" text-anchor="middle" font-size="'+(big?11:9)+'" font-weight="700" fill="'+c+'">'+(Math.round(v*10)/10).toLocaleString('pt-BR')+'</text>'});
     sv+='<text x="'+cx+'" y="'+(H-12)+'" text-anchor="middle" font-size="'+(n>16?10:12)+'" fill="currentColor">'+lb+'</text>'});
-  return sv+'</svg><div class="small" style="margin-top:4px"><span style="color:#ff6a1f">●</span> Lingotes (% do total fundido) &nbsp; <span style="color:#8fa6bd">●</span> Gotas/respingos (% do total fundido)</div>';
+  return sv+'</svg><div class="small" style="margin-top:4px"><span style="color:#ff6a1f">●</span> Lingotes &nbsp; <span style="color:#8fa6bd">●</span> Gotas/respingos &nbsp; <span style="color:#ef4444">●</span> Perda na fusão (tudo em % da carga fria)</div>';
 }
 window.__ling.rendPerdas=rendPerdas;window.__ling.rendDia=rendDia;window.__ling.rendResumoHtml=rendResumoHtml;window.__ling.rendEmpilhado=rendEmpilhado;
 /* ===== Análise da produção: abas + produção total (kg bruto × líquido) + detalhe ao clicar ===== */
@@ -3082,7 +3098,7 @@ function prodDetalheMes(ym){
 function prodDetalheDia(iso){
   const p=producaoFundicao.find(x=>isProdDia(x)&&x.data===iso)||{},b=lingBase().get(iso)||{l:0,g:0,p:0,det:[]};
   const o=bkPopup('',true);o.querySelector('#appPopupTitulo').textContent='📅 Produção de '+iso.split('-').reverse().join('/');
-  const kb=n(p.kg),kl=p.kgLiq!=null&&p.kgLiq!==''?n(p.kgLiq):null;
+  const kb=(p.kg!=null&&p.kg!=='')?n(p.kg):(b.p+b.l+b.g),kl=p.kgLiq!=null&&p.kgLiq!==''?n(p.kgLiq):null;
   o.querySelector('#appPopupCorpo').innerHTML='<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">'+
     [['Kg bruto (total panelões)',prodNum(kb)+' kg'],['Kg líquido',kl!=null?prodNum(kl)+' kg':'—'],['Líquido ÷ bruto',kl!=null&&kb?(Math.round(kl/kb*1000)/10).toLocaleString('pt-BR')+'%':'—'],['Corridas',b.det.length||n(p.corridas)]].map(x=>'<div style="flex:1;min-width:140px;border:1px solid var(--border,#8884);border-radius:10px;padding:8px 12px"><div class="small">'+x[0]+'</div><div style="font-size:19px;font-weight:800">'+x[1]+'</div></div>').join('')+'</div>'+
     (b.p>0?rendResumoHtml(iso,b):'')+
@@ -3108,28 +3124,73 @@ function rendPizzaHtml(titulo,o){
   const perda=cf?Math.max(0,cf-pan):0,segs=[['Peso bruto das corridas',+o.p||0,'#22c55e'],['Lingotes',+o.l||0,'#ff6a1f'],['Gotas/respingos',+o.g||0,'#8fa6bd']];
   if(cf)segs.push(['Perda na fusão (carga fria − panelões)',perda,'#ef4444']);
   const tot=segs.reduce((a,x)=>a+x[1],0);if(!tot)return '';
-  const R=100,C=110;let ang=-Math.PI/2,sv='<svg viewBox="0 0 220 220" style="width:220px;height:220px;flex:none" role="img">';
+  rendCss();const R=100,C=110;let ang=-Math.PI/2,sv='<svg viewBox="0 0 220 220" style="width:220px;height:220px;flex:none" role="img"><g class="rPie">';
   segs.forEach(([nm,v,cor])=>{if(v<=0)return;const fr=v/tot,a2=ang+fr*2*Math.PI,pc=fr*100;
     if(fr>=0.9999)sv+='<circle cx="'+C+'" cy="'+C+'" r="'+R+'" fill="'+cor+'"><title>'+nm+': '+f(v)+' kg ('+rendPc(pc)+')</title></circle>';
     else{const x1=C+R*Math.cos(ang),y1=C+R*Math.sin(ang),x2=C+R*Math.cos(a2),y2=C+R*Math.sin(a2);
       sv+='<path d="M'+C+','+C+' L'+x1.toFixed(2)+','+y1.toFixed(2)+' A'+R+','+R+' 0 '+(fr>0.5?1:0)+' 1 '+x2.toFixed(2)+','+y2.toFixed(2)+' Z" fill="'+cor+'" stroke="var(--panel,#fff)" stroke-width="1.5"><title>'+nm+': '+f(v)+' kg ('+rendPc(pc)+')</title></path>'}
     if(fr>=0.06){const am=(ang+a2)/2,tx=C+R*.66*Math.cos(am),ty=C+R*.66*Math.sin(am);sv+='<text x="'+tx.toFixed(1)+'" y="'+(ty+4).toFixed(1)+'" text-anchor="middle" font-size="'+(fr>=0.1?14:11)+'" font-weight="800" fill="#fff" stroke="#0007" stroke-width=".6" paint-order="stroke">'+rendPc(pc)+'</text>'}
     ang=a2});
-  sv+='</svg>';
+  sv+='</g></svg>';
   const leg=segs.map(([nm,v,cor])=>'<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><span style="width:12px;height:12px;border-radius:3px;background:'+cor+';flex:none"></span><span style="flex:1">'+nm+'</span><b>'+f(v)+' kg</b><b style="min-width:52px;text-align:right;color:'+cor+'">'+rendPc(v/tot*100)+'</b></div>').join('');
   const eq=cf?'<div class="small" style="margin-top:8px;line-height:1.6"><b>'+f(cf)+' kg</b> carga fria − <b>'+f(pan)+' kg</b> total dos panelões = <b style="color:#ef4444">'+f(perda)+' kg perdidos ('+rendPc(perda/cf*100)+' da carga fria)</b>'+(pan>cf?'<br>⚠ O total dos panelões ficou maior que a carga fria — confira os pesos.':'')+'</div>':'<div class="small" style="margin-top:8px">Sem carga fria lançada neste período — a perda não pode ser calculada.</div>';
   return '<div style="flex:1;min-width:300px"><h4 style="margin:0 0 8px">'+titulo+'</h4><div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">'+sv+'<div style="flex:1;min-width:220px;font-size:14px">'+leg+eq+'</div></div></div>';
 }
+/* ===== Dashboard "Rendimento do forno" com filtro por período (v205) ===== */
+let rendFiltro=null,rendDiaSel='';
+const rendIso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function rendAddDias(iso,k){const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+k);return rendIso(d)}
+function rendPreset(k){
+  const B=lingBase(),ds=[...B.keys()].filter(d=>B.get(d).p>0).sort(),ult=ds[ds.length-1]||prodHojeISO();
+  if(k==='mes')rendFiltro=null;else if(k==='7')rendFiltro={de:rendAddDias(ult,-6),ate:ult,k};else if(k==='30')rendFiltro={de:rendAddDias(ult,-29),ate:ult,k};
+  else if(k==='ano')rendFiltro={de:ult.slice(0,4)+'-01-01',ate:ult,k};else rendFiltro={de:ds[0]||ult,ate:ult,k:'tudo'};
+  renderRendForno();
+}
+function rendFiltroSet(){const de=document.getElementById('rfDe')?.value,ate=document.getElementById('rfAte')?.value;
+  if(!de||!ate)return;if(de>ate)return alert('A data inicial é maior que a final.');rendFiltro={de,ate,k:'x'};renderRendForno()}
+function rendDiaPick(v){rendDiaSel=v;renderRendForno()}
 function renderRendForno(){
   const base=document.getElementById('prodLingGotas');if(!base)return;
   let box=document.getElementById('prodRendForno');if(!box){box=document.createElement('div');box.id='prodRendForno';box.className='panel';box.style.marginTop='16px';base.parentNode.insertBefore(box,base.nextSibling)}
-  const y=prodCalAno,m=prodCalMes,ym=y+'-'+String(m).padStart(2,'0'),B=lingBase(),dias=[...B.keys()].filter(d=>d.slice(0,7)===ym&&B.get(d).p>0).sort();
-  const M=MESES_PRODUCAO[m-1]||'';
-  if(!dias.length){box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+M+'/'+y+'</h3><div class="small">Sem dias com “Kg fundidos” lançados neste mês (use o Boletim para preencher).</div></div></div>';return}
-  const sel=document.getElementById('producaoData')?.value,dia=dias.includes(sel)?sel:dias[dias.length-1];
-  const P=dias.map(d=>B.get(d).p),L=dias.map(d=>B.get(d).l),G=dias.map(d=>B.get(d).g),sp=P.reduce((a,b)=>a+b,0),sl=L.reduce((a,b)=>a+b,0),sg=G.reduce((a,b)=>a+b,0),tt=sp+sl+sg;
-  box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+M+'/'+y+'</h3><div class="small">Total dos panelões (“Kg fundidos no dia” do formulário, já com lingotes e respingos) − lingotes − gotas/respingos = peso bruto das corridas. Mostra o dia selecionado no calendário (ou o último do mês).</div></div><div class="cad-count">Mês: '+fmt(Math.round(tt))+' kg fundidos • rendimento '+(tt?(Math.round(sp/tt*1000)/10).toLocaleString('pt-BR'):'0')+'%</div></div>'+
-    rendResumoHtml(dia,B.get(dia))+'<div style="display:flex;flex-wrap:wrap;gap:24px;margin-top:16px">'+(rendPizzaHtml('Dia '+dia.split('-').reverse().join('/')+' — para onde foi a carga fria',{cf:B.get(dia).cf,p:B.get(dia).p,l:B.get(dia).l,g:B.get(dia).g})||'')+(function(){const ag=rendPizzaAgg(B,d=>d.slice(0,7)===ym);return ag.n?rendPizzaHtml('Mês '+M+'/'+y+' ('+ag.n+' dias com carga fria)',ag):''})()+'</div><div style="margin-top:14px">'+rendEmpilhado(dias.map(d=>d.slice(8)),P,L,G,undefined,dias)+'</div><h4 style="margin:16px 0 6px">Perdas por dia (% do total fundido)</h4>'+rendPerdas(dias.map(d=>d.slice(8)),P,L,G,undefined,dias);
+  rendCss();
+  const y=prodCalAno,m=prodCalMes,ym=y+'-'+String(m).padStart(2,'0'),B=lingBase(),M=MESES_PRODUCAO[m-1]||'';
+  const de=rendFiltro?rendFiltro.de:ym+'-01',ate=rendFiltro?rendFiltro.ate:ym+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
+  const dd=iso=>iso.split('-').reverse().join('/'),f=v=>fmt(Math.round(v*10)/10);
+  const bt=(k,txt)=>'<button type="button" class="btn '+((k==='mes'?!rendFiltro:(rendFiltro&&rendFiltro.k===k))?'primary':'secondary')+'" style="padding:6px 10px" onclick="rendPreset(\''+k+'\')">'+txt+'</button>';
+  const barra='<div class="rBar"><label class="small">De <input type="date" id="rfDe" value="'+de+'" onchange="rendFiltroSet()"></label><label class="small">até <input type="date" id="rfAte" value="'+ate+'" onchange="rendFiltroSet()"></label>'+bt('mes','Mês do calendário')+bt('7','Últimos 7 dias')+bt('30','Últimos 30 dias')+bt('ano','Ano')+bt('tudo','Tudo')+'</div>';
+  const titulo=rendFiltro?dd(de)+' a '+dd(ate):M+'/'+y;
+  const dias=[...B.keys()].filter(d=>d>=de&&d<=ate&&B.get(d).p>0).sort();
+  if(!dias.length){box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+titulo+'</h3><div class="small">Sem dias com boletim ou “Kg fundidos” neste período. Mude o filtro ou lance o Boletim de Fusão.</div></div></div>'+barra;return}
+  const S={cf:0,cfD:0,p:0,l:0,g:0,F:0,T:0,c:0};
+  dias.forEach(d=>{const o=B.get(d),pan=o.p+o.l+o.g;S.p+=o.p;S.l+=o.l;S.g+=o.g;S.F+=rendPerdaF(o);S.T+=o.cf>0?Math.max(o.cf,pan):pan;if(o.cf>0){S.cf+=o.cf;S.cfD++}S.c+=o.det.length});
+  const pc=v=>S.T?v/S.T*100:0,ren=pc(S.p);
+  const card=(lb,v,cor,sub,i)=>'<div class="rK rCard" style="border-left:4px solid '+cor+';--d:'+(i*0.07)+'s"><div class="small">'+lb+'</div><div class="rKv" style="color:'+cor+'"><span data-cnt="'+Math.round(v)+'" data-suf=" kg">'+fmt(Math.round(v))+' kg</span></div><div class="small">'+sub+'</div></div>';
+  const pcs=v=>'<b>'+rendPc(pc(v))+'</b>';
+  const kpis='<div style="display:flex;flex-wrap:wrap;gap:10px;margin:12px 0">'+
+    card('Carga fria',S.cf,'#38bdf8',S.cfD+' dia(s) com carga fria lançada',0)+
+    card('Total dos panelões',S.p+S.l+S.g,'#a78bfa',dias.length+' dia(s) • '+S.c+' corrida(s)',1)+
+    card('Perda na fusão',S.F,'#ef4444',pcs(S.F)+' da carga fria (carga − panelões)',2)+
+    card('Lingotes + respingos',S.l+S.g,'#ff6a1f',pcs(S.l+S.g)+' • '+f(S.l)+' ling. + '+f(S.g)+' resp.',3)+
+    card('Peso bruto das corridas',S.p,'#22c55e','Rendimento do forno: <b>'+rendPc(ren)+'</b>',4)+'</div>';
+  /* pizzas: período e dia escolhido */
+  const ag=rendPizzaAgg(B,d=>d>=de&&d<=ate),sel=dias.includes(rendDiaSel)?rendDiaSel:(dias.includes(document.getElementById('producaoData')?.value)?document.getElementById('producaoData').value:dias[dias.length-1]),os=B.get(sel);
+  const seletor='<select id="rfDia" onchange="rendDiaPick(this.value)" style="padding:4px 6px;margin-left:6px">'+dias.map(d=>'<option value="'+d+'"'+(d===sel?' selected':'')+'>'+dd(d)+'</option>').join('')+'</select>';
+  const pizzas='<div style="display:flex;flex-wrap:wrap;gap:24px;margin-top:8px">'+(ag.n?rendPizzaHtml('Período — '+ag.n+' dia(s) com carga fria',ag):'<div class="small">Nenhum dia do período tem carga fria lançada; a perda na fusão não pode ser calculada.</div>')+
+    '<div style="flex:1;min-width:300px"><div class="small">Ver outro dia:'+seletor+'</div>'+(rendPizzaHtml('Dia '+dd(sel),{cf:os.cf,p:os.p,l:os.l,g:os.g})||'')+'</div></div>';
+  /* barras: por dia (até 45 dias) ou por mês */
+  const mensal=dias.length>45;let lab,keys,P,L,G,F;
+  if(mensal){const g=new Map();dias.forEach(d=>{const k=d.slice(0,7),o=B.get(d),a=g.get(k)||{p:0,l:0,g:0,F:0};a.p+=o.p;a.l+=o.l;a.g+=o.g;a.F+=rendPerdaF(o);g.set(k,a)});
+    keys=[...g.keys()].sort();lab=keys.map(k=>(MESES_PRODUCAO[+k.slice(5)-1]||'').slice(0,3)+'/'+k.slice(2,4));P=keys.map(k=>g.get(k).p);L=keys.map(k=>g.get(k).l);G=keys.map(k=>g.get(k).g);F=keys.map(k=>g.get(k).F)}
+  else{const multi=dias[0].slice(0,7)!==dias[dias.length-1].slice(0,7);keys=dias;lab=dias.map(d=>multi?d.slice(8)+'/'+d.slice(5,7):d.slice(8));P=dias.map(d=>B.get(d).p);L=dias.map(d=>B.get(d).l);G=dias.map(d=>B.get(d).g);F=dias.map(d=>rendPerdaF(B.get(d)))}
+  const graficos='<h4 style="margin:18px 0 6px">Para onde foi a carga fria — '+(mensal?'por mês':'por dia')+' <span class="small">(toque numa barra para ver o detalhe)</span></h4>'+rendEmpilhado(lab,P,L,G,undefined,keys,F)+
+    '<h4 style="margin:18px 0 6px">Perdas '+(mensal?'por mês':'por dia')+' (% da carga fria)</h4>'+rendPerdas(lab,P,L,G,undefined,keys,F);
+  /* por material (só corridas com carga fria) */
+  const mm=new Map();bolTodas().forEach(c=>{if(c[1]<de||c[1]>ate||!(+c[8]>0)||!(+c[5]>0))return;const k=String(c[7]||'').trim()||'(sem material)',o=mm.get(k)||{n:0,cf:0,p:0,l:0,r:0};o.n++;o.cf+=+c[8];o.p+=+c[5];o.l+=+c[3]||0;o.r+=+c[4]||0;mm.set(k,o)});
+  let mat='';if(mm.size){const rows=[...mm.entries()].sort((a,b)=>b[1].n-a[1].n).slice(0,12),mx=Math.max(1,...rows.map(([k,o])=>(o.cf-o.p)/o.cf*100));
+    mat='<h4 style="margin:18px 0 6px">Perda na fusão por material <span class="small">(corridas com carga fria)</span></h4><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:4px 8px">Material</th><th style="text-align:right;padding:4px 8px">Corridas</th><th style="text-align:right;padding:4px 8px">Carga fria (kg)</th><th style="text-align:right;padding:4px 8px">Perda (kg)</th><th style="padding:4px 8px;min-width:160px;text-align:left">Perda % da carga</th><th style="text-align:right;padding:4px 8px">Lingotes %</th><th style="text-align:right;padding:4px 8px">Respingos %</th></tr></thead><tbody>'+
+    rows.map(([k,o],i)=>{const pe=Math.max(0,o.cf-o.p),pp=pe/o.cf*100;return'<tr style="border-top:1px solid var(--border,#8883)"><td style="padding:4px 8px"><b>'+esc(k)+'</b></td><td style="text-align:right;padding:4px 8px">'+o.n+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.cf))+'</td><td style="text-align:right;padding:4px 8px">'+f(pe)+'</td><td style="padding:4px 8px"><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:12px;background:rgba(136,136,136,.18);border-radius:4px;overflow:hidden"><span class="rW" style="width:'+(pp/mx*100).toFixed(1)+'%;background:#ef4444;--d:'+(i*0.05)+'s"></span></div><b style="min-width:44px;text-align:right">'+rendPc(pp)+'</b></div></td><td style="text-align:right;padding:4px 8px">'+rendPc(o.l/o.cf*100)+'</td><td style="text-align:right;padding:4px 8px">'+rendPc(o.r/o.cf*100)+'</td></tr>'}).join('')+'</tbody></table></div>'}
+  box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+titulo+'</h3><div class="small">Carga fria = peso bruto das corridas + lingotes + respingos + perda na fusão. O total dos panelões já inclui lingotes e respingos; a perda é a carga fria menos o total dos panelões.</div></div><div class="cad-count">'+dias.length+' dia(s) • rendimento '+rendPc(ren)+'</div></div>'+barra+kpis+pizzas+graficos+mat;
+  rendAnimNums(box);
 }
 /* ===== Aba "Boletim de Fusão" no Lançamento (v203): carga fria, total dos panelões, lingotes e respingos por corrida ===== */
 const bolKey=c=>String(c[1]).slice(0,4)+'-'+c[0];
@@ -3234,7 +3295,7 @@ function matTabelaHtml(cd){
     rows.map(([k,o])=>'<tr style="border-top:1px solid var(--border,#8883)"><td style="padding:4px 8px"><b>'+esc(k)+'</b></td><td style="text-align:right;padding:4px 8px">'+o.n+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.l*10)/10)+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.r*10)/10)+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.l/o.n*10)/10)+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.r/o.n*10)/10)+'</td></tr>').join('')+'</tbody></table></div>';
 }
 window.__ling.matTabelaHtml=matTabelaHtml;
-window.__ling.rendPizzaHtml=rendPizzaHtml;window.__ling.rendPizzaAgg=rendPizzaAgg;
+window.__ling.rendPizzaHtml=rendPizzaHtml;window.__ling.perdaF=rendPerdaF;window.__ling.rendPizzaAgg=rendPizzaAgg;
 function corrFmt(x){return String(x).padStart(3,'0')}
 function corrRanges(L){L=[...new Set(L)].sort((a,b)=>a-b);const o=[];let i=0;while(i<L.length){let j=i;while(j+1<L.length&&L[j+1]===L[j]+1)j++;o.push(j>i?corrFmt(L[i])+'–'+corrFmt(L[j]):corrFmt(L[i]));i=j+1}return o.join(', ')}
 /* ---- importar a planilha do Boletim de Fusão (.xlsx) direto no navegador, sem biblioteca ---- */

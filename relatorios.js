@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.relatorios='v204';
+window.__V=window.__V||{};window.__V.relatorios='v205';
 /* ==================================================================
    RELATÓRIOS MENSAIS — Retrabalhos e Devoluções
    Mesmo formato do relatório mensal de refugos: gráficos com análise
@@ -539,18 +539,18 @@ function tLing(d){
   const tl=li.reduce((a,b)=>a+b,0),tr=re.reduce((a,b)=>a+b,0),tn=nc.reduce((a,b)=>a+b,0);
   if(!tl&&!tr)return '<div class="p3c"><span class="mu">Sem lingotes/respingos lançados no período.</span></div>';
   const mk=S.b,cor=[];[...dias.keys()].filter(dt=>dt.slice(0,7)===mk).sort().forEach(dt=>dias.get(dt).det.forEach(c=>cor.push(c)));
-  let tp=0,tlR=0,trR=0;dias.forEach((o,dt)=>{if(ms.indexOf(dt.slice(0,7))>=0&&o.p>0){tp+=o.p;tlR+=o.l;trR+=o.g}});
-  const pm=ms.map(()=>0),lR=ms.map(()=>0),rR=ms.map(()=>0);dias.forEach((o,dt)=>{const i=ms.indexOf(dt.slice(0,7));if(i>=0&&o.p>0){pm[i]+=o.p;lR[i]+=o.l;rR[i]+=o.g}});
+  let tp=0,tlR=0,trR=0,tfR=0;const pF=window.__ling.perdaF||(()=>0);dias.forEach((o,dt)=>{if(ms.indexOf(dt.slice(0,7))>=0&&o.p>0){tp+=o.p;tlR+=o.l;trR+=o.g;tfR+=pF(o)}});
+  const pm=ms.map(()=>0),lR=ms.map(()=>0),rR=ms.map(()=>0),fR=ms.map(()=>0);dias.forEach((o,dt)=>{const i=ms.indexOf(dt.slice(0,7));if(i>=0&&o.p>0){pm[i]+=o.p;lR[i]+=o.l;rR[i]+=o.g;fR[i]+=pF(o)}});
   const dm=[...dias.keys()].filter(dt=>dt.slice(0,7)===S.b&&dias.get(dt).p>0).sort(),ult=dm[dm.length-1];
-  const ren=(tp+tlR+trR)?tp/(tp+tlR+trR)*100:0;
+  const ren=(tp+tlR+trR+tfR)?tp/(tp+tlR+trR+tfR)*100:0;
   const ag=L.rendPizzaAgg?L.rendPizzaAgg(dias,dt=>ms.indexOf(dt.slice(0,7))>=0):{n:0,cf:0,p:0,l:0,g:0},perdaAg=ag.cf?ag.cf-(ag.p+ag.l+ag.g):0;
   const pizzaHtml=L.rendPizzaHtml?'<div style="display:flex;flex-wrap:wrap;gap:24px;margin-top:16px">'+(ult&&dias.get(ult).cf>0?L.rendPizzaHtml('Dia '+ult.split('-').reverse().join('/')+' — para onde foi a carga fria',{cf:dias.get(ult).cf,p:dias.get(ult).p,l:dias.get(ult).l,g:dias.get(ult).g}):'')+(ag.n?L.rendPizzaHtml('Período ('+ag.n+' dias com carga fria)',ag):'')+'</div>':'';
   const rendHtml=!tp?'<div class="p3c"><h4>Rendimento do forno</h4><span class="mu">Nenhum dia do período tem “Kg fundidos” lançado. Em Lançamento › Boletim de Fusão, lance as corridas ou importe a planilha; o peso vem do TOTAL PANELÕES.</span></div>':'<div class="p3c"><h4>Rendimento do forno — total dos panelões − lingotes − respingos = peso bruto (kg)</h4>'+
     (ult&&window.__ling.rendResumoHtml?window.__ling.rendResumoHtml(ult,dias.get(ult)):'')+pizzaHtml+
-    '<div style="margin-top:12px">'+window.__ling.rendEmpilhado(ms.map(m=>G().lblM(m).replace('/20','/')),pm,lR,rR)+'</div>'+
-    '<h4 style="margin-top:16px">Perdas por mês (% do total fundido)</h4>'+window.__ling.rendPerdas(ms.map(m=>G().lblM(m).replace('/20','/')),pm,lR,rR)+
-    (dm.length?'<h4 style="margin-top:18px">Por dia — '+G().lblM(S.b)+'</h4>'+window.__ling.rendEmpilhado(dm.map(x=>x.slice(8)),dm.map(x=>dias.get(x).p||0),dm.map(x=>dias.get(x).l),dm.map(x=>dias.get(x).g))+'<h4 style="margin-top:16px">Perdas por dia (% do total fundido)</h4>'+window.__ling.rendPerdas(dm.map(x=>x.slice(8)),dm.map(x=>dias.get(x).p||0),dm.map(x=>dias.get(x).l),dm.map(x=>dias.get(x).g)):'')+
-    '<p class="p3hint">Rendimento no período: <b>'+fm(ren,1)+'%</b> do total dos panelões virou peso bruto de peça; <b>'+fm(100-ren,1)+'%</b> foi lingote e respingo. Considera só os dias com “Kg fundidos” lançados (peso do formulário = TOTAL PANELÕES). O resumo do dia e o gráfico diário são do mês do campo “até”.</p></div>';
+    '<div style="margin-top:12px">'+window.__ling.rendEmpilhado(ms.map(m=>G().lblM(m).replace('/20','/')),pm,lR,rR,undefined,undefined,fR)+'</div>'+
+    '<h4 style="margin-top:16px">Perdas por mês (% da carga fria)</h4>'+window.__ling.rendPerdas(ms.map(m=>G().lblM(m).replace('/20','/')),pm,lR,rR,undefined,undefined,fR)+
+    (dm.length?'<h4 style="margin-top:18px">Por dia — '+G().lblM(S.b)+'</h4>'+window.__ling.rendEmpilhado(dm.map(x=>x.slice(8)),dm.map(x=>dias.get(x).p||0),dm.map(x=>dias.get(x).l),dm.map(x=>dias.get(x).g),undefined,undefined,dm.map(x=>pF(dias.get(x))))+'<h4 style="margin-top:16px">Perdas por dia (% da carga fria)</h4>'+window.__ling.rendPerdas(dm.map(x=>x.slice(8)),dm.map(x=>dias.get(x).p||0),dm.map(x=>dias.get(x).l),dm.map(x=>dias.get(x).g),undefined,undefined,dm.map(x=>pF(dias.get(x)))):'')+
+    '<p class="p3hint">Rendimento no período: <b>'+fm(ren,1)+'%</b> da carga fria virou peso bruto de peça; <b>'+fm(100-ren,1)+'%</b> foi lingote, respingo e perda na fusão (carga fria − total dos panelões). Considera só os dias com boletim lançado. O resumo do dia e o gráfico diário são do mês do campo “até”.</p></div>';
   return '<div class="p3kp">'+kpi('Lingotes',fm(tl)+' kg','<small>no período</small>','',OR)+kpi('Respingos',fm(tr)+' kg','<small>no período</small>','',ST)+kpi('Lingotes + respingos',fm(tl+tr)+' kg','<small>'+fm(tn)+' corridas</small>','',BL)+kpi('Média por corrida',tn?fm((tl+tr)/tn,1)+' kg':'—','<small>'+(tn?fm(tl/tn,1)+' lingotes + '+fm(tr/tn,1)+' respingos':'')+'</small>','',GR)+kpi('Rendimento do forno',tp?fm(ren,1)+'%':'—','<small>peso bruto ÷ total fundido</small>','',GR)+kpi('Perda na fusão',ag.cf?fm(perdaAg)+' kg':'—','<small>'+(ag.cf?fm(perdaAg/ag.cf*100,1)+'% da carga fria':'sem carga fria lançada')+'</small>','',OR)+'</div>'+rendHtml+
    '<div class="p3c"><h4>Lingotes e respingos por mês (kg)</h4>'+combo({labels:ms.map(m=>G().lblM(m)),bars:[{name:'Lingotes',color:OR,values:li},{name:'Respingos',color:ST,values:re}],unit:'kg',vals:true})+'</div>'+
    '<div class="p3c"><h4>Por corrida — '+G().lblM(mk)+' (kg)</h4>'+(cor.length?combo({labels:cor.map(c=>String(c[0]).padStart(3,'0')),bars:[{name:'Lingotes',color:OR,values:cor.map(c=>c[1])},{name:'Respingos',color:ST,values:cor.map(c=>c[2])}],unit:'kg',rot:true})+(window.__ling.matTabelaHtml?window.__ling.matTabelaHtml(cor):'')+'<p class="p3hint">Média no mês: <b>'+fm(sum(cor,c=>c[1])/cor.length,1)+' kg</b> de lingotes e <b>'+fm(sum(cor,c=>c[2])/cor.length,1)+' kg</b> de respingos por corrida. O mês exibido é o do campo “até”.</p>':'<span class="mu">Sem corridas neste mês.</span>')+'</div>';
