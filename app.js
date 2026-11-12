@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v205';
+window.__V=window.__V||{};window.__V.app='v206';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -3114,7 +3114,7 @@ function prodAbaAplicar(){
   if(!bar){bar=document.createElement('div');bar.id='prodAbas';bar.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin-top:18px';base.parentNode.insertBefore(bar,base)}
   bar.innerHTML=PROD_ABAS.map(a=>'<button type="button" class="btn '+(a[0]===prodAba?'primary':'secondary')+'" data-aba="'+a[0]+'">'+a[1]+'</button>').join('');
   bar.querySelectorAll('button').forEach(b=>b.onclick=()=>{prodAba=b.dataset.aba;prodAbaAplicar()});
-  PROD_ABAS.forEach(a=>a[2].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=a[0]===prodAba?'':'none'}));
+  PROD_ABAS.forEach(a=>a[2].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=a[0]===prodAba?'':'none';if(a[0]===prodAba&&prodAba!==window.__prodAbaAnim){el.classList.remove('tAnim');void el.offsetWidth;el.classList.add('tAnim')}}));window.__prodAbaAnim=prodAba;
 }
 /* ===== Pizza da fusão: carga fria = peso bruto + lingotes + respingos + perda (carga fria − total dos panelões) (v203) ===== */
 function rendPizzaAgg(dias,filtro){const a={cf:0,p:0,l:0,g:0,n:0};dias.forEach((o,d)=>{if(filtro&&!filtro(d))return;if(!(o.cf>0)||!(o.p>0))return;a.cf+=o.cf;a.p+=o.p;a.l+=o.l;a.g+=o.g;a.n++});return a}
@@ -3136,6 +3136,98 @@ function rendPizzaHtml(titulo,o){
   const eq=cf?'<div class="small" style="margin-top:8px;line-height:1.6"><b>'+f(cf)+' kg</b> carga fria − <b>'+f(pan)+' kg</b> total dos panelões = <b style="color:#ef4444">'+f(perda)+' kg perdidos ('+rendPc(perda/cf*100)+' da carga fria)</b>'+(pan>cf?'<br>⚠ O total dos panelões ficou maior que a carga fria — confira os pesos.':'')+'</div>':'<div class="small" style="margin-top:8px">Sem carga fria lançada neste período — a perda não pode ser calculada.</div>';
   return '<div style="flex:1;min-width:300px"><h4 style="margin:0 0 8px">'+titulo+'</h4><div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">'+sv+'<div style="flex:1;min-width:220px;font-size:14px">'+leg+eq+'</div></div></div>';
 }
+/* ===== Assistente de análise (v206): roda no próprio app, sem chave e sem enviar dados para fora ===== */
+const asstNorm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+const asstD=iso=>iso.split('-').reverse().join('/').slice(0,5),asstF=v=>fmt(Math.round(v*10)/10);
+function asstDias(de,ate){const B=lingBase();return[...B.keys()].filter(d=>d>=de&&d<=ate&&B.get(d).p>0).sort().map(d=>{const o=B.get(d),pan=o.p+o.l+o.g,F=rendPerdaF(o),T=o.cf>0?Math.max(o.cf,pan):pan;return{d,o,cf:o.cf,pan,p:o.p,l:o.l,g:o.g,F,T,n:o.det.length,ren:T?o.p/T*100:0,pl:T?o.l/T*100:0,pg:T?o.g/T*100:0,pF:T?F/T*100:0}})}
+function asstStat(a){const m=a.reduce((s,x)=>s+x,0)/(a.length||1);return{m,sd:Math.sqrt(a.reduce((s,x)=>s+(x-m)*(x-m),0)/(a.length||1))}}
+function asstCorr(de,ate){return bolTodas().filter(c=>c[1]>=de&&c[1]<=ate&&+c[8]>0&&+c[5]>0).map(c=>({n:c[0],d:c[1],mat:String(c[7]||'').trim()||'(sem material)',cf:+c[8],pan:+c[5],l:+c[3]||0,r:+c[4]||0,pe:Math.max(0,c[8]-c[5]),pp:Math.max(0,c[8]-c[5])/c[8]*100}))}
+function asstMats(cs){const m=new Map();cs.forEach(c=>{const o=m.get(c.mat)||{k:c.mat,n:0,cf:0,pe:0,l:0,r:0};o.n++;o.cf+=c.cf;o.pe+=c.pe;o.l+=c.l;o.r+=c.r;m.set(c.mat,o)});return[...m.values()].map(o=>({...o,pp:o.cf?o.pe/o.cf*100:0})).sort((a,b)=>b.pp-a.pp)}
+function asstSoma(ds){const S={cf:0,cfD:0,p:0,l:0,g:0,F:0,T:0,c:0};ds.forEach(x=>{S.p+=x.p;S.l+=x.l;S.g+=x.g;S.F+=x.F;S.T+=x.T;if(x.cf>0){S.cf+=x.cf;S.cfD++}S.c+=x.n});return S}
+function asstAnalise(de,ate){
+  const ds=asstDias(de,ate),R={resumo:[],alertas:[],acoes:[]};if(!ds.length){R.resumo.push('Não há dias com boletim neste período.');return R}
+  const S=asstSoma(ds),pc=v=>S.T?v/S.T*100:0,cs=asstCorr(de,ate),mats=asstMats(cs);
+  R.resumo.push('De '+asstD(ds[0].d)+' a '+asstD(ds[ds.length-1].d)+': '+ds.length+' dia(s) e '+S.c+' corrida(s). Da carga fria ('+fmt(Math.round(S.cf))+' kg), '+rendPc(pc(S.p))+' virou peso bruto ('+fmt(Math.round(S.p))+' kg); lingotes '+rendPc(pc(S.l))+', respingos '+rendPc(pc(S.g))+' e perda na fusão '+rendPc(pc(S.F))+' ('+fmt(Math.round(S.F))+' kg).');
+  if(ds.length>=6){const h=Math.floor(ds.length/2),a=asstSoma(ds.slice(0,h)),b=asstSoma(ds.slice(h)),ra=a.T?a.p/a.T*100:0,rb=b.T?b.p/b.T*100:0,df=rb-ra;
+    R.resumo.push('Tendência: o rendimento da 2ª metade do período ('+rendPc(rb)+') está '+(Math.abs(df)<0.1?'igual':rendPc(Math.abs(df)).replace('%',' p.p.')+(df>0?' acima':' abaixo'))+' da 1ª metade ('+rendPc(ra)+').');
+    if(df<-0.5)R.acoes.push('O rendimento está caindo ao longo do período: compare as corridas mais recentes com as primeiras para achar o que mudou.')}
+  const mr=[...ds].sort((a,b)=>b.ren-a.ren);if(ds.length>=3)R.resumo.push('Melhor dia: '+asstD(mr[0].d)+' ('+rendPc(mr[0].ren)+'). Pior dia: '+asstD(mr[mr.length-1].d)+' ('+rendPc(mr[mr.length-1].ren)+').');
+  const geral=S.cf?(S.cf-ds.filter(x=>x.cf>0).reduce((s,x)=>s+x.pan,0))/S.cf*100:0,mm=mats.filter(m=>m.n>=3);
+  if(mm.length>1)R.resumo.push('Material com maior perda na fusão: '+mm[0].k+' ('+rendPc(mm[0].pp)+', '+mm[0].n+' corridas); menor: '+mm[mm.length-1].k+' ('+rendPc(mm[mm.length-1].pp)+').');
+  if(mm.length>1&&mm[0].pp>geral*1.12)R.acoes.push('Priorize o material '+mm[0].k+': perda de '+rendPc(mm[0].pp)+' contra '+rendPc(geral)+' da média geral. Vale revisar o processo dessas '+mm[0].n+' corridas.');
+  if(ds.length>=5){const sF=asstStat(ds.map(x=>x.pF)),sL=asstStat(ds.map(x=>x.pl));
+    const aF=ds.filter(x=>x.cf>0&&x.pF>sF.m+1.5*sF.sd&&x.pF>sF.m*1.15).sort((a,b)=>b.pF-a.pF).slice(0,5),aL=ds.filter(x=>x.pl>sL.m+1.5*sL.sd&&x.pl>sL.m*1.15).sort((a,b)=>b.pl-a.pl).slice(0,5);
+    aF.forEach(x=>R.alertas.push('Perda na fusão alta em '+asstD(x.d)+': '+rendPc(x.pF)+' ('+asstF(x.F)+' kg) contra média de '+rendPc(sF.m)+'.'));
+    aL.forEach(x=>R.alertas.push('Lingotes acima do normal em '+asstD(x.d)+': '+rendPc(x.pl)+' ('+asstF(x.l)+' kg) contra média de '+rendPc(sL.m)+'.'));
+    if(aF.length||aL.length)R.acoes.push('Reveja o que aconteceu em '+[...new Set([...aF,...aL].map(x=>asstD(x.d)))].join(', ')+' (dias fora do padrão) cruzando com as corridas e o material desses dias.')}
+  if(cs.length>=8){const sc=asstStat(cs.map(c=>c.pp));cs.filter(c=>c.pp>sc.m+2*sc.sd&&c.pp>sc.m*1.3).sort((a,b)=>b.pp-a.pp).slice(0,4).forEach(c=>R.alertas.push('Corrida '+corrFmt(c.n)+' ('+asstD(c.d)+', '+c.mat+') perdeu '+rendPc(c.pp)+' da carga fria ('+asstF(c.pe)+' kg), bem acima da média de '+rendPc(sc.m)+'.'))}
+  const inc=ds.filter(x=>x.cf>0&&x.pan>x.cf+0.5);if(inc.length)R.alertas.push('Total dos panelões maior que a carga fria em '+inc.length+' dia(s) ('+inc.slice(0,4).map(x=>asstD(x.d)).join(', ')+'): confira os pesos lançados.');
+  const sem=ds.filter(x=>!(x.cf>0));if(sem.length){R.alertas.push(sem.length+' dia(s) sem carga fria lançada ('+sem.slice(0,4).map(x=>asstD(x.d)).join(', ')+(sem.length>4?'…':'')+'): a perda na fusão não é calculada neles.');R.acoes.push('Lance a carga fria dos dias que faltam para a perda na fusão ficar completa.')}
+  if(pc(S.l)>3.5)R.acoes.push('Lingotes somam '+rendPc(pc(S.l))+' da carga fria: vale conferir se a quantidade de metal por corrida está bem ajustada ao que será vazado.');
+  if(!R.alertas.length)R.alertas.push('Nenhum dia ou corrida fora do padrão neste período.');
+  if(!R.acoes.length)R.acoes.push('Sem ações sugeridas: os indicadores do período estão estáveis.');
+  return R;
+}
+const asstMeses=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function asstPergunta(q0){
+  const q=asstNorm(q0);let de=document.getElementById('rfDe')?.value,ate=document.getElementById('rfAte')?.value,nota='';
+  const ano=(ate||'').slice(0,4)||String(new Date().getFullYear()),B=lingBase(),ult=[...B.keys()].filter(d=>B.get(d).p>0).sort().pop()||ate;
+  const mi=asstMeses.findIndex(m=>q.includes(m));
+  if(mi>=0){const mm=String(mi+1).padStart(2,'0');de=ano+'-'+mm+'-01';ate=ano+'-'+mm+'-31';nota='Período: '+asstMeses[mi]+'/'+ano+'. '}
+  else{let r;if((r=q.match(/ultimos?\s+(\d+)\s+dias?/))){de=rendAddDias(ult,-(+r[1]-1));ate=ult;nota='Período: últimos '+r[1]+' dias. '}
+    else if(/ultima semana|essa semana|esta semana/.test(q)){de=rendAddDias(ult,-6);ate=ult;nota='Período: últimos 7 dias. '}
+    else if((r=q.match(/dia\s+(\d{1,2})\/(\d{1,2})/))){const d=ano+'-'+r[2].padStart(2,'0')+'-'+r[1].padStart(2,'0');de=d;ate=d;nota='Período: '+asstD(d)+'. '}
+    else if(/\bhoje\b|ultimo dia/.test(q)){de=ate=ult;nota='Período: último dia com boletim ('+asstD(ult)+'). '}
+    else nota='Período do filtro: '+asstD(de)+' a '+asstD(ate)+'. '}
+  const ds=asstDias(de,ate);if(!ds.length)return[nota+'Não encontrei dias com boletim nesse período.'];
+  const S=asstSoma(ds),pc=v=>S.T?v/S.T*100:0,cs=asstCorr(de,ate),mats0=asstMats(cs),mats=mats0.filter(m=>m.n>=3).length?mats0.filter(m=>m.n>=3):mats0;
+  const has=r=>r.test(q),top=(arr,k,asc)=>[...arr].sort((a,b)=>asc?a[k]-b[k]:b[k]-a[k]);
+  if(has(/sugest|acao|acoes|melhorar|reduzir|o que fazer|recomend/))return[nota].concat(asstAnalise(de,ate).acoes);
+  if(has(/alerta|anomal|fora do (normal|padrao)|problema|atencao/))return[nota].concat(asstAnalise(de,ate).alertas);
+  if(has(/resumo|analise|visao geral|como (estamos|foi|esta)|geral/))return[nota].concat(asstAnalise(de,ate).resumo);
+  if(has(/material|liga|\bggg?\d|\bgg\d/)){if(!mats.length)return[nota+'Sem corridas com carga fria e material nesse período.'];const mt=mats.slice(0,3);
+    const L=[nota+'Materiais por perda na fusão (% da carga fria):'].concat(mt.map((m,i)=>(i+1)+'. '+m.k+': '+rendPc(m.pp)+' ('+asstF(m.pe)+' kg em '+m.n+' corrida(s))'));
+    if(mats.length>3)L.push('Menor perda: '+mats[mats.length-1].k+' ('+rendPc(mats[mats.length-1].pp)+').');return L}
+  if(has(/(melhor|pior|maior|menor|mais|menos).*dia|dia.*(melhor|pior|maior|menor|mais|menos)/)){
+    const met=has(/lingote/)?['pl','lingotes']:has(/respingo|gota/)?['pg','respingos']:has(/rendimento|peso bruto/)?['ren','rendimento']:['pF','perda na fusão'];
+    const bom=has(/melhor|menor|menos/),asc=met[0]==='ren'?!bom:bom,l=top(ds,met[0],asc)[0];
+    return[nota+(asc?'Dia com menor ':'Dia com maior ')+met[1]+': '+asstD(l.d)+' ('+rendPc(l[met[0]])+', carga fria '+asstF(l.cf)+' kg, peso bruto '+asstF(l.p)+' kg).']}
+  if(has(/corrida/)){if(has(/quant|numero|total|foram/))return[nota+S.c+' corrida(s) em '+ds.length+' dia(s) ('+(Math.round(S.c/ds.length*10)/10).toLocaleString('pt-BR')+' por dia).'];
+    const t=top(cs,'pp').slice(0,3);if(!t.length)return[nota+'Sem corridas com carga fria.'];return[nota+'Corridas com maior perda na fusão:'].concat(t.map(c=>corrFmt(c.n)+' ('+asstD(c.d)+', '+c.mat+'): '+rendPc(c.pp)+' — '+asstF(c.pe)+' kg'))}
+  if(has(/lingote/)){const l=top(ds,'l')[0];return[nota+'Lingotes: '+asstF(S.l)+' kg ('+rendPc(pc(S.l))+' da carga). Maior dia: '+asstD(l.d)+' com '+asstF(l.l)+' kg ('+rendPc(l.pl)+').']}
+  if(has(/respingo|gota/)){const g=top(ds,'g')[0];return[nota+'Respingos/gotas: '+asstF(S.g)+' kg ('+rendPc(pc(S.g))+' da carga). Maior dia: '+asstD(g.d)+' com '+asstF(g.g)+' kg.']}
+  if(has(/perda|perdeu|perdemos|desperdicio/)){const f=top(ds,'F')[0];return[nota+'Perda na fusão: '+asstF(S.F)+' kg ('+rendPc(pc(S.F))+' da carga fria). Maior dia: '+asstD(f.d)+' com '+asstF(f.F)+' kg ('+rendPc(f.pF)+').']}
+  if(has(/rendimento|aproveit/))return[nota+'Rendimento do forno: '+rendPc(pc(S.p))+' (peso bruto '+asstF(S.p)+' kg de '+asstF(S.T)+' kg de carga fria).'];
+  if(has(/carga fria|carga/))return[nota+'Carga fria: '+asstF(S.cf)+' kg em '+S.cfD+' dia(s) com carga lançada.'];
+  if(has(/panela|panelao|panelo|fundido|fundimos/))return[nota+'Total dos panelões: '+asstF(S.p+S.l+S.g)+' kg em '+ds.length+' dia(s).'];
+  if(has(/media/))return[nota+'Médias por dia: carga fria '+asstF(S.cf/(S.cfD||1))+' kg, peso bruto '+asstF(S.p/ds.length)+' kg, perda na fusão '+asstF(S.F/ds.length)+' kg, '+(Math.round(S.c/ds.length*10)/10).toLocaleString('pt-BR')+' corrida(s).'];
+  return['Não entendi bem. Tente perguntas como: “qual material perdeu mais em outubro?”, “qual o pior dia?”, “quanto de lingote nos últimos 7 dias?”, “resumo do período” ou “o que posso melhorar?”.'];
+}
+function asstDigitar(el,lines){const rm=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;el.innerHTML='';
+  const row=lines.map(t=>{const d=document.createElement('div');d.style.margin='3px 0';el.appendChild(d);return[d,t]});
+  if(rm){row.forEach(([d,t])=>d.textContent=t);return}
+  let li=0,ci=0;const tk=()=>{if(li>=row.length)return;const[d,t]=row[li];ci+=3;d.textContent=t.slice(0,ci);if(ci>=t.length){li++;ci=0}setTimeout(tk,12)};tk()}
+function asstEnviar(txt){const inp=document.getElementById('asstQ'),q=(txt!=null?txt:inp?.value)||'';if(!q.trim())return;if(inp)inp.value=q;
+  const el=document.getElementById('asstResp');if(!el)return;el.style.display='';asstDigitar(el,asstPergunta(q))}
+function asstHtml(de,ate){
+  const R=asstAnalise(de,ate),li=a=>a.map(t=>'<li style="margin:3px 0">'+esc(t)+'</li>').join('');
+  const chips=['Qual material perdeu mais?','Qual o pior dia?','Quanto de lingote no período?','O que posso melhorar?','Resumo do período'].map(t=>'<button type="button" class="btn secondary" style="padding:4px 10px;font-size:12px" onclick="asstEnviar(this.textContent)">'+t+'</button>').join(' ');
+  return'<details open class="rCard" style="margin:12px 0;border:1px solid var(--border,#8884);border-radius:12px;padding:12px 14px;--d:.3s"><summary style="cursor:pointer;font-weight:800;font-size:16px">🤖 Assistente de análise <span class="small" style="font-weight:400">— feito no próprio app, os dados não saem daqui</span></summary>'+
+   '<div style="display:flex;flex-wrap:wrap;gap:18px;margin-top:10px"><div style="flex:2;min-width:280px"><b>📋 Resumo</b><ul style="margin:6px 0 0 18px;padding:0">'+li(R.resumo)+'</ul></div>'+
+   '<div style="flex:1.4;min-width:240px"><b>⚠ Alertas</b><ul style="margin:6px 0 0 18px;padding:0">'+li(R.alertas)+'</ul></div>'+
+   '<div style="flex:1.4;min-width:240px"><b>💡 Ações sugeridas</b><ul style="margin:6px 0 0 18px;padding:0">'+li(R.acoes)+'</ul></div></div>'+
+   '<div style="margin-top:12px"><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="asstQ" type="text" placeholder="Pergunte: qual material perdeu mais em outubro?" style="flex:1;min-width:220px;padding:8px 10px" onkeydown="if(event.key===\'Enter\')asstEnviar()"><button type="button" class="btn primary" onclick="asstEnviar()">Perguntar</button></div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">'+chips+'</div><div id="asstResp" style="display:none;margin-top:10px;padding:10px 12px;border-left:4px solid #ff6a1f;background:rgba(255,106,31,.08);border-radius:6px;line-height:1.5"></div></div></details>';
+}
+/* ===== Animações globais de abas, painéis e botões (v206) ===== */
+function animGlobalCss(){if(document.getElementById('animGlobal'))return;const s=document.createElement('style');s.id='animGlobal';
+  s.textContent='@keyframes pgIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}@keyframes tabIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}'+
+  '.page.active{animation:pgIn .38s cubic-bezier(.2,.7,.2,1) both}.tAnim,#launchTabRefugo,#launchTabProducao,#launchTabBoletim{animation:tabIn .35s cubic-bezier(.2,.7,.2,1) both}'+
+  '.p3k,.p3c{animation:rFade .5s ease both}.p3kp .p3k:nth-child(1),.p3g2 .p3c:nth-child(1){animation-delay:.02s}.p3kp .p3k:nth-child(2),.p3g2 .p3c:nth-child(2){animation-delay:.08s}.p3kp .p3k:nth-child(3){animation-delay:.14s}.p3kp .p3k:nth-child(4){animation-delay:.2s}.p3kp .p3k:nth-child(5){animation-delay:.26s}.p3kp .p3k:nth-child(6){animation-delay:.32s}.p3kp .p3k:nth-child(7){animation-delay:.38s}'+
+  '.p3svg rect.bar{transform-box:fill-box;transform-origin:50% 100%;animation:rGrow .7s cubic-bezier(.2,.7,.2,1) both}'+
+  '.btn{transition:transform .12s ease,filter .15s ease,box-shadow .15s ease}.btn:active{transform:scale(.96)}'+
+  '@media (prefers-reduced-motion:reduce){.page.active,.tAnim,#launchTabRefugo,#launchTabProducao,#launchTabBoletim,.p3k,.p3c,.p3svg rect.bar{animation:none!important}}';
+  document.head.appendChild(s)}
+animGlobalCss();rendCss();
 /* ===== Dashboard "Rendimento do forno" com filtro por período (v205) ===== */
 let rendFiltro=null,rendDiaSel='';
 const rendIso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -3189,7 +3281,7 @@ function renderRendForno(){
   let mat='';if(mm.size){const rows=[...mm.entries()].sort((a,b)=>b[1].n-a[1].n).slice(0,12),mx=Math.max(1,...rows.map(([k,o])=>(o.cf-o.p)/o.cf*100));
     mat='<h4 style="margin:18px 0 6px">Perda na fusão por material <span class="small">(corridas com carga fria)</span></h4><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:4px 8px">Material</th><th style="text-align:right;padding:4px 8px">Corridas</th><th style="text-align:right;padding:4px 8px">Carga fria (kg)</th><th style="text-align:right;padding:4px 8px">Perda (kg)</th><th style="padding:4px 8px;min-width:160px;text-align:left">Perda % da carga</th><th style="text-align:right;padding:4px 8px">Lingotes %</th><th style="text-align:right;padding:4px 8px">Respingos %</th></tr></thead><tbody>'+
     rows.map(([k,o],i)=>{const pe=Math.max(0,o.cf-o.p),pp=pe/o.cf*100;return'<tr style="border-top:1px solid var(--border,#8883)"><td style="padding:4px 8px"><b>'+esc(k)+'</b></td><td style="text-align:right;padding:4px 8px">'+o.n+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.cf))+'</td><td style="text-align:right;padding:4px 8px">'+f(pe)+'</td><td style="padding:4px 8px"><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:12px;background:rgba(136,136,136,.18);border-radius:4px;overflow:hidden"><span class="rW" style="width:'+(pp/mx*100).toFixed(1)+'%;background:#ef4444;--d:'+(i*0.05)+'s"></span></div><b style="min-width:44px;text-align:right">'+rendPc(pp)+'</b></div></td><td style="text-align:right;padding:4px 8px">'+rendPc(o.l/o.cf*100)+'</td><td style="text-align:right;padding:4px 8px">'+rendPc(o.r/o.cf*100)+'</td></tr>'}).join('')+'</tbody></table></div>'}
-  box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+titulo+'</h3><div class="small">Carga fria = peso bruto das corridas + lingotes + respingos + perda na fusão. O total dos panelões já inclui lingotes e respingos; a perda é a carga fria menos o total dos panelões.</div></div><div class="cad-count">'+dias.length+' dia(s) • rendimento '+rendPc(ren)+'</div></div>'+barra+kpis+pizzas+graficos+mat;
+  box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+titulo+'</h3><div class="small">Carga fria = peso bruto das corridas + lingotes + respingos + perda na fusão. O total dos panelões já inclui lingotes e respingos; a perda é a carga fria menos o total dos panelões.</div></div><div class="cad-count">'+dias.length+' dia(s) • rendimento '+rendPc(ren)+'</div></div>'+barra+kpis+asstHtml(de,ate)+pizzas+graficos+mat;
   rendAnimNums(box);
 }
 /* ===== Aba "Boletim de Fusão" no Lançamento (v203): carga fria, total dos panelões, lingotes e respingos por corrida ===== */

@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.gestao='v205';
+window.__V=window.__V||{};window.__V.gestao='v206';
 /* ==================================================================
    GESTÃO — alertas e metas, comparativo de períodos, cruzamento
    refugo × devolução e relatório mensal (PDF / Excel .xlsx).
