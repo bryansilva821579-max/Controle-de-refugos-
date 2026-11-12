@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.composicao='v202';
+window.__V=window.__V||{};window.__V.composicao='v204';
 /* ===== Planilha de composição (peça usinada ← peça fundida/bucha) =====
    Cada linha: [código usinado, descrição, cliente, código da fundida (origem), peças usinadas por peça fundida, peso bruto fracionado, peso líq. Fund./bruto Usin. fracionado, peso usinado (kg)]
    O botão "Aplicar planilha de composição" (Cadastro › Produtos) grava a origem/quantidade e os pesos (bruto fracionado,

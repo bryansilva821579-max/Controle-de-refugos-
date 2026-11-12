@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v202';
+window.__V=window.__V||{};window.__V.app='v204';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -2868,10 +2868,12 @@ refugoForm?.addEventListener('submit',async e=>{
 function switchLaunchTab(tab){
   const isProd=tab==='producao';
   document.querySelectorAll('.launch-tab').forEach(b=>b.classList.toggle('active',b.dataset.launchTab===tab));
-  const ref=document.getElementById('launchTabRefugo'),prod=document.getElementById('launchTabProducao');
-  if(ref)ref.style.display=isProd?'none':'';
+  const ref=document.getElementById('launchTabRefugo'),prod=document.getElementById('launchTabProducao'),bol=document.getElementById('launchTabBoletim');
+  if(ref)ref.style.display=(isProd||tab==='boletim')?'none':'';
   if(prod)prod.style.display=isProd?'':'none';
+  if(bol)bol.style.display=tab==='boletim'?'':'none';
   if(isProd)renderProducao();
+  if(tab==='boletim')renderBoletimTab();
 }
 
 const MESES_PRODUCAO=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -2988,15 +2990,16 @@ function renderRendimento(){
 /* base de lingotes/respingos por dia: boletim + lançamentos (o que foi lançado manda) */
 function lingBase(){
   const dia=new Map(),B=(window.BOLETIM_FUSAO&&Array.isArray(window.BOLETIM_FUSAO.corridas))?window.BOLETIM_FUSAO.corridas:[];
-  B.forEach(c=>{const o=dia.get(c[1])||{l:0,g:0,p:0,det:[]};o.l+=c[3];o.g+=c[4];o.det.push([c[0],c[3],c[4],c[7]||'']);dia.set(c[1],o)});
-  producaoFundicao.forEach(p=>{if(!isProdDia(p))return;const o=dia.get(p.data)||{l:0,g:0,p:0,det:[]};if(p.kg!=null&&p.kg!=='')o.kgForm=n(p.kg);
+  B.forEach(c=>{const o=dia.get(c[1])||{l:0,g:0,p:0,pan:0,cf:0,det:[]};o.l+=c[3];o.g+=c[4];o.pan+=+c[5]||0;o.cf+=+c[8]||0;o.det.push([c[0],c[3],c[4],c[7]||'']);dia.set(c[1],o)});
+  producaoFundicao.forEach(p=>{if(!isProdDia(p))return;const o=dia.get(p.data)||{l:0,g:0,p:0,pan:0,cf:0,det:[]};if(p.kg!=null&&p.kg!=='')o.kgForm=n(p.kg);
+    if(o.det.length)return dia.set(p.data,o);/* dia com boletim: o boletim manda em lingotes, respingos e corridas */
     if(p.kgLing!=null&&p.kgLing!=='')o.l=n(p.kgLing);if(p.kgGotas!=null&&p.kgGotas!=='')o.g=n(p.kgGotas);
     if(Array.isArray(p.corridasDet)&&p.corridasDet.length){o.det=p.corridasDet.map(c=>[c[0],n(c[1]),n(c[2]),c[3]||'']);}
     dia.set(p.data,o)});
-  dia.forEach(o=>{o.det.sort((a,b)=>a[0]-b[0]);o.p=o.kgForm>0?Math.max(0,o.kgForm-o.l-o.g):0});/* o total dos panelões já inclui lingotes e respingos: peso bruto = total − lingotes − respingos */
+  dia.forEach(o=>{o.det.sort((a,b)=>a[0]-b[0]);const bs=o.pan>0?o.pan:(o.kgForm||0);o.p=bs>0?Math.max(0,bs-o.l-o.g):0});/* o total dos panelões já inclui lingotes e respingos: peso bruto = total − lingotes − respingos */
   return dia;
 }
-window.__ling={dias:lingBase,sig:()=>producaoFundicao.length+':'+producaoFundicao.reduce((a,p)=>a+(+p._ts||0)%100000,0)+':'+((window.BOLETIM_FUSAO&&window.BOLETIM_FUSAO.gerado)||'')+':'+((window.BOLETIM_FUSAO&&window.BOLETIM_FUSAO.corridas||[]).length)};
+window.__ling={dias:lingBase,sig:()=>producaoFundicao.length+':'+producaoFundicao.reduce((a,p)=>a+(+p._ts||0)%100000,0)+':'+((window.BOLETIM_FUSAO&&window.BOLETIM_FUSAO.gerado)||'')+':'+((window.BOLETIM_FUSAO&&window.BOLETIM_FUSAO.corridas||[]).length)+':'+((window.BOLETIM_FUSAO&&window.BOLETIM_FUSAO.corridas||[]).reduce((a,c)=>a+((+c[6]||0)%100000)+(+c[8]||0),0))};
 /* rendimento do forno: total dos panelões (= kg fundidos do formulário, já com lingotes e respingos) − lingotes − respingos = peso bruto das corridas */
 function rendDia(o){const p=+o.p||0,l=+o.l||0,g=+o.g||0,t=p+l+g;return{p,l,g,t,pp:t?p/t*100:0,lp:t?l/t*100:0,gp:t?g/t*100:0}}
 function rendResumoHtml(iso,o){
@@ -3097,6 +3100,26 @@ function prodAbaAplicar(){
   bar.querySelectorAll('button').forEach(b=>b.onclick=()=>{prodAba=b.dataset.aba;prodAbaAplicar()});
   PROD_ABAS.forEach(a=>a[2].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=a[0]===prodAba?'':'none'}));
 }
+/* ===== Pizza da fusão: carga fria = peso bruto + lingotes + respingos + perda (carga fria − total dos panelões) (v203) ===== */
+function rendPizzaAgg(dias,filtro){const a={cf:0,p:0,l:0,g:0,n:0};dias.forEach((o,d)=>{if(filtro&&!filtro(d))return;if(!(o.cf>0)||!(o.p>0))return;a.cf+=o.cf;a.p+=o.p;a.l+=o.l;a.g+=o.g;a.n++});return a}
+function rendPizzaHtml(titulo,o){
+  const f=v=>fmt(Math.round(v*10)/10),cf=+o.cf||0,pan=(+o.p||0)+(+o.l||0)+(+o.g||0);
+  if(!pan)return '';
+  const perda=cf?Math.max(0,cf-pan):0,segs=[['Peso bruto das corridas',+o.p||0,'#22c55e'],['Lingotes',+o.l||0,'#ff6a1f'],['Gotas/respingos',+o.g||0,'#8fa6bd']];
+  if(cf)segs.push(['Perda na fusão (carga fria − panelões)',perda,'#ef4444']);
+  const tot=segs.reduce((a,x)=>a+x[1],0);if(!tot)return '';
+  const R=100,C=110;let ang=-Math.PI/2,sv='<svg viewBox="0 0 220 220" style="width:220px;height:220px;flex:none" role="img">';
+  segs.forEach(([nm,v,cor])=>{if(v<=0)return;const fr=v/tot,a2=ang+fr*2*Math.PI,pc=fr*100;
+    if(fr>=0.9999)sv+='<circle cx="'+C+'" cy="'+C+'" r="'+R+'" fill="'+cor+'"><title>'+nm+': '+f(v)+' kg ('+rendPc(pc)+')</title></circle>';
+    else{const x1=C+R*Math.cos(ang),y1=C+R*Math.sin(ang),x2=C+R*Math.cos(a2),y2=C+R*Math.sin(a2);
+      sv+='<path d="M'+C+','+C+' L'+x1.toFixed(2)+','+y1.toFixed(2)+' A'+R+','+R+' 0 '+(fr>0.5?1:0)+' 1 '+x2.toFixed(2)+','+y2.toFixed(2)+' Z" fill="'+cor+'" stroke="var(--panel,#fff)" stroke-width="1.5"><title>'+nm+': '+f(v)+' kg ('+rendPc(pc)+')</title></path>'}
+    if(fr>=0.06){const am=(ang+a2)/2,tx=C+R*.66*Math.cos(am),ty=C+R*.66*Math.sin(am);sv+='<text x="'+tx.toFixed(1)+'" y="'+(ty+4).toFixed(1)+'" text-anchor="middle" font-size="'+(fr>=0.1?14:11)+'" font-weight="800" fill="#fff" stroke="#0007" stroke-width=".6" paint-order="stroke">'+rendPc(pc)+'</text>'}
+    ang=a2});
+  sv+='</svg>';
+  const leg=segs.map(([nm,v,cor])=>'<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><span style="width:12px;height:12px;border-radius:3px;background:'+cor+';flex:none"></span><span style="flex:1">'+nm+'</span><b>'+f(v)+' kg</b><b style="min-width:52px;text-align:right;color:'+cor+'">'+rendPc(v/tot*100)+'</b></div>').join('');
+  const eq=cf?'<div class="small" style="margin-top:8px;line-height:1.6"><b>'+f(cf)+' kg</b> carga fria − <b>'+f(pan)+' kg</b> total dos panelões = <b style="color:#ef4444">'+f(perda)+' kg perdidos ('+rendPc(perda/cf*100)+' da carga fria)</b>'+(pan>cf?'<br>⚠ O total dos panelões ficou maior que a carga fria — confira os pesos.':'')+'</div>':'<div class="small" style="margin-top:8px">Sem carga fria lançada neste período — a perda não pode ser calculada.</div>';
+  return '<div style="flex:1;min-width:300px"><h4 style="margin:0 0 8px">'+titulo+'</h4><div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">'+sv+'<div style="flex:1;min-width:220px;font-size:14px">'+leg+eq+'</div></div></div>';
+}
 function renderRendForno(){
   const base=document.getElementById('prodLingGotas');if(!base)return;
   let box=document.getElementById('prodRendForno');if(!box){box=document.createElement('div');box.id='prodRendForno';box.className='panel';box.style.marginTop='16px';base.parentNode.insertBefore(box,base.nextSibling)}
@@ -3106,7 +3129,74 @@ function renderRendForno(){
   const sel=document.getElementById('producaoData')?.value,dia=dias.includes(sel)?sel:dias[dias.length-1];
   const P=dias.map(d=>B.get(d).p),L=dias.map(d=>B.get(d).l),G=dias.map(d=>B.get(d).g),sp=P.reduce((a,b)=>a+b,0),sl=L.reduce((a,b)=>a+b,0),sg=G.reduce((a,b)=>a+b,0),tt=sp+sl+sg;
   box.innerHTML='<div class="cad-section-head"><div><h3>Rendimento do forno — '+M+'/'+y+'</h3><div class="small">Total dos panelões (“Kg fundidos no dia” do formulário, já com lingotes e respingos) − lingotes − gotas/respingos = peso bruto das corridas. Mostra o dia selecionado no calendário (ou o último do mês).</div></div><div class="cad-count">Mês: '+fmt(Math.round(tt))+' kg fundidos • rendimento '+(tt?(Math.round(sp/tt*1000)/10).toLocaleString('pt-BR'):'0')+'%</div></div>'+
-    rendResumoHtml(dia,B.get(dia))+'<div style="margin-top:14px">'+rendEmpilhado(dias.map(d=>d.slice(8)),P,L,G,undefined,dias)+'</div><h4 style="margin:16px 0 6px">Perdas por dia (% do total fundido)</h4>'+rendPerdas(dias.map(d=>d.slice(8)),P,L,G,undefined,dias);
+    rendResumoHtml(dia,B.get(dia))+'<div style="display:flex;flex-wrap:wrap;gap:24px;margin-top:16px">'+(rendPizzaHtml('Dia '+dia.split('-').reverse().join('/')+' — para onde foi a carga fria',{cf:B.get(dia).cf,p:B.get(dia).p,l:B.get(dia).l,g:B.get(dia).g})||'')+(function(){const ag=rendPizzaAgg(B,d=>d.slice(0,7)===ym);return ag.n?rendPizzaHtml('Mês '+M+'/'+y+' ('+ag.n+' dias com carga fria)',ag):''})()+'</div><div style="margin-top:14px">'+rendEmpilhado(dias.map(d=>d.slice(8)),P,L,G,undefined,dias)+'</div><h4 style="margin:16px 0 6px">Perdas por dia (% do total fundido)</h4>'+rendPerdas(dias.map(d=>d.slice(8)),P,L,G,undefined,dias);
+}
+/* ===== Aba "Boletim de Fusão" no Lançamento (v203): carga fria, total dos panelões, lingotes e respingos por corrida ===== */
+const bolKey=c=>String(c[1]).slice(0,4)+'-'+c[0];
+function bolTodas(){return(window.BOLETIM_FUSAO&&Array.isArray(window.BOLETIM_FUSAO.corridas))?window.BOLETIM_FUSAO.corridas:[]}
+function bolDiaLinhas(iso){return bolTodas().filter(c=>c[1]===iso).sort((a,b)=>a[0]-b[0])}
+function bolProxN(iso){const a=String(iso).slice(0,4);let mx=0;bolTodas().forEach(c=>{if(String(c[1]).slice(0,4)===a&&c[0]>mx)mx=c[0]});return mx+1}
+function bolRowAdd(c){
+  const box=document.getElementById('bolCorrList');if(!box)return;const d=document.createElement('div');d.className='bolRow';d.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin:5px 0;align-items:center';
+  const inp=(cl,w,ph,ty,st)=>'<input class="'+cl+'" type="'+ty+'" '+(ty==='number'?'step="0.01" min="0" ':'')+'placeholder="'+ph+'" title="'+ph+'" style="width:'+w+'px;'+(st||'')+'">';
+  d.innerHTML=inp('bN',70,'Nº','number')+inp('bCad',54,'CAD','text')+inp('bMat',120,'Material','text')+inp('bCF',118,'Carga fria (kg)','number')+inp('bP',118,'Total panelões (kg)','number')+inp('bL',108,'Lingotes (kg)','number')+inp('bR',108,'Respingos (kg)','number')+'<button type="button" class="btn secondary" title="Remover esta corrida" style="padding:6px 10px">✕</button>';
+  const v=(cl,x)=>{d.querySelector('.'+cl).value=x==null||x===0&&cl!=='bL'&&cl!=='bR'?'':x};
+  v('bN',c&&c[0]);v('bCad',c&&c[2]);v('bMat',c&&c[7]);v('bCF',c&&c[8]);v('bP',c&&c[5]);v('bL',c&&c[3]);v('bR',c&&c[4]);
+  d.querySelector('button').onclick=()=>{d.remove();bolTotRender()};box.appendChild(d);
+}
+function bolRowsLer(){return[...document.querySelectorAll('#bolCorrList .bolRow')].map(d=>{const g=cl=>Number(String(d.querySelector('.'+cl).value).replace(',','.'))||0;return[g('bN'),d.querySelector('.bCad').value.trim().toUpperCase(),d.querySelector('.bMat').value.trim(),g('bCF'),g('bP'),g('bL'),g('bR')]}).filter(x=>x[0]>0)}
+function bolTotRender(){
+  const el=document.getElementById('bolTotais');if(!el)return;const L=bolRowsLer(),S=i=>L.reduce((a,x)=>a+x[i],0),cf=S(3),pan=S(4),l=S(5),r=S(6),f=v=>fmt(Math.round(v*10)/10);
+  if(!L.length){el.innerHTML='<span class="small">Nenhuma corrida neste dia.</span>';return}
+  const perda=cf>0?cf-pan:null;
+  el.innerHTML='<b>'+L.length+'</b> corridas • carga fria <b>'+f(cf)+' kg</b> • total dos panelões <b>'+f(pan)+' kg</b> • lingotes <b>'+f(l)+'</b> • respingos <b>'+f(r)+'</b> • peso bruto <b>'+f(Math.max(0,pan-l-r))+' kg</b>'+(perda!=null?' • perda na fusão <b style="color:'+(perda<0?'#f59e0b':'#ef4444')+'">'+f(perda)+' kg ('+rendPc(perda/cf*100)+')</b>':'');
+}
+function bolCarregarDia(iso){
+  const box=document.getElementById('bolCorrList');if(!box)return;box.innerHTML='';
+  const L=bolDiaLinhas(iso);if(L.length)L.forEach(bolRowAdd);else if(/^\d{4}-\d{2}-\d{2}$/.test(iso)){const ult=bolTodas().filter(c=>c[1]<iso).slice(-1)[0];bolRowAdd([bolProxN(iso),iso,ult?ult[2]:'',0,0,0,0,'',0])}
+  const st=document.getElementById('bolStatus');if(st)st.textContent=L.length?'Dia já lançado — edite e salve para atualizar.':'Dia ainda sem boletim — preencha as corridas.';
+  bolTotRender();bolMesTabela();
+}
+function bolMesTabela(){
+  const box=document.getElementById('bolMes');if(!box)return;const iso=document.getElementById('bolData')?.value||'',ym=iso.slice(0,7);
+  const g=new Map();bolTodas().filter(c=>c[1].slice(0,7)===ym).forEach(c=>{const o=g.get(c[1])||{n:0,cf:0,p:0,l:0,r:0};o.n++;o.cf+=+c[8]||0;o.p+=+c[5]||0;o.l+=+c[3]||0;o.r+=+c[4]||0;g.set(c[1],o)});
+  const f=v=>fmt(Math.round(v*10)/10);
+  if(!g.size){box.innerHTML='<div class="small">Sem corridas lançadas neste mês.</div>';return}
+  let T={n:0,cf:0,p:0};
+  const rows=[...g.keys()].sort().map(d=>{const o=g.get(d);T.n+=o.n;if(o.cf>0){T.cf+=o.cf;T.p+=o.p}const pe=o.cf>0?o.cf-o.p:null;
+    return'<tr data-bd="'+d+'" style="border-top:1px solid var(--border,#8883);cursor:pointer'+(d===iso?';background:rgba(255,106,31,.12)':'')+'"><td style="padding:4px 8px">'+d.split('-').reverse().join('/')+'</td><td style="text-align:right;padding:4px 8px">'+o.n+'</td><td style="text-align:right;padding:4px 8px">'+(o.cf?f(o.cf):'—')+'</td><td style="text-align:right;padding:4px 8px">'+f(o.p)+'</td><td style="text-align:right;padding:4px 8px">'+(pe!=null?f(pe):'—')+'</td><td style="text-align:right;padding:4px 8px">'+(pe!=null?rendPc(pe/o.cf*100):'—')+'</td></tr>'}).join('');
+  box.innerHTML='<h4 style="margin:0 0 6px">Dias do mês (toque para abrir)</h4><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:4px 8px">Dia</th><th style="text-align:right;padding:4px 8px">Corridas</th><th style="text-align:right;padding:4px 8px">Carga fria (kg)</th><th style="text-align:right;padding:4px 8px">Total panelões (kg)</th><th style="text-align:right;padding:4px 8px">Perda (kg)</th><th style="text-align:right;padding:4px 8px">Perda %</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr style="border-top:2px solid var(--border,#8886);font-weight:700"><td style="padding:4px 8px">Mês</td><td style="text-align:right;padding:4px 8px">'+T.n+'</td><td style="text-align:right;padding:4px 8px">'+f(T.cf)+'</td><td style="text-align:right;padding:4px 8px">'+f(T.p)+'</td><td style="text-align:right;padding:4px 8px">'+(T.cf?f(T.cf-T.p):'—')+'</td><td style="text-align:right;padding:4px 8px">'+(T.cf?rendPc((T.cf-T.p)/T.cf*100):'—')+'</td></tr></tfoot></table></div><div class="small" style="margin-top:4px">A linha “Mês” soma só os dias com carga fria lançada.</div>';
+  box.querySelectorAll('tr[data-bd]').forEach(tr=>tr.onclick=()=>{document.getElementById('bolData').value=tr.dataset.bd;bolCarregarDia(tr.dataset.bd)});
+}
+function prodSyncDiaBoletim(d){
+  const L=bolDiaLinhas(d);if(!L.length)return;const t=Date.now(),i=prodIdxDia(d);
+  const ling=L.reduce((a,c)=>a+c[3],0),resp=L.reduce((a,c)=>a+c[4],0),pan=L.reduce((a,c)=>a+c[5],0);
+  const campos={corridasNum:corrRanges(L.map(c=>c[0])),corridasDet:L.map(c=>[c[0],c[3],c[4],c[7]||'']),materiais:[...new Set(L.flatMap(c=>String(c[7]||'').split('/').map(x=>x.trim()).filter(Boolean)))].join(', ')||undefined,kg:Math.round(pan*100)/100,kgLing:Math.round(ling*100)/100,kgGotas:Math.round(resp*100)/100,_ts:t};
+  prodAplicar([i>=0?{...producaoFundicao[i],...campos}:{data:d,ano:+d.slice(0,4),mes:+d.slice(5,7),dia:+d.slice(8,10),fundido:'',corridas:L.length,kgLiq:null,custoKg:2.6,observacao:'Lançado pelo Boletim de Fusão',...campos}],[]);
+  saveProducao();
+}
+function bolSalvarDia(){
+  const iso=document.getElementById('bolData')?.value||'';if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return alert('Informe a data.');
+  const L=bolRowsLer(),antes=bolDiaLinhas(iso);
+  if(!L.length&&!antes.length)return alert('Adicione ao menos uma corrida.');
+  const ns=L.map(x=>x[0]);if(new Set(ns).size!==ns.length)return alert('Há números de corrida repetidos neste dia.');
+  for(const x of L){if(x[5]+x[6]>x[4]&&x[4]>0)return alert('Corrida '+corrFmt(x[0])+': lingotes + respingos ('+fmt(x[5]+x[6])+' kg) são maiores que o total dos panelões ('+fmt(x[4])+' kg).')}
+  const ano=iso.slice(0,4),cheia=L.filter(x=>x[3]>0&&x[4]>x[3]);
+  if(cheia.length&&!confirm('Em '+cheia.length+' corrida(s) ('+cheia.map(x=>corrFmt(x[0])).join(', ')+') o total dos panelões é maior que a carga fria. Salvar mesmo assim?'))return;
+  for(const x of L){const o=bolTodas().find(c=>bolKey(c)===ano+'-'+x[0]);if(o&&o[1]!==iso&&!confirm('A corrida '+corrFmt(x[0])+' já está lançada em '+o[1].split('-').reverse().join('/')+'. Mover para '+iso.split('-').reverse().join('/')+'?'))return}
+  const t=Date.now(),m=new Map(bolImpLer().map(c=>[bolKey(c),c]));
+  antes.forEach(c=>{if(!ns.includes(c[0]))m.set(bolKey(c),[c[0],c[1],c[2]||'',0,0,0,t,'',0,1])});
+  L.forEach(x=>m.set(ano+'-'+x[0],[x[0],iso,x[1],Math.round(x[5]*100)/100,Math.round(x[6]*100)/100,Math.round(x[4]*100)/100,t,x[2],Math.round(x[3]*100)/100]));
+  bolImpGravar([...m.values()]);bolMesclar();
+  if(document.getElementById('bolAtualizaProd')?.checked)prodSyncDiaBoletim(iso);
+  scheduleFirebasePush();
+  try{renderProducao()}catch(e){}try{dashboardDirty=true;dashboard()}catch(e){}
+  bolCarregarDia(iso);
+  alert('Boletim de '+iso.split('-').reverse().join('/')+' salvo: '+L.length+' corrida(s).');
+}
+function renderBoletimTab(){
+  const el=document.getElementById('bolData');if(!el)return;
+  if(!el.value){const B=bolTodas(),ult=B.length?B[B.length-1][1]:'';el.value=(typeof prodHojeISO==='function'?prodHojeISO():ult)||ult;bolCarregarDia(el.value)}else bolMesTabela();
 }
 /* editor de corridas do dia (nº, lingotes, respingos) */
 function corrAdd(nn,l,r,mat){const box=document.getElementById('producaoCorrList');if(!box)return;const d=document.createElement('div');d.className='corrRow';d.style.cssText='display:flex;gap:6px;margin:4px 0;align-items:center';
@@ -3144,6 +3234,7 @@ function matTabelaHtml(cd){
     rows.map(([k,o])=>'<tr style="border-top:1px solid var(--border,#8883)"><td style="padding:4px 8px"><b>'+esc(k)+'</b></td><td style="text-align:right;padding:4px 8px">'+o.n+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.l*10)/10)+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.r*10)/10)+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.l/o.n*10)/10)+'</td><td style="text-align:right;padding:4px 8px">'+fmt(Math.round(o.r/o.n*10)/10)+'</td></tr>').join('')+'</tbody></table></div>';
 }
 window.__ling.matTabelaHtml=matTabelaHtml;
+window.__ling.rendPizzaHtml=rendPizzaHtml;window.__ling.rendPizzaAgg=rendPizzaAgg;
 function corrFmt(x){return String(x).padStart(3,'0')}
 function corrRanges(L){L=[...new Set(L)].sort((a,b)=>a-b);const o=[];let i=0;while(i<L.length){let j=i;while(j+1<L.length&&L[j+1]===L[j]+1)j++;o.push(j>i?corrFmt(L[i])+'–'+corrFmt(L[j]):corrFmt(L[i]));i=j+1}return o.join(', ')}
 /* ---- importar a planilha do Boletim de Fusão (.xlsx) direto no navegador, sem biblioteca ---- */
@@ -3163,7 +3254,7 @@ function bolMesclar(){
   const B=window.BOLETIM_FUSAO=window.BOLETIM_FUSAO||{corridas:[]};if(!Array.isArray(B.corridas))B.corridas=[];
   if(!B._base)B._base=B.corridas.slice();
   const m=new Map();[...B._base,...bolImpLer()].forEach(c=>{const k=String(c[1]).slice(0,4)+'-'+c[0],o=m.get(k);if(!o||(+c[6]||0)>=(+o[6]||0))m.set(k,c)});
-  B.corridas=[...m.values()].sort((a,b)=>String(a[1]).localeCompare(String(b[1]))||a[0]-b[0]);
+  B.corridas=[...m.values()].filter(c=>c[9]!==1).sort((a,b)=>String(a[1]).localeCompare(String(b[1]))||a[0]-b[0]);/* linha com c[9]===1 = corrida apagada */
   B.ate=B.corridas.length?B.corridas[B.corridas.length-1][1]:B.ate;return B;
 }
 async function xlsxLerFolha(file,nomeFolha){
@@ -3199,7 +3290,7 @@ async function bolImportarXlsx(file){
   try{
     const rows=await xlsxLerFolha(file,'BOLETIM - Carregamento');if(!rows.length)throw new Error('a aba está vazia');
     const norm=t=>String(t==null?'':t).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
-    const col={};Object.entries(rows[0]).forEach(([k,v])=>{const t=norm(v);if(t==='corrida')col.n=k;else if(t==='data')col.d=k;else if(t==='cad')col.cad=k;else if(t.startsWith('lingotes')&&!t.includes('respingos'))col.l=k;else if(t.startsWith('respingos'))col.r=k;else if(t.startsWith('totalpanel'))col.p=k;else if(t==='material')col.m=k});
+    const col={};Object.entries(rows[0]).forEach(([k,v])=>{const t=norm(v);if(t==='corrida')col.n=k;else if(t==='data')col.d=k;else if(t==='cad')col.cad=k;else if(t.startsWith('lingotes')&&!t.includes('respingos'))col.l=k;else if(t.startsWith('respingos'))col.r=k;else if(t.startsWith('totalpanel'))col.p=k;else if(t==='material')col.m=k;else if(t==='carga')col.c=k});
     if(!col.n||!col.d||!col.l||!col.r)throw new Error('não achei as colunas CORRIDA, DATA, Lingotes e Respingos na primeira linha');
     const iso=v=>{if(typeof v==='number'&&v>20000&&v<80000)return new Date(Date.UTC(1899,11,30)+Math.round(v)*864e5).toISOString().slice(0,10);const m=String(v||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);return m?m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'):/^\d{4}-\d{2}-\d{2}/.test(String(v))?String(v).slice(0,10):null};
     const g=new Map(),ign=[];
@@ -3207,15 +3298,15 @@ async function bolImportarXlsx(file){
       const cod=String(r[col.n]==null?'':r[col.n]).trim(),d=iso(r[col.d]);if(!cod||!d)return;
       const num=parseInt(cod,10),suf=(cod.split('/')[1]||'').trim();if(!(num>0))return;
       if(suf&&String(2000+Number(suf))!==d.slice(0,4)){ign.push(cod+' ('+d.split('-').reverse().join('/')+')');return}
-      const k=d.slice(0,4)+'-'+num,e=g.get(k)||[num,d,String(r[col.cad]||'').trim(),0,0,0,0,[]];if(col.m){const mt=String(r[col.m]||'').trim();if(mt&&!e[7].includes(mt))e[7].push(mt)}
-      e[3]+=Number(r[col.l])||0;e[4]+=Number(r[col.r])||0;e[5]+=col.p?(Number(r[col.p])||0):0;g.set(k,e);
+      const k=d.slice(0,4)+'-'+num,e=g.get(k)||[num,d,String(r[col.cad]||'').trim(),0,0,0,0,[],0];if(col.m){const mt=String(r[col.m]||'').trim();if(mt&&!e[7].includes(mt))e[7].push(mt)}
+      e[3]+=Number(r[col.l])||0;e[4]+=Number(r[col.r])||0;e[5]+=col.p?(Number(r[col.p])||0):0;e[8]+=col.c?(Number(r[col.c])||0):0;g.set(k,e);
     });
-    const novas=[...g.values()].map(e=>[e[0],e[1],e[2],Math.round(e[3]*100)/100,Math.round(e[4]*100)/100,Math.round(e[5]*100)/100,0,e[7].join('/')]);
+    const novas=[...g.values()].map(e=>[e[0],e[1],e[2],Math.round(e[3]*100)/100,Math.round(e[4]*100)/100,Math.round(e[5]*100)/100,0,e[7].join('/'),Math.round(e[8]*100)/100]);
     if(!novas.length)throw new Error('nenhuma corrida encontrada na planilha');
     const antes=new Map((window.BOLETIM_FUSAO&&window.BOLETIM_FUSAO.corridas||[]).map(c=>[String(c[1]).slice(0,4)+'-'+c[0],c]));
-    let novos=0,mudou=0;novas.forEach(c=>{const o=antes.get(c[1].slice(0,4)+'-'+c[0]);if(!o)novos++;else if(o[3]!==c[3]||o[4]!==c[4]||o[1]!==c[1]||o[5]!==c[5]||(o[7]||'')!==c[7])mudou++});
+    let novos=0,mudou=0;novas.forEach(c=>{const o=antes.get(c[1].slice(0,4)+'-'+c[0]);if(!o)novos++;else if(o[3]!==c[3]||o[4]!==c[4]||o[1]!==c[1]||o[5]!==c[5]||(o[7]||'')!==c[7]||(+o[8]||0)!==c[8])mudou++});
     const m=new Map(bolImpLer().map(c=>[c[1].slice(0,4)+'-'+c[0],c])),agora=Date.now();
-    novas.forEach(c=>{const k=c[1].slice(0,4)+'-'+c[0],o=antes.get(k);if(o&&o[1]===c[1]&&o[3]===c[3]&&o[4]===c[4]&&o[5]===c[5]&&(o[7]||'')===c[7])return;m.set(k,[c[0],c[1],c[2],c[3],c[4],c[5],agora,c[7]])});
+    novas.forEach(c=>{const k=c[1].slice(0,4)+'-'+c[0],o=antes.get(k);if(o&&o[1]===c[1]&&o[3]===c[3]&&o[4]===c[4]&&o[5]===c[5]&&(o[7]||'')===c[7]&&(+o[8]||0)===c[8])return;m.set(k,[c[0],c[1],c[2],c[3],c[4],c[5],agora,c[7],c[8]])});
     bolImpGravar([...m.values()]);
     bolMesclar();scheduleFirebasePush();
     const ate=novas.map(c=>c[1]).sort().pop().split('-').reverse().join('/');
