@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v206';
+window.__V=window.__V||{};window.__V.app='v208';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -3170,8 +3170,8 @@ function asstAnalise(de,ate){
 }
 const asstMeses=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 function asstPergunta(q0){
-  const q=asstNorm(q0);let de=document.getElementById('rfDe')?.value,ate=document.getElementById('rfAte')?.value,nota='';
-  const ano=(ate||'').slice(0,4)||String(new Date().getFullYear()),B=lingBase(),ult=[...B.keys()].filter(d=>B.get(d).p>0).sort().pop()||ate;
+  const q=asstNorm(q0),B=lingBase(),ult=[...B.keys()].filter(d=>B.get(d).p>0).sort().pop()||rendIso(new Date());let de=document.getElementById('rfDe')?.value||ult.slice(0,8)+'01',ate=document.getElementById('rfAte')?.value||ult,nota='';
+  const ano=(ate||'').slice(0,4)||String(new Date().getFullYear());
   const mi=asstMeses.findIndex(m=>q.includes(m));
   if(mi>=0){const mm=String(mi+1).padStart(2,'0');de=ano+'-'+mm+'-01';ate=ano+'-'+mm+'-31';nota='Período: '+asstMeses[mi]+'/'+ano+'. '}
   else{let r;if((r=q.match(/ultimos?\s+(\d+)\s+dias?/))){de=rendAddDias(ult,-(+r[1]-1));ate=ult;nota='Período: últimos '+r[1]+' dias. '}

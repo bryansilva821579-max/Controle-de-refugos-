@@ -1,6 +1,6 @@
 /* Service worker do Controle de Refugos: rede primeiro, cache só como reserva offline.
    Não intercepta Firebase nem nada de outro domínio, então sincronização e atualizações seguem normais. */
-const CACHE='refugos-pwa-v206';
+const CACHE='refugos-pwa-v208';
 self.addEventListener('install',e=>{self.skipWaiting();});
 self.addEventListener('activate',e=>{
   e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));

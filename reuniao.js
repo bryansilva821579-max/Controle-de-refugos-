@@ -54,32 +54,36 @@ function reuProd(a,b){
   });
   return{kg:kgt,dias:dias,parcial:parcial};
 }
-function reuPf(R,P,a,b,len,pl){
+/* Comparação: 'ant' = período imediatamente anterior (mesmo nº de dias); 'mes' = mesmas datas do mês passado */
+function reuMesAnt(iso,fim){var y=+iso.slice(0,4),m=+iso.slice(5,7),d=+iso.slice(8,10),ult=new Date(y,m,0).getDate(),py=m===1?y-1:y,pm=m===1?12:m-1,pu=new Date(py,pm,0).getDate(),dd=(fim&&d===ult)?pu:Math.min(d,pu);return py+'-'+String(pm).padStart(2,'0')+'-'+String(dd).padStart(2,'0')}
+function reuPrevRange(a,b,cmp){var len=Math.round((D(b)-D(a))/864e5)+1;if(cmp==='mes')return{pa:reuMesAnt(a,false),pb:reuMesAnt(b,true),len:len};return{pa:S(new Date(D(a)-len*864e5)),pb:S(new Date(D(a)-864e5)),len:len}}
+function cmpLbl(s){return s&&s.cmp==='mes'?'mesmo período do mês passado':'período anterior'}
+function reuPf(R,P,a,b,pa,pb,pl){
   if(pl&&String(pl).split('|').indexOf('FUNDICAO')<0)return{off:true};
   var calc=function(RR,x,y){var ref=RR.reduce(function(s,r){return s+(plantNormName(plantaPeloMotivo(r)||r['PLANTA'])==='FUNDICAO'?kg(r):0)},0),pr=reuProd(x,y);return{ref:ref,prod:pr.kg,dias:pr.dias,parcial:pr.parcial,perc:pr.kg>0?ref/pr.kg*100:null}};
-  var cur=calc(R,a,b),ant=calc(P,S(new Date(D(a)-len*864e5)),S(new Date(D(a)-864e5)));
+  var cur=calc(R,a,b),ant=calc(P,pa,pb);
   cur.pperc=ant.perc;return cur;
 }
 function pfCard(s){
   var f=s.pf;if(!f)return '';var v,sub;
   if(f.off){v='\u2014';sub='inclua a planta Fundição no filtro'}
-  else if(f.prod>0){v=fmt(f.perc)+'%';sub=fmt(f.ref)+' kg refugados de '+fmt(f.prod)+' kg fundidos'+(f.pperc!=null?' \u2022 período anterior: '+fmt(f.pperc)+'%':'')+(f.parcial?' \u2022 parte do período sem produção diária':'')}
+  else if(f.prod>0){v=fmt(f.perc)+'%';sub=fmt(f.ref)+' kg refugados de '+fmt(f.prod)+' kg fundidos'+(f.pperc!=null?' \u2022 '+cmpLbl(s)+': '+fmt(f.pperc)+'%':'')+(f.parcial?' \u2022 parte do período sem produção diária':'')}
   else{v='\u2014';sub=f.parcial?'período sem produção diária lançada (só há total mensal)':'sem produção lançada no período'}
   return card('% de refugo (Fundição)',v,sub);
 }
 function pfTxt(s){
   var f=s&&s.pf;if(!f||f.off||!(f.prod>0))return '';
-  return '% de refugo (Fundição): '+fmt(f.perc)+'% ('+fmt(f.ref)+' kg refugados de '+fmt(f.prod)+' kg fundidos'+(f.pperc!=null?'; período anterior: '+fmt(f.pperc)+'%':'')+')';
+  return '% de refugo (Fundição): '+fmt(f.perc)+'% ('+fmt(f.ref)+' kg refugados de '+fmt(f.prod)+' kg fundidos'+(f.pperc!=null?'; '+cmpLbl(s)+': '+fmt(f.pperc)+'%':'')+')';
 }
 function grp(R,f){var m={};R.forEach(function(r){var k=f(r)||'—',o=m[k]||(m[k]={k:k,kg:0,q:0,d:{}});o.kg+=kg(r);o.q+=qty(r);o.d[rd(r)]=1});return Object.keys(m).map(function(k){return m[k]}).sort(function(a,b){return b.kg-a.kg})}
 var br=function(s){return String(s).split('-').reverse().join('/')},D=function(s){return new Date(s+'T00:00:00Z')},S=function(d){return d.toISOString().slice(0,10)};
 var loc=function(x){return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
 function tb(h,R){return '<div class="tablewrap"><table><thead><tr>'+h.map(function(x){return '<th>'+x+'</th>'}).join('')+'</tr></thead><tbody>'+(R.length?R.map(function(r){return '<tr>'+r.map(function(c){return '<td>'+c+'</td>'}).join('')+'</tr>'}).join(''):'<tr><td colspan="'+h.length+'">Sem dados</td></tr>')+'</tbody></table></div>'}
 function card(l,v,s){return '<div class="card"><div class="kpi-accent"></div><div class="label">'+l+'</div><div class="value">'+v+'</div><div class="sub">'+s+'</div></div>'}
-function dv(a,b){if(!b)return 'sem base anterior';var d=(a-b)/b*100;return '<b style="color:'+(d>0?'#d92d20':'#12a150')+'">'+(d>0?'▲ ':'▼ ')+fmt(Math.abs(d))+'%</b> vs período anterior'}
+function dv(a,b,l){if(!b)return 'sem base anterior';var d=(a-b)/b*100;return '<b style="color:'+(d>0?'#d92d20':'#12a150')+'">'+(d>0?'▲ ':'▼ ')+fmt(Math.abs(d))+'%</b> vs '+(l||'período anterior')}
 function presOf(m){return Array.isArray(m.pres)?m.pres:String(m.part||'').split(',').map(function(x){return x.trim()}).filter(Boolean)}
 function findM(id){return window.reunioes.filter(function(x){return x.id===id})[0]}
-function snapHtml(s,extra){var h='<div class="cards">'+card('Refugo (kg)',fmt(s.k.kg),dv(s.k.kg,s.p.kg))+card('Quantidade',fmt(s.k.q),dv(s.k.q,s.p.q))+card('Lançamentos',fmt(s.k.n),dv(s.k.n,s.p.n))+pfCard(s)+(extra||'')+'</div>';
+function snapHtml(s,extra){var h='<div class="cards">'+card('Refugo (kg)',fmt(s.k.kg),dv(s.k.kg,s.p.kg,cmpLbl(s)))+card('Quantidade',fmt(s.k.q),dv(s.k.q,s.p.q,cmpLbl(s)))+card('Lançamentos',fmt(s.k.n),dv(s.k.n,s.p.n,cmpLbl(s)))+pfCard(s)+(extra||'')+'</div>';
 h+='<div class="reu-sub">Pareto de motivos</div>'+tb(['Motivo','Kg','Qtd.','% acum.'],s.par.map(function(x){return [esc(x[0]),fmt(x[1]),fmt(x[2]),fmt(x[3])+'%']}));
 h+='<div class="reu-sub">Top 5 itens</div>'+tb(['Item','Kg','Qtd.'],s.it.map(function(x){return [esc(x[0]),fmt(x[1]),fmt(x[2])]}));
 h+='<div class="reu-sub">Top 5 clientes</div>'+tb(['Cliente','Kg','Qtd.'],s.cl.map(function(x){return [esc(x[0]),fmt(x[1]),fmt(x[2])]}));
@@ -96,11 +100,12 @@ window.reuFiltra=function(inp){var box=inp.closest('.reu-det'),t=inp.value.trim(
 window.reuPreset=function(t){var n=new Date(),y=n.getFullYear(),m=n.getMonth(),a,b=n;if(t==='sem'){a=new Date(n);a.setDate(n.getDate()-6)}else if(t==='mes'){a=new Date(y,m,1)}else{a=new Date(y,m-1,1);b=new Date(y,m,0)}
 rq('reuA').value=loc(a);rq('reuB').value=loc(b);reuGerar()};
 function showOut(s){var len=Math.round((D(s.b)-D(s.a))/864e5)+1,c=0;if(costAccessAllowed())c=rows(s.a,s.b,s.pl).reduce(function(x,r){return x+cost(r)},0);
-rq('reuOut').innerHTML='<div class="hint" style="margin:8px 0">Período '+br(s.a)+' a '+br(s.b)+(s.pl?' • '+esc(plLbl(s.pl)):'')+' • filtrado pela data de lançamento (registros anteriores a 08/10/2026 usam a data do refugo) (comparado aos '+len+' dias anteriores)</div>'+snapHtml(s,card('Custo estimado',costAccessAllowed()?'R$ '+fmt(c):'🔒 Restrito','acesso restrito por senha'))+detHtml(s.a,s.b,s.pl)}
+rq('reuOut').innerHTML='<div class="hint" style="margin:8px 0">Período '+br(s.a)+' a '+br(s.b)+(s.pl?' • '+esc(plLbl(s.pl)):'')+' • filtrado pela data de lançamento (registros anteriores a 08/10/2026 usam a data do refugo) ('+(s.cmp==='mes'&&s.pa?'comparado a '+br(s.pa)+' a '+br(s.pb)+', mesmo período do mês passado':'comparado aos '+len+' dias anteriores')+')</div>'+snapHtml(s,card('Custo estimado',costAccessAllowed()?'R$ '+fmt(c):'🔒 Restrito','acesso restrito por senha'))+detHtml(s.a,s.b,s.pl)}
 window.reuGerar=function(){var a=rq('reuA').value,b=rq('reuB').value,pl=msGet('reuPl').join('|');if(!a||!b||a>b){alert('Informe um período válido.');return}
-var len=Math.round((D(b)-D(a))/864e5)+1,R=rows(a,b,pl),P=rows(S(new Date(D(a)-len*864e5)),S(new Date(D(a)-864e5)),pl);
+var sc=rq('reuCmp'),cmp=sc&&sc.value==='ant'?'ant':'mes';try{localStorage.setItem('controle_refugos_2026_reuCmp',cmp)}catch(e){}
+var pr=reuPrevRange(a,b,cmp),len=pr.len,R=rows(a,b,pl),P=rows(pr.pa,pr.pb,pl);
 var t=function(x){return{kg:x.reduce(function(s,r){return s+kg(r)},0),q:x.reduce(function(s,r){return s+qty(r)},0),n:x.length}},k=t(R),p=t(P),mot=grp(R,function(r){return String(r['DESCRIÇÃO DO MOTIVO']||'').trim()}),acc=0;
-cur={a:a,b:b,pl:pl,k:k,p:p,pf:reuPf(R,P,a,b,len,pl),
+cur={a:a,b:b,pl:pl,cmp:cmp,pa:pr.pa,pb:pr.pb,k:k,p:p,pf:reuPf(R,P,a,b,pr.pa,pr.pb,pl),
 par:mot.slice(0,8).map(function(x){acc+=k.kg?x.kg/k.kg*100:0;return [x.k,x.kg,x.q,acc]}),
 it:grp(R,function(r){return String(r[cols.produto]||'').trim()}).slice(0,5).map(function(x){return [x.k,x.kg,x.q]}),
 cl:grp(R,function(r){return String(r.CLIENTE||'').trim().toUpperCase()}).slice(0,5).map(function(x){return [x.k,x.kg,x.q]}),
@@ -135,7 +140,7 @@ if(ed){var ix=window.reunioes.findIndex(function(x){return x.id===editId});if(ix
 rSave();resetForm();lists();alert(ed?'Reunião atualizada.':'Reunião salva.')};
 function reuSenha(){var s=window.prompt('Digite a senha para alterar ou excluir esta ata:');if(s===null)return false;if(s!=='1966'){alert('Senha incorreta. A operação foi cancelada.');return false}return true}
 window.reuEdit=function(id){if(!reuSenha())return;var m=findM(id);if(!m)return;editId=id;cur=m.snap;rq('reuData').value=m.data;rq('reuNum').value=m.num||'';syncTop();setPres(presOf(m));rq('reuAta').value=m.ata||'';ac=(m.acoes||[]).map(function(x){return Object.assign({},x)});acRender();
-rq('reuA').value=m.snap.a;rq('reuB').value=m.snap.b;msSet('reuPl',String(m.snap.pl||'').split('|').filter(Boolean));showOut(m.snap);editUI(true);rq('reuPartBox').scrollIntoView({behavior:'smooth',block:'center'})};
+rq('reuA').value=m.snap.a;rq('reuB').value=m.snap.b;if(rq('reuCmp'))rq('reuCmp').value=m.snap.cmp==='mes'?'mes':'ant';msSet('reuPl',String(m.snap.pl||'').split('|').filter(Boolean));showOut(m.snap);editUI(true);rq('reuPartBox').scrollIntoView({behavior:'smooth',block:'center'})};
 window.reuClose=function(id,i){var m=findM(id);if(m){m.acoes[i].status='Concluída';rSave();lists()}};
 window.reuDel=function(id){if(!reuSenha())return;if(!confirm('Excluir esta reunião? Esta ação não poderá ser desfeita.'))return;window.reunioes=window.reunioes.filter(function(x){return x.id!==id});if(editId===id)resetForm();rSave();lists()};
 
@@ -199,7 +204,7 @@ h2('Decisões');doc.setFont('helvetica','normal');doc.setFontSize(10);
 doc.splitTextToSize(pdfTxt(m.ata||'-'),W).forEach(function(l){need(5);doc.text(l,X,y);y+=4.6});y+=3;
 h2('Ações');tbl(['Ação','Responsável','Prazo','Status'],(m.acoes||[]).map(function(x){return [pdfTxt(x.acao),pdfTxt(x.resp),x.prazo?br(x.prazo):'-',pdfTxt(x.status)]}));
 h2('Resumo do período');doc.setFont('helvetica','normal');doc.setFontSize(10);
-[['Refugo (kg)',s.k.kg,s.p.kg],['Quantidade',s.k.q,s.p.q],['Lançamentos',s.k.n,s.p.n]].forEach(function(r){need(5);doc.text(pdfTxt(r[0]+': '+fmt(r[1])+'   (período anterior: '+fmt(r[2])+')'),X,y);y+=5});if(pfTxt(s)){need(5);doc.text(pdfTxt(pfTxt(s)),X,y);y+=5}y+=2;
+[['Refugo (kg)',s.k.kg,s.p.kg],['Quantidade',s.k.q,s.p.q],['Lançamentos',s.k.n,s.p.n]].forEach(function(r){need(5);doc.text(pdfTxt(r[0]+': '+fmt(r[1])+'   ('+cmpLbl(s)+': '+fmt(r[2])+')'),X,y);y+=5});if(pfTxt(s)){need(5);doc.text(pdfTxt(pfTxt(s)),X,y);y+=5}y+=2;
 h2('Pareto de motivos');tbl(['Motivo','Kg','Qtd.','% acum.'],s.par.map(function(x){return [pdfTxt(x[0]),fmt(x[1]),fmt(x[2]),fmt(x[3])+'%']}),{columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}}});
 h2('Top 5 itens');tbl(['Item','Kg','Qtd.'],s.it.map(function(x){return [pdfTxt(x[0]),fmt(x[1]),fmt(x[2])]}),{columnStyles:R3});
 h2('Top 5 clientes');tbl(['Cliente','Kg','Qtd.'],s.cl.map(function(x){return [pdfTxt(x[0]),fmt(x[1]),fmt(x[2])]}),{columnStyles:R3});
@@ -225,6 +230,7 @@ alert('O PDF "'+fname+'" foi baixado. Anexe esse arquivo no e-mail que vai abrir
 location.href='mailto:'+to.join(',')+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body)};
 window.reuniaoInit=function(){try{window.__loadPdfLibs().catch(function(){})}catch(e){}try{anaInitReu()}catch(e){console.error(e)}var pl=rq('reuPl');if(pl.options.length<2){var ps={};data.forEach(function(r){var p=plantNormName(plantaPeloMotivo(r)||r['PLANTA']);if(p)ps[p]=1});Object.keys(ps).sort().forEach(function(p){pl.add(new Option(p,p))})}
 buildChips();if(!rq('reuData').value)rq('reuData').value=loc(new Date());syncTop();if(!rq('reuDataTop').dataset.ev){rq('reuDataTop').dataset.ev=1;rq('reuDataTop').addEventListener('change',function(){if(rq('reuDataTop').value){rq('reuData').value=rq('reuDataTop').value;if(editId)editUI(true)}});rq('reuData').addEventListener('change',syncTop)}window.reuCount();
+try{var sc0=rq('reuCmp');if(sc0&&!sc0.dataset.ok){sc0.dataset.ok=1;sc0.value=localStorage.getItem('controle_refugos_2026_reuCmp')==='ant'?'ant':'mes'}}catch(e){}
 if(!rq('reuA').value)reuPreset('ant');else reuGerar();acRender();lists()};
 refresh();
 })();
