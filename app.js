@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v215';
+window.__V=window.__V||{};window.__V.app='v216';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -3341,6 +3341,7 @@ function prodSyncDiaBoletim(d){
   const L=bolDiaLinhas(d);if(!L.length)return;const t=Date.now(),i=prodIdxDia(d);
   const ling=L.reduce((a,c)=>a+c[3],0),resp=L.reduce((a,c)=>a+c[4],0),pan=L.reduce((a,c)=>a+c[5],0);
   const campos={corridasNum:corrRanges(L.map(c=>c[0])),corridasDet:L.map(c=>[c[0],c[3],c[4],c[7]||'']),materiais:[...new Set(L.flatMap(c=>String(c[7]||'').split('/').map(x=>x.trim()).filter(Boolean)))].join(', ')||undefined,kg:Math.round(pan*100)/100,kgLing:Math.round(ling*100)/100,kgGotas:Math.round(resp*100)/100,_ts:t};
+  if(i>=0&&producaoFundicao[i].kgFonte==='pcp')delete campos.kg;/* kg vem do PCP */
   prodAplicar([i>=0?{...producaoFundicao[i],...campos}:{data:d,ano:+d.slice(0,4),mes:+d.slice(5,7),dia:+d.slice(8,10),fundido:'',corridas:L.length,kgLiq:null,custoKg:2.6,observacao:'Lançado pelo Boletim de Fusão',...campos}],[]);
   saveProducao();
 }
@@ -3496,12 +3497,62 @@ function prodAplicarBoletim(){
     L.sort((a,b)=>a[0]-b[0]);
     const ling=L.reduce((a,c)=>a+c[3],0),resp=L.reduce((a,c)=>a+c[4],0),pan=L.reduce((a,c)=>a+c[5],0),i=prodIdxDia(d);
     const campos={corridasNum:corrRanges(L.map(c=>c[0])),corridasDet:L.map(c=>[c[0],c[3],c[4],c[7]||'']),materiais:[...new Set(L.flatMap(c=>String(c[7]||'').split('/').map(x=>x.trim()).filter(Boolean)))].join(', ')||undefined,kg:Math.round(pan*100)/100,kgLing:ling||resp?Math.round(ling*100)/100:null,kgGotas:ling||resp?Math.round(resp*100)/100:null,_ts:t};
-    if(i>=0)novos.push({...producaoFundicao[i],...campos});
+    if(i>=0){const cp={...campos};if(producaoFundicao[i].kgFonte==='pcp')delete cp.kg;novos.push({...producaoFundicao[i],...cp})}
     else if(criar)novos.push({data:d,ano:+d.slice(0,4),mes:+d.slice(5,7),dia:+d.slice(8,10),fundido:'',corridas:L.length,kg:Math.round(pan*100)/100,kgLiq:null,custoKg:2.6,observacao:'Importado do Boletim de Fusão',...campos});
   });
   prodAplicar(novos,[]);saveProducao();renderProducao();try{dashboard()}catch(e){}
   alert('Boletim aplicado em '+novos.length+' dias. Veja os gráficos de lingotes e respingos na aba Produção.');
 }
+
+/* ===== Importar programação do PCP (peso bruto e líquido por dia) ===== */
+async function pcpLerArquivo(file){
+  const buf=new Uint8Array(await file.arrayBuffer()),dv=new DataView(buf.buffer),td=new TextDecoder();
+  let e=buf.length-22;while(e>=0&&dv.getUint32(e,true)!==0x06054b50)e--;
+  if(e<0)throw new Error(file.name+': não é uma planilha .xlsx válida');
+  const n=dv.getUint16(e+10,true);let off=dv.getUint32(e+16,true);const ent={};
+  for(let i=0;i<n;i++){if(dv.getUint32(off,true)!==0x02014b50)break;const met=dv.getUint16(off+10,true),csz=dv.getUint32(off+20,true),nl=dv.getUint16(off+28,true),el=dv.getUint16(off+30,true),cl=dv.getUint16(off+32,true),lo=dv.getUint32(off+42,true);ent[td.decode(buf.subarray(off+46,off+46+nl))]={met,csz,lo};off+=46+nl+el+cl}
+  const get=async nm=>{const z=ent[nm];if(!z)return null;const lh=z.lo,nl=dv.getUint16(lh+26,true),el=dv.getUint16(lh+28,true),st=lh+30+nl+el,raw=buf.subarray(st,st+z.csz);if(z.met===0)return td.decode(raw);return await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text()};
+  const dec=t=>String(t).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(_,c)=>String.fromCharCode(+c)).replace(/&amp;/g,'&');
+  const wb=await get('xl/workbook.xml'),rels=await get('xl/_rels/workbook.xml.rels');if(!wb||!rels)throw new Error(file.name+': planilha sem workbook');
+  const alvo={};for(const m of rels.matchAll(/<Relationship\b[^>]*>/g)){const id=(m[0].match(/\bId="([^"]*)"/)||[])[1],t=(m[0].match(/\bTarget="([^"]*)"/)||[])[1];if(id&&t)alvo[id]=t.replace(/^\/?(xl\/)?/,'xl/')}
+  const folhas=[];for(const m of wb.matchAll(/<sheet\b[^>]*>/g)){const nm=dec((m[0].match(/\bname="([^"]*)"/)||[])[1]||'').trim(),id=(m[0].match(/\br:id="([^"]*)"/)||[])[1],dm=nm.match(/^(\d{2})-(\d{2})-(\d{2})$/);if(dm&&alvo[id])folhas.push({nm,iso:'20'+dm[3]+'-'+dm[2]+'-'+dm[1],arq:alvo[id]})}
+  const sx=await get('xl/sharedStrings.xml'),idx=new Set();
+  if(sx){let k=0;for(const m of sx.matchAll(/<si>([\s\S]*?)<\/si>/g)){if(m[1].length<400){let t='';for(const x of m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g))t+=x[1];if(dec(t).trim().toUpperCase()==='TOTAL GERAL')idx.add(String(k))}k++}}
+  const out=new Map(),sem=[];
+  for(const f of folhas){
+    const xml=await get(f.arq);if(!xml){sem.push(f.nm);continue}
+    let ok=false;
+    for(const rm of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)){
+      const cels={};for(const c of rm[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)){const at=c[1],ref=(at.match(/\br="([A-Z]+)\d+"/)||[])[1];if(!ref||c[2]==null)continue;const t=(at.match(/\bt="([^"]*)"/)||[])[1],v=(c[2].match(/<v>([\s\S]*?)<\/v>/)||[])[1];
+        if(t==='inlineStr'){const q=c[2].match(/<t[^>]*>([\s\S]*?)<\/t>/);cels[ref]={s:q?dec(q[1]):''}}else if(t==='s')cels[ref]={s:null,i:v};else if(v!=null&&v!=='')cels[ref]={n:Number(v)}}
+      const a=cels.A;if(!a)continue;const eh=a.s!=null?a.s.trim().toUpperCase()==='TOTAL GERAL':idx.has(String(a.i));if(!eh)continue;
+      const kg=cels.D&&cels.D.n,liq=cels.E&&cels.E.n;
+      if(Number.isFinite(kg)&&kg>0){out.set(f.iso,{kg:Math.round(kg*100)/100,kgLiq:Number.isFinite(liq)?Math.round(liq*100)/100:null,arq:file.name});ok=true}
+      break;
+    }
+    if(!ok)sem.push(f.nm);
+  }
+  return{dias:out,sem,folhas:folhas.length};
+}
+async function pcpImportar(files){
+  files=[...(files||[])];if(!files.length)return;
+  try{
+    const todos=new Map(),sem=[];let folhas=0;
+    for(const f of files){const r=await pcpLerArquivo(f);folhas+=r.folhas;r.dias.forEach((v,k)=>todos.set(k,v));r.sem.forEach(x=>sem.push(f.name.slice(0,18)+'…: '+x))}
+    if(!todos.size)throw new Error('não encontrei nenhuma aba de dia (ex.: 02-10-26) com a linha TOTAL GERAL');
+    const hoje=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);let futuros=0;[...todos.keys()].forEach(d=>{if(d>hoje){todos.delete(d);futuros++}});
+    if(!todos.size)throw new Error('todos os dias da planilha são futuros (programação ainda não realizada)');
+    const datas=[...todos.keys()].sort();let novos=0,mudam=0,iguais=0;
+    datas.forEach(d=>{const i=prodIdxDia(d),v=todos.get(d);if(i<0)novos++;else{const o=producaoFundicao[i];if(Math.abs((+o.kg||0)-v.kg)>0.005||Math.abs((+o.kgLiq||0)-(v.kgLiq||0))>0.005||o.kgFonte!=='pcp')mudam++;else iguais++}});
+    const tb=datas.reduce((a,d)=>a+todos.get(d).kg,0),tl=datas.reduce((a,d)=>a+(todos.get(d).kgLiq||0),0),f1=x=>x.toLocaleString('pt-BR',{maximumFractionDigits:0});
+    if(!confirm('Programação do PCP: '+datas.length+' dias ('+datas[0].split('-').reverse().join('/')+' a '+datas[datas.length-1].split('-').reverse().join('/')+').\n\nSoma do período:\n• Peso bruto: '+f1(tb)+' kg\n• Peso líquido: '+f1(tl)+' kg\n\n• '+novos+' dias novos\n• '+mudam+' dias existentes serão atualizados (bruto e líquido)\n• '+iguais+' dias já estão iguais'+(futuros?'\n• '+futuros+' dias programados para o futuro foram ignorados (importe de novo depois que acontecerem)':'')+'\n\nOs dias já lançados mantêm corridas, lingotes, gotas e material. Aplicar?'))return;
+    const t=Date.now(),lista=[];
+    datas.forEach(d=>{const v=todos.get(d),i=prodIdxDia(d),base=i>=0?producaoFundicao[i]:{data:d,ano:+d.slice(0,4),mes:+d.slice(5,7),dia:+d.slice(8,10),fundido:'',corridas:0,custoKg:2.6,observacao:'Importado do PCP'};lista.push({...base,kg:v.kg,kgLiq:v.kgLiq,kgFonte:'pcp',_ts:t})});
+    prodAplicar(lista,[]);saveProducao();try{renderProducao()}catch(e){}try{dashboardDirty=true;dashboard()}catch(e){}try{scheduleFirebasePush()}catch(e){}
+    alert('PCP importado: '+lista.length+' dias com peso bruto e líquido.'+(sem.length?'\n\nAbas sem a linha TOTAL GERAL (ignoradas):\n'+sem.slice(0,12).join('\n'):''));
+  }catch(err){console.error(err);alert('Não consegui importar a programação do PCP: '+(err&&err.message||err))}
+}
+window.pcpImportar=pcpImportar;window.pcpLerArquivo=pcpLerArquivo;
 /* recuperar produções de um arquivo de backup (só soma o que faltar; não mexe no resto) */
 function prodRecuperarArquivo(file){
   if(!file)return;const fr=new FileReader();
