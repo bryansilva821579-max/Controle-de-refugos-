@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.relatorios='v209';
+window.__V=window.__V||{};window.__V.relatorios='v215';
 /* ==================================================================
    RELATÓRIOS MENSAIS — Retrabalhos e Devoluções
    Mesmo formato do relatório mensal de refugos: gráficos com análise
@@ -619,7 +619,7 @@ let tq=0;function onInput(e){if(e.target.id==='p3q'){S.q=e.target.value;clearTim
 function ini(){try{build()}catch(e){console.error(e)}}
 ini();
 window.addEventListener('pesotipo',()=>setTimeout(()=>render(true),30));
-setInterval(()=>{try{render(false)}catch(e){}},1500);
+setInterval(()=>{if(document.hidden)return;try{render(false)}catch(e){}},2500);
 window.__painel360={dados,render,fishSvg,fishRows,costOk};
 })();
 
@@ -648,5 +648,5 @@ if(typeof nav0==='function')window.navigate=function(page){
   if(g){document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.page===g.main));const t=document.querySelector('.top-title h1');if(t)t.textContent=g.label+' — '+g.items.find(p=>p[0]===page)[1].replace(/^\S+\s/,'');setTimeout(ini,50)}
   return r;
 };
-ini();setInterval(ini,1200);
+ini();setInterval(()=>{if(!document.hidden)ini()},2500);
 })();

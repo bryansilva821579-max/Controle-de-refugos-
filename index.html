@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<link rel="preload" as="image" href="logo.png?v=209"><link rel="icon" type="image/png" href="icone.png?v=209">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=209">
-<link rel="manifest" href="manifest.json?v=209">
+<link rel="preload" as="image" href="logo.png?v=215"><link rel="icon" type="image/png" href="icone.png?v=215">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=215">
+<link rel="manifest" href="manifest.json?v=215">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#2f3b47">
@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Refugos">
 <title>Controle de Refugos 2026</title>
-<link rel="stylesheet" href="base.css?v=209">
+<link rel="stylesheet" href="base.css?v=215">
 
 <style id="dashboardPdfStyles">
 @page{size:A4 landscape;margin:8mm 8mm 9mm 8mm}
@@ -190,8 +190,8 @@ html[data-theme="dark"] .firebase-modal{background:#101a2a;color:#f3f4f6}.data-o
 @media (max-width:760px){.help-intro{grid-template-columns:1fr}.help-badge{justify-self:start}.help-grid{grid-template-columns:1fr}}
 </style>
 <style id="logoIndi">.sidebar .brand img{width:auto!important;height:48px!important;max-width:64px;object-fit:contain!important;border-radius:8px;background:#fff;padding:3px}.pdf-only-title .pdf-brand img{width:auto!important;object-fit:contain!important;border-radius:0}</style>
-<link rel="stylesheet" href="graficos.css?v=209">
-<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=209">
+<link rel="stylesheet" href="graficos.css?v=215">
+<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=215">
 <script>
 /* ===== CONFIGURAÇÃO DO FIREBASE =====
    Preencha uma vez e todos os computadores conectam sozinhos. Deixe "" para não usar. */
@@ -203,7 +203,7 @@ window.EMBEDDED_FIREBASE_CONFIG={
   messagingSenderId:"894679339944",
   appId:"1:894679339944:web:fcf8fc0bf6f45439c7c39d"
 };
-window.APP_VERSION="v209";
+window.APP_VERSION="v215";
 /* Mostra erros de JavaScript na tela em vez de ficar em branco */
 window.addEventListener('error',function(ev){
   try{
@@ -234,7 +234,7 @@ html[data-theme="dark"] .prodcal .dia span.ref,html[data-theme="dark"] .prodcal 
 .prodcal .vazio{min-height:66px}
 html[data-theme="dark"] .sidebar{background:linear-gradient(180deg,#1a2c47,#142238);border-right:1px solid var(--border)}
 </style>
-<link rel="stylesheet" href="mobile.css?v=209">
+<link rel="stylesheet" href="mobile.css?v=215">
 <style id="metalCss">
 /* ===== TEMA METAL LÍQUIDO (camada visual; só cores/efeitos, não altera layout) ===== */
 html.metal{--orange:#ff6a1f;--radius:16px;--mx:#ff6a1f}
@@ -245,7 +245,7 @@ html.metal body::before{content:"";position:fixed;inset:-20%;z-index:-1;pointer-
  background:radial-gradient(38% 32% at 18% 22%,rgba(190,210,230,.30),transparent 70%),radial-gradient(34% 30% at 82% 18%,rgba(255,106,31,.16),transparent 70%),radial-gradient(40% 34% at 70% 82%,rgba(140,170,205,.26),transparent 70%),radial-gradient(30% 26% at 25% 85%,rgba(220,232,244,.20),transparent 70%);
  filter:blur(30px);animation:mtDrift 38s ease-in-out infinite alternate}
 html.metal:not([data-theme="dark"]) body::before{opacity:.75}
-@keyframes mtDrift{0%{transform:translate3d(-3%,-2%,0) scale(1)}50%{transform:translate3d(4%,3%,0) scale(1.08)}100%{transform:translate3d(-2%,5%,0) scale(1.02)}}
+html.metal body::before{will-change:transform}@keyframes mtDrift{0%{transform:translate3d(-3%,-2%,0) scale(1)}50%{transform:translate3d(4%,3%,0) scale(1.08)}100%{transform:translate3d(-2%,5%,0) scale(1.02)}}
 /* painéis = placas de metal com reflexo */
 html.metal .panel,html.metal .card,html.metal .help-card,html.metal .import-card{background:linear-gradient(150deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.02) 38%,rgba(0,0,0,.10) 100%),var(--card)!important;border:1px solid var(--border)!important;border-radius:var(--radius)!important;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(0,0,0,.18)!important;position:relative;overflow-wrap:anywhere}
 html.metal:not([data-theme="dark"]) .panel,html.metal:not([data-theme="dark"]) .card{background:linear-gradient(150deg,rgba(255,255,255,.85) 0%,rgba(255,255,255,.25) 40%,rgba(120,140,160,.12) 100%),var(--card)!important}
@@ -345,11 +345,11 @@ html.gate-on #siteGate{display:flex!important}html:not(.gate-on) #siteGate{displ
 #siteGate.out{pointer-events:none}
 #siteGate.out .gbox>:not(.gbrand){animation:gFade .35s ease forwards}
 @keyframes gFade{to{opacity:0;transform:translateY(14px)}}
-#siteGate.out .glogo{animation:gLogo 1.25s cubic-bezier(.4,0,.2,1) forwards}
+#siteGate.out .glogo{animation:gLogo .9s cubic-bezier(.4,0,.2,1) forwards}
 @keyframes gLogo{0%{transform:scale(1)}30%{transform:scale(1.12)}100%{transform:scale(1.7);opacity:0}}
-#gateRing{position:fixed;z-index:2147483001;pointer-events:none;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(255,150,90,.95),0 0 46px 10px rgba(255,90,31,.75),inset 0 0 50px rgba(255,90,31,.55);opacity:0}
-html.gate-enter .app{animation:gEnter 1.3s cubic-bezier(.2,.7,.2,1) .25s both}
-@keyframes gEnter{from{opacity:0;transform:scale(1.045);filter:blur(8px) brightness(1.4)}to{opacity:1;transform:none;filter:none}}
+#gateRing{position:fixed;z-index:2147483001;pointer-events:none;border-radius:50%;border:3px solid rgba(255,150,90,.95);box-shadow:0 0 28px 4px rgba(255,90,31,.55);transform:translate(-50%,-50%) scale(.02);opacity:.95;will-change:transform,opacity;transition:transform .85s cubic-bezier(.4,0,.2,1),opacity .85s ease}#gateRing.go{transform:translate(-50%,-50%) scale(1);opacity:0}#siteGate.fade{opacity:0;transition:opacity .45s ease}#siteGate .glogo{will-change:transform}
+html.gate-enter .app{animation:gEnter .5s ease .15s both}
+@keyframes gEnter{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){#siteGate.out *,html.gate-enter .app{animation-duration:.01s!important}}
 @media(max-width:520px){#siteGate .glogo{height:132px}#siteGate .gname{font-size:17px}#siteGate{background:#000 linear-gradient(90deg,#ff5a1f 0%,#8d2d0f 14%,rgba(0,0,0,0) 38%)}}
 </style>
@@ -417,7 +417,7 @@ html.indi.indi table thead th{color:#fff!important}
 </style>
 </head>
 <body>
-<div id="siteGate"><div class="gbox"><div class="gbrand"><img class="glogo" alt="Metal Indianápolis" width="163" height="161" decoding="sync" src="logo.png?v=209"></div><div class="gh">ACESSO RESTRITO</div><svg class="gic" viewBox="0 0 24 24" fill="none" stroke="#ff5a1f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.3"/></svg><h2>Controle de Perdas, Refugos e Retrabalhos</h2><p>Digite a senha para acessar o sistema.</p><input id="gatePw" type="password" autocomplete="current-password" placeholder="Senha" aria-label="Senha"><button type="button" id="gateBtn">Entrar</button><div class="gerr" id="gateErr"></div><a class="gsite" href="https://indianapolis.com.br/" target="_blank" rel="noopener noreferrer">indianapolis.com.br</a></div></div></div>
+<div id="siteGate"><div class="gbox"><div class="gbrand"><img class="glogo" alt="Metal Indianápolis" width="163" height="161" decoding="sync" src="logo.png?v=215"></div><div class="gh">ACESSO RESTRITO</div><svg class="gic" viewBox="0 0 24 24" fill="none" stroke="#ff5a1f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.3"/></svg><h2>Controle de Perdas, Refugos e Retrabalhos</h2><p>Digite a senha para acessar o sistema.</p><input id="gatePw" type="password" autocomplete="current-password" placeholder="Senha" aria-label="Senha"><button type="button" id="gateBtn">Entrar</button><div class="gerr" id="gateErr"></div><a class="gsite" href="https://indianapolis.com.br/" target="_blank" rel="noopener noreferrer">indianapolis.com.br</a></div></div></div>
 <script>
 (function(){var H="2dce6a5aebed4ac66c1025924455f76a488bf8d2c560fa9214de0770716061b1",K="refugosGateOk",T="refugosGateTry",de=document.documentElement;
 function ok(){try{return sessionStorage.getItem(K)===H}catch(e){return false}}
@@ -431,16 +431,13 @@ function sai(){var g=$("siteGate"),lg=g&&g.querySelector(".glogo");
  var red=false;try{red=matchMedia("(prefers-reduced-motion:reduce)").matches}catch(e){}
  if(!g||!lg||red){de.classList.remove("gate-on");irPainel();return}
  var r=lg.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=Math.hypot(Math.max(cx,innerWidth-cx),Math.max(cy,innerHeight-cy))+80;
- de.classList.add("gate-enter");irPainel();g.classList.add("out");
- var ring=document.createElement("div");ring.id="gateRing";document.body.appendChild(ring);
- var t0=performance.now(),W=380,D=1000;
- function ease(x){return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2}
- function step(t){var k=Math.min(1,Math.max(0,(t-t0-W)/D)),R=ease(k)*max,Wd=innerWidth+2,Hd=innerHeight+2,
-   p="M0 0H"+Wd+"V"+Hd+"H0Z M"+(cx-R)+" "+cy+"a"+R+" "+R+" 0 1 0 "+(2*R)+" 0a"+R+" "+R+" 0 1 0 "+(-2*R)+" 0Z";
-  g.style.clipPath=k>0?"path(evenodd,'"+p+"')":"";g.style.webkitClipPath=g.style.clipPath;
-  ring.style.left=cx+"px";ring.style.top=cy+"px";ring.style.width=(2*R)+"px";ring.style.height=(2*R)+"px";ring.style.opacity=(k>0&&k<1)?String(1-k*.65):"0";
-  if(t-t0<W+D){requestAnimationFrame(step)}else{de.classList.remove("gate-on");g.classList.remove("out");g.style.clipPath="";g.style.webkitClipPath="";ring.remove();setTimeout(function(){de.classList.remove("gate-enter")},900)}}
- requestAnimationFrame(step)}
+ g.classList.add("out");
+ var ring=document.createElement("div");ring.id="gateRing";ring.style.left=cx+"px";ring.style.top=cy+"px";ring.style.width=(2*max)+"px";ring.style.height=(2*max)+"px";document.body.appendChild(ring);
+ requestAnimationFrame(function(){requestAnimationFrame(function(){ring.classList.add("go")})});
+ /* só opacidade/transform (compositor) animam; o painel pesado é montado por trás sem travar a animação */
+ setTimeout(function(){de.classList.add("gate-enter");irPainel()},140);
+ setTimeout(function(){g.classList.add("fade")},420);
+ setTimeout(function(){de.classList.remove("gate-on");g.classList.remove("out","fade");ring.remove();setTimeout(function(){de.classList.remove("gate-enter")},700)},950)}
 async function go(){var err=$("gateErr"),inp=$("gatePw"),st=rd(),now=Date.now();
 if(st.until&&now<st.until){err.textContent="Muitas tentativas. Aguarde "+Math.ceil((st.until-now)/60000)+" min.";return}
 if(!(window.crypto&&crypto.subtle)){err.textContent="Abra o sistema por HTTPS para validar a senha.";return}
@@ -489,6 +486,7 @@ service cloud.firestore {
     <div class="app-loading-spinner" aria-hidden="true"></div>
     <div id="appLoadingTitle" style="font-size:15px;font-weight:800">Carregando informações...</div>
     <div id="appLoadingText" style="margin-top:5px;font-size:12px;color:#b9c5d4">Aguarde um instante.</div>
+    <div class="skl" aria-hidden="true"><i></i><i></i><i></i></div>
     <div class="app-loading-dots" aria-hidden="true"><i></i><i></i><i></i></div>
     <div class="app-loading-bar" aria-hidden="true"></div>
   </div>
@@ -539,7 +537,7 @@ service cloud.firestore {
 <button class="tab" data-page="gestao">📈 &nbsp; Gestão</button>
 <button class="tab" data-page="ajuda">❓ &nbsp; Ajuda</button>
 </nav></div></div>
-<div class="app"><aside class="sidebar"><div class="brand"><img src="logo.png?v=209" alt="Logo"><div><strong>CONTROLE DE REFUGOS</strong><span>Gestão industrial • FQ103 e FQ013 Rev 01</span></div></div><div class="menu"><button class="tab active" data-page="dashboard">▣ <span>Dashboard peso</span></button><button class="tab" data-page="dashboardQtd">▥ <span>Dashboard quantidade</span></button><button class="tab" data-page="lancamentos">＋ <span>Lançamentos</span></button><button class="tab" data-page="historico">☷ <span>Histórico</span></button><button class="tab" data-page="cadastro">⚙ <span>Cadastro</span></button><button class="tab" data-page="reuniao">👥 <span>Reunião</span></button><button class="tab" data-page="dados">⚙ <span>Dados e backup</span></button><button class="tab" data-page="auditoria">🗂 <span>Auditoria</span></button><button class="tab" data-page="retrabalho">🔧 <span>Retrabalhos</span></button><button class="tab" data-page="devolucoes">↩ <span>Devoluções</span></button><button class="tab" data-page="gestao">📈 <span>Gestão</span></button><button class="tab" data-page="ajuda">❓ <span>Ajuda</span></button></div><div class="side-foot">FQ103 + FQ013 Rev 01 • Fundição e Usinagem<br><a href="https://indianapolis.com.br/" target="_blank" rel="noopener noreferrer" style="color:#ff8a5c;font-weight:700;text-decoration:none">indianapolis.com.br ↗</a></div></aside><main class="main"><header class="topbar"><button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menu" aria-expanded="false" onclick="var m=document.getElementById('mobileDrawer');m.classList.add('open');m.setAttribute('aria-hidden','false');document.body.style.overflow='hidden'">☰</button><div class="top-title"><h1>Dashboard de Refugos</h1><p>Informações baseadas nas FQ103 e FQ013 Rev 01, referentes aos refugos gerados na Fundição e Usinagem.</p></div><div class="top-actions"><span id="onlineStatus" class="online-status offline">● Offline</span><button class="theme-toggle firebase-config-btn" id="firebaseConfigBtn" type="button" onclick="openFirebaseModal()" title="Configurar conexão online">☁ <span>Conectar online</span></button><button class="theme-toggle" id="aparBtn" type="button" aria-haspopup="true" aria-expanded="false" title="Mudar a aparência do sistema">🎨 <span>Aparência</span></button><button class="theme-toggle" id="indiBtn" type="button" onclick="toggleIndi()" title="Aparência laranja e preto (igual ao site da empresa)">🔥 <span>Laranja/Preto</span></button><button class="theme-toggle" id="metalBtn" type="button" onclick="toggleMetal()" title="Ligar/desligar o visual metal líquido">✨ <span>Metal</span></button><button class="theme-toggle" id="themeToggle" type="button" onclick="toggleTheme()" title="Alternar modo claro/escuro">🌙 <span>Modo escuro</span></button></div></header><div class="wrap">
+<div class="app"><aside class="sidebar"><div class="brand"><img src="logo.png?v=215" alt="Logo"><div><strong>CONTROLE DE REFUGOS</strong><span>Gestão industrial • FQ103 e FQ013 Rev 01</span></div></div><div class="menu"><button class="tab active" data-page="dashboard">▣ <span>Dashboard peso</span></button><button class="tab" data-page="dashboardQtd">▥ <span>Dashboard quantidade</span></button><button class="tab" data-page="lancamentos">＋ <span>Lançamentos</span></button><button class="tab" data-page="historico">☷ <span>Histórico</span></button><button class="tab" data-page="cadastro">⚙ <span>Cadastro</span></button><button class="tab" data-page="reuniao">👥 <span>Reunião</span></button><button class="tab" data-page="dados">⚙ <span>Dados e backup</span></button><button class="tab" data-page="auditoria">🗂 <span>Auditoria</span></button><button class="tab" data-page="retrabalho">🔧 <span>Retrabalhos</span></button><button class="tab" data-page="devolucoes">↩ <span>Devoluções</span></button><button class="tab" data-page="gestao">📈 <span>Gestão</span></button><button class="tab" data-page="ajuda">❓ <span>Ajuda</span></button></div><div class="side-foot">FQ103 + FQ013 Rev 01 • Fundição e Usinagem<br><a href="https://indianapolis.com.br/" target="_blank" rel="noopener noreferrer" style="color:#ff8a5c;font-weight:700;text-decoration:none">indianapolis.com.br ↗</a></div></aside><main class="main"><header class="topbar"><button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menu" aria-expanded="false" onclick="var m=document.getElementById('mobileDrawer');m.classList.add('open');m.setAttribute('aria-hidden','false');document.body.style.overflow='hidden'">☰</button><div class="top-title"><h1>Dashboard de Refugos</h1><p>Informações baseadas nas FQ103 e FQ013 Rev 01, referentes aos refugos gerados na Fundição e Usinagem.</p></div><div class="top-actions"><span id="onlineStatus" class="online-status offline">● Offline</span><button class="theme-toggle firebase-config-btn" id="firebaseConfigBtn" type="button" onclick="openFirebaseModal()" title="Configurar conexão online">☁ <span>Conectar online</span></button><button class="theme-toggle" id="aparBtn" type="button" aria-haspopup="true" aria-expanded="false" title="Mudar a aparência do sistema">🎨 <span>Aparência</span></button><button class="theme-toggle" id="indiBtn" type="button" onclick="toggleIndi()" title="Aparência laranja e preto (igual ao site da empresa)">🔥 <span>Laranja/Preto</span></button><button class="theme-toggle" id="metalBtn" type="button" onclick="toggleMetal()" title="Ligar/desligar o visual metal líquido">✨ <span>Metal</span></button><button class="theme-toggle" id="themeToggle" type="button" onclick="toggleTheme()" title="Alternar modo claro/escuro">🌙 <span>Modo escuro</span></button></div></header><div class="wrap">
 
 <section id="dashboard" class="page active"><div class="filterbar"><strong style="font-size:12px;margin-right:4px">PERÍODO</strong><select id="filterYear"><option value="">Todos os anos</option></select><select id="filterPlant"><option value="">Todas as plantas</option></select><select id="filterMonth"><option value="">Todos os meses</option><option value="1">Jan</option><option value="2">Fev</option><option value="3">Mar</option><option value="4">Abr</option><option value="5">Mai</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Ago</option><option value="9">Set</option><option value="10">Out</option><option value="11">Nov</option><option value="12">Dez</option></select><strong style="font-size:12px;margin-left:6px">PESO</strong><select id="filterPeso" title="Tipo de peso usado nos números" onchange="setPesoTipo(this.value)"><option value="bruto">Peso bruto fracionado</option><option value="liquido">Líquido Fundição / bruto Usinagem</option><option value="usinado">Peso usinado</option></select><span class="pesoAviso small" style="display:none;color:#d97706"></span><button class="btn secondary" onclick="resetFilters()">Limpar</button><button id="dashboardCostAccessBtn" class="btn secondary" type="button" onclick="toggleCostAccess()">🔐 Mostrar custos</button><button class="btn primary" onclick="gerarPdfDashboard('dashboard')">📄 Gerar PDF A4</button></div><div id="anaResumo"></div><div class="cards"><div class="card"><div class="kpi-accent"></div><div class="label">Refugo total</div><div class="value" id="kpiKg">0 kg</div><div class="sub">peso refugado no período</div></div><div class="card"><div class="kpi-accent"></div><div class="label">% de refugo</div><div class="value" id="kpiPerc">0%</div><div class="sub">refugo da Fundição ÷ produção da Fundição</div></div><div class="card cost-sensitive-card cost-sensitive-locked" onclick="toggleCostAccess()"><div class="kpi-accent"></div><div class="label">Custo estimado</div><div class="value" id="kpiCusto">🔒 Restrito</div><div class="sub cost-sensitive-lock" id="kpiCustoSub">valores protegidos — acesso restrito</div></div><div class="card meta-card"><div class="kpi-accent"></div><div class="label">🎯 Meta</div><div class="value" id="kpiMeta">—</div><div class="sub" id="kpiMetaSub">situação frente ao limite</div><div class="meta-bar"><i id="kpiMetaBar"></i></div></div></div><div id="anaCusto"></div><div class="grid"><div class="panel wide"><h3>Evolução mensal do refugo</h3><div class="hint">Refugo em kg e limite mensal configurado.</div><div class="chartbox"><canvas id="chartMonth"></canvas></div></div><div class="panel"><h3>Pareto — motivos de refugo</h3><div class="hint">Principais causas por peso.</div><div class="chartbox"><canvas id="chartPareto"></canvas></div></div><div class="panel"><h3>Distribuição por planta</h3><div class="hint">Participação do refugo por unidade.</div><div class="chartbox"><canvas id="chartPlant"></canvas></div></div><div class="panel"><h3>Distribuição por planta — pizza</h3><div class="hint">Participação do refugo em kg por planta.</div><div class="chartbox"><canvas id="chartPlantPie"></canvas></div></div><div class="panel"><h3>Top clientes</h3><div class="hint">Clientes com maior volume de refugo.</div><div class="chartbox"><canvas id="chartClient"></canvas></div></div><div class="panel"><h3>Produção × refugo</h3><div class="hint">Percentual mensal do refugo da Fundição sobre a produção da Fundição.</div><div class="chartbox"><canvas id="chartRate"></canvas></div></div><div class="panel wide"><h3>Resumo mensal — produção, refugo, % e valor</h3><div class="hint">Percentual de refugo sobre a produção e valor em R$ do refugo, mês a mês (valor do kg vigente em cada data). Valores em R$ protegidos por senha.</div><div class="tablewrap"><table><thead><tr><th>Mês</th><th>Produção (kg)</th><th>Refugo (kg)</th><th>% refugo (Fundição)</th><th>Valor (R$)</th></tr></thead><tbody id="monthSummaryBody"></tbody></table></div></div><div class="top-summary pdf-page-break"><div class="mini"><span>Registros</span><b id="kpiReg">0</b></div><div class="mini"><span>Quantidade</span><b id="kpiQtd">0</b></div><div class="mini"><span>Principal motivo no período</span><b id="kpiMotivo">—</b></div></div><div class="plant-motives"><div class="plant-motive"><div class="pm-label">Principal motivo — Fundição</div><div class="pm-value" id="kpiMotivoFundicao">—</div><div class="pm-sub" id="kpiMotivoFundicaoSub">Por peso no período</div><div class="pm-items-title">3 principais itens desse motivo</div><ol class="pm-items" id="kpiMotivoFundicaoItems"><li>—</li></ol></div><div class="plant-motive"><div class="pm-label">Principal motivo — Fundição na Usinagem</div><div class="pm-value" id="kpiMotivoFU">—</div><div class="pm-sub" id="kpiMotivoFUSub">Por peso no período</div><div class="pm-items-title">3 principais itens desse motivo</div><ol class="pm-items" id="kpiMotivoFUItems"><li>—</li></ol></div><div class="plant-motive"><div class="pm-label">Principal motivo — Usinagem</div><div class="pm-value" id="kpiMotivoUsinagem">—</div><div class="pm-sub" id="kpiMotivoUsinagemSub">Por peso no período</div><div class="pm-items-title">3 principais itens desse motivo</div><ol class="pm-items" id="kpiMotivoUsinagemItems"><li>—</li></ol></div></div></div>
 <div class="panel wide" id="quadroPanelKg"><h3>📅 Quadro de meses</h3><div id="quadroMesesKg"></div></div>
@@ -969,8 +967,8 @@ service cloud.firestore {
 <div id="lixLock"><div class="hint" style="margin-bottom:8px">Área protegida. Digite a senha da lixeira.</div><div class="rt-grid"><div class="field"><label>Senha</label><input id="lixPw" type="password" onkeydown="if(event.key==='Enter')lixUnlock()" autocomplete="off"></div></div><div style="margin-top:10px"><button class="btn primary" type="button" onclick="lixUnlock()">Abrir lixeira</button> <span id="lixMsg" class="hint" style="color:#dc2626"></span></div></div>
 <div id="lixBox" style="display:none"><div class="hint" style="margin-bottom:10px">Itens excluídos de refugos, retrabalhos e atas ficam aqui por 180 dias. Esta lixeira é deste aparelho.</div><div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn secondary" type="button" onclick="trEmpty()">Esvaziar lixeira</button><button class="btn secondary" type="button" onclick="lixLock()">🔒 Bloquear</button></div><div id="lixTbl" class="tablewrap"></div></div></div>
 <div id="auBk" class="panel" style="display:none"><h3>💾 Backup</h3><p id="bkInfo"></p><label style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="bkAuto" onchange="bkToggle(this)"> Fazer backup automático a cada 7 dias (baixa um arquivo ao abrir o sistema)</label>
-<div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"><button class="btn primary" type="button" onclick="bkDownload(false)">⬇ Baixar backup agora</button></div>
-<div class="hint">O backup inclui refugos, cadastros, metas, produção, atas, retrabalhos, histórico e lixeira. <b>As fotos não entram</b> (ficam no aparelho e na nuvem).</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"><button class="btn primary" type="button" onclick="bkDownload(false)">⬇ Baixar backup agora</button><button class="btn secondary" type="button" onclick="bkXlsx()">📊 Exportar tudo para Excel</button></div>
+<div class="hint">O backup inclui refugos, cadastros, metas, produção, boletim, devoluções, atas, retrabalhos, histórico e lixeira. A planilha Excel traz os mesmos dados para consulta (não serve para restaurar). <b>As fotos não entram</b> (ficam no aparelho e na nuvem).</div>
 <h4 style="margin:18px 0 6px">Restaurar um backup</h4><input type="file" accept=".json,application/json" onchange="bkRestore(this)"><div class="hint" style="margin-top:6px">Substitui os dados deste aparelho pelos do arquivo. Faça um backup atual antes.</div></div>
 </section>
 
@@ -1359,21 +1357,21 @@ window.helpIr=function(id){
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script src="dados-iniciais.js?v=209"></script>
-<script src="analises.js?v=209"></script>
-<script src="filtros.js?v=209"></script>
-<script src="retrabalhos.js?v=209"></script>
-<script src="boletim.js?v=209"></script>
-<script src="app.js?v=209"></script>
-<script src="assistente.js?v=209"></script>
-<script src="devolucoes.js?v=209"></script>
-<script src="gestao.js?v=209"></script>
-<script src="relatorios.js?v=209"></script>
-<script src="previsao.js?v=209"></script>
-<script src="reuniao.js?v=209"></script>
-<script src="auditoria.js?v=209"></script>
-<script src="composicao.js?v=209"></script>
-<script src="versao.js?v=209"></script>
+<script src="dados-iniciais.js?v=215"></script>
+<script src="analises.js?v=215"></script>
+<script src="filtros.js?v=215"></script>
+<script src="retrabalhos.js?v=215"></script>
+<script src="boletim.js?v=215"></script>
+<script src="app.js?v=215"></script>
+<script src="assistente.js?v=215"></script>
+<script src="devolucoes.js?v=215"></script>
+<script src="gestao.js?v=215"></script>
+<script src="relatorios.js?v=215"></script>
+<script src="previsao.js?v=215"></script>
+<script src="reuniao.js?v=215"></script>
+<script src="auditoria.js?v=215"></script>
+<script src="composicao.js?v=215"></script>
+<script src="versao.js?v=215"></script>
 <script>if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost")){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}</script>
 <script>
 /* aviso automático quando algum arquivo do site está desatualizado (cache ou envio incompleto) */

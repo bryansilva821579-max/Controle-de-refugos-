@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v209';
+window.__V=window.__V||{};window.__V.app='v215';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -2806,9 +2806,12 @@ async function verFotos(i){
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('fotoModal')?.classList.remove('show')});
 function showToast(msg){
+  if(!document.getElementById('toastCss')){const st=document.createElement('style');st.id='toastCss';st.textContent='#appToast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,24px) scale(.92);background:#1f7a3d;color:#fff;padding:12px 20px 14px;border-radius:14px;font:700 14px system-ui,Arial;box-shadow:0 10px 28px rgba(0,0,0,.32);z-index:99999;opacity:0;pointer-events:none;display:flex;align-items:center;gap:10px;overflow:hidden;max-width:92vw;transition:opacity .25s ease,transform .35s cubic-bezier(.2,1.3,.4,1)}#appToast.on{opacity:1;transform:translate(-50%,0) scale(1)}#appToast svg{flex:none;width:24px;height:24px}#appToast circle{fill:rgba(255,255,255,.2);transform-origin:center;transform:scale(0)}#appToast.on circle{animation:tstPop .35s .05s cubic-bezier(.2,1.4,.4,1) forwards}#appToast path{fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:24;stroke-dashoffset:24}#appToast.on path{animation:tstDraw .4s .25s ease-out forwards}#appToast .tb{position:absolute;left:0;bottom:0;height:3px;background:rgba(255,255,255,.75);width:100%;transform-origin:left}#appToast.on .tb{animation:tstBar 2.6s linear forwards}@keyframes tstPop{to{transform:scale(1)}}@keyframes tstDraw{to{stroke-dashoffset:0}}@keyframes tstBar{to{transform:scaleX(0)}}@media (prefers-reduced-motion:reduce){#appToast,#appToast *{animation-duration:.01s!important;transition:none!important}}';document.head.appendChild(st)}
   let t=document.getElementById('appToast');
-  if(!t){t=document.createElement('div');t.id='appToast';t.setAttribute('role','status');t.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1f7a3d;color:#fff;padding:12px 22px;border-radius:12px;font:700 14px system-ui,Arial;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:99999;opacity:0;transition:opacity .2s;pointer-events:none';document.body.appendChild(t)}
-  t.textContent='✔ '+msg;t.style.opacity='1';clearTimeout(t._h);t._h=setTimeout(()=>{t.style.opacity='0'},2600);
+  if(!t){t=document.createElement('div');t.id='appToast';t.setAttribute('role','status');document.body.appendChild(t)}
+  t.removeAttribute('style');t.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11"/><path d="M6.5 12.5l3.8 3.8 7.2-8"/></svg><span></span><i class="tb"></i>';t.querySelector('span').textContent=String(msg).replace(/^[✔✓]\s*/,'');
+  t.classList.remove('on');void t.offsetWidth;t.classList.add('on');try{if(navigator.vibrate&&matchMedia('(pointer:coarse)').matches)navigator.vibrate([10,40,10])}catch(e){}
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),2600);
 }
 const refugoForm=document.getElementById('refugoForm');
 refugoForm?.addEventListener('submit',async e=>{
@@ -3225,9 +3228,22 @@ function animGlobalCss(){if(document.getElementById('animGlobal'))return;const s
   '.p3k,.p3c{animation:rFade .5s ease both}.p3kp .p3k:nth-child(1),.p3g2 .p3c:nth-child(1){animation-delay:.02s}.p3kp .p3k:nth-child(2),.p3g2 .p3c:nth-child(2){animation-delay:.08s}.p3kp .p3k:nth-child(3){animation-delay:.14s}.p3kp .p3k:nth-child(4){animation-delay:.2s}.p3kp .p3k:nth-child(5){animation-delay:.26s}.p3kp .p3k:nth-child(6){animation-delay:.32s}.p3kp .p3k:nth-child(7){animation-delay:.38s}'+
   '.p3svg rect.bar{transform-box:fill-box;transform-origin:50% 100%;animation:rGrow .7s cubic-bezier(.2,.7,.2,1) both}'+
   '.btn{transition:transform .12s ease,filter .15s ease,box-shadow .15s ease}.btn:active{transform:scale(.96)}'+
+  '.skl{display:flex;flex-direction:column;gap:8px;margin:14px auto 4px;width:min(260px,70vw)}.skl i{display:block;height:10px;border-radius:6px;background:linear-gradient(90deg,rgba(255,255,255,.08) 25%,rgba(255,255,255,.28) 50%,rgba(255,255,255,.08) 75%);background-size:200% 100%;animation:sklSh 1.2s linear infinite}.skl i:nth-child(1){width:100%}.skl i:nth-child(2){width:78%}.skl i:nth-child(3){width:56%}@keyframes sklSh{to{background-position:-200% 0}}.skel{border-radius:10px;color:transparent!important;background:linear-gradient(90deg,rgba(128,140,160,.12) 25%,rgba(128,140,160,.28) 50%,rgba(128,140,160,.12) 75%);background-size:200% 100%;animation:sklSh 1.2s linear infinite;min-height:1em}@media (prefers-reduced-motion:reduce){.skl i,.skel{animation:none}}'+
+  '@keyframes tapRing{0%{box-shadow:0 0 0 0 rgba(255,106,31,.5)}100%{box-shadow:0 0 0 16px rgba(255,106,31,0)}}@keyframes tapPop{0%{transform:scale(.93)}55%{transform:scale(1.04)}100%{transform:scale(1)}}'+
+  'button,.btn,.tab,.rt-tab,select,summary,[role=button]{-webkit-tap-highlight-color:transparent;transition:transform .14s cubic-bezier(.2,.7,.2,1),filter .15s ease,box-shadow .2s ease,background-color .2s ease}'+
+  'button:not(:disabled):active,.btn:active,.tab:active,.rt-tab:active,[role=button]:active{transform:scale(.95);filter:brightness(.94)}'+
+  '.tapfx{animation:tapRing .5s ease-out,tapPop .32s cubic-bezier(.2,.7,.2,1)}'+
+  '@media (hover:hover){.btn:hover,.rt-tab:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.14)}.tab:hover{transform:translateX(3px)}.btn:active,.rt-tab:active,.tab:active{transform:scale(.95)}.rK:hover,.p3k:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.12)}}'+
+  '.rK,.p3k{transition:transform .2s ease,box-shadow .2s ease}'+
+  'input:focus,select:focus,textarea:focus{transition:box-shadow .2s ease,border-color .2s ease}'+
+  '@media (prefers-reduced-motion:reduce){.tapfx{animation:none!important}button,.btn,.tab,.rt-tab{transition:none!important}}'+
   '@media (prefers-reduced-motion:reduce){.page.active,.tAnim,#launchTabRefugo,#launchTabProducao,#launchTabBoletim,.p3k,.p3c,.p3svg rect.bar{animation:none!important}}';
   document.head.appendChild(s)}
 animGlobalCss();rendCss();
+(function(){if(window.__tapFx)return;window.__tapFx=1;const SEL='button,.btn,.tab,.rt-tab,[role=button],summary';
+  document.addEventListener('pointerdown',e=>{const el=e.target.closest&&e.target.closest(SEL);if(!el||el.disabled)return;if(el.id==='asstFab'||el.id==='asstMic'){}
+    el.classList.remove('tapfx');void el.offsetWidth;el.classList.add('tapfx');setTimeout(()=>el.classList.remove('tapfx'),520);
+    if(e.pointerType==='touch'&&navigator.vibrate&&!/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)){try{navigator.vibrate(8)}catch(x){}}},{passive:true})})();
 /* ===== Dashboard "Rendimento do forno" com filtro por período (v205) ===== */
 let rendFiltro=null,rendDiaSel='';
 const rendIso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');

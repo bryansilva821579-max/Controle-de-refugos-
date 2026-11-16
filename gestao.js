@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.gestao='v209';
+window.__V=window.__V||{};window.__V.gestao='v215';
 /* ==================================================================
    GESTÃO — alertas e metas, comparativo de períodos, cruzamento
    refugo × devolução e relatório mensal (PDF / Excel .xlsx).
@@ -831,7 +831,7 @@ function quadroAtualiza(force){
   });
 }
 window.__quadroRefresh=()=>quadroAtualiza(true);
-setInterval(()=>quadroAtualiza(false),1500);
+setInterval(()=>{if(!document.hidden)quadroAtualiza(false)},2500);
 document.addEventListener('change',e=>{if(e.target&&/^(filterPlant|filterYear|filterMonth|filterPeso|qFilterPlant|qFilterYear|qFilterMonth)$/.test(e.target.id))setTimeout(()=>quadroAtualiza(true),50)});
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.tab'))setTimeout(()=>quadroAtualiza(false),150)});
 
