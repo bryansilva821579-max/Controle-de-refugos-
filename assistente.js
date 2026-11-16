@@ -148,6 +148,8 @@ function detMetric(q){if(/lancamento|ocorrencia|\bvezes\b/.test(q))return'n';if(
 function detOp(q){
   if(/sugest|acao|acoes|melhorar|reduzir|o que fazer|recomend/.test(q))return'acoes';if(/alerta|anomal|fora do (normal|padrao)|problema|atencao|atrasad|parado/.test(q))return'alertas';if(/resumo|visao geral|como (estamos|foi|esta)|panorama/.test(q))return'resumo';
   if(/\bmeta\b|% de refugo|percentual de refugo|taxa de refugo|porcentagem de refugo/.test(q))return'meta';
+  if(/por ?que (o|a|os|as)? ?\w*.*(subiu|caiu|aumentou|diminuiu|piorou|melhorou|alto|baixo)|por ?que subiu|por ?que caiu|o que (causou|explica|aconteceu)|o que mudou|motivo d[aeo] (aumento|queda)|explique/.test(q))return'why';
+  if(/pareto|80 ?%|80 por cento|respondem por|concentram/.test(q))return'pareto';
   if(/compar|versus|\bvs\b|contra o|em relacao|diferenca entre|variou|variacao/.test(q))return'comp';
   if(/projec|previs|vai fechar|fechar o mes|estimativa|tendencia de fechamento/.test(q))return'proj';
   if(/evolu|por mes|mensal|mes a mes|por dia|diari|por semana|semanal|historico|tendencia|serie/.test(q))return'serie';
@@ -169,12 +171,65 @@ const barsC=(t,g,mt,tot,cor)=>({chart:'bars',t,cor:cor||'#ff6a1f',items:g.map(o=
 function rowTxt(A,r){return D(A.dt(r))+' — '+[A.F.peca&&A.F.peca(r),A.F.cliente&&A.F.cliente(r),A.F.motivo&&A.F.motivo(r)].filter(Boolean).join(' — ')+' — '+(A.M.kg?F(A.M.kg(r))+' kg':fmt(A.M.q(r))+' peça(s)')}
 function bucketKey(d,tp){if(tp==='m')return d.slice(0,7);if(tp==='s'){const x=new Date(d+'T12:00:00'),w=(x.getDay()+6)%7;x.setDate(x.getDate()-w);return rendIso(x)}return d}
 function bucketLbl(k,tp){return tp==='m'?NM[+k.slice(5,7)-1]+'/'+k.slice(2,4):D(k).slice(0,5)}
+/* ---------- Recursos extras do assistente (v210) ---------- */
+function pares(pp,P,per,ult){let a,b;const ms=pp.meses||[];
+  if(ms.length>=2){a=ms[0];b=ms[1]}else if(ms.length===1){a=ms[0];b={de:mesAntIso(a.de,false),ate:mesAntIso(a.ate,true),nota:'mês anterior'}}
+  else if(P&&P.per&&P.per.explicit&&per.de!==per.ate&&!/semana|dia/.test(per.nota)){a=per;b={de:mesAntIso(per.de,false),ate:mesAntIso(per.ate,true),nota:'mesmo período do mês passado'}}
+  else{a={de:ult.slice(0,8)+'01',ate:ult,nota:'mês atual (até '+D(ult)+')'};b={de:mesAntIso(a.de,false),ate:mesAntIso(ult,true),nota:'mesmo período do mês passado'}}
+  return{a,b}}
+const sinal=(v,mt)=>(v>=0?'+':'−')+mTxt(mt,Math.abs(v));
+function motorExtra(A,dom,op,P,per,pp,ult,mt,semF,finish,q){
+  if(op==='why'){
+    const{a,b}=pares(pp,P,per,ult),RA=semF(filtra(A,rowsIn(A,a),P.filters)),RB=semF(filtra(A,rowsIn(A,b),P.filters)),sm=R=>R.reduce((s,r)=>s+A.M[mt](r),0),ta=sm(RA),tb=sm(RB),d=ta-tb;
+    const L2=['Análise da variação: '+a.nota+' ('+D(a.de)+' a '+D(a.ate)+') contra '+b.nota+' ('+D(b.de)+' a '+D(b.ate)+').','O total '+(Math.abs(d)<1e-9?'ficou igual':(d>0?'subiu':'caiu')+' de '+mTxt(mt,tb)+' para '+mTxt(mt,ta)+' ('+sinal(d,mt)+(tb?', '+(d>0?'+':'−')+pc(Math.abs(d/tb*100)):'')+')')+'.'];
+    const dimsL=['motivo','cliente','peca','setor','material','planta','responsavel','situacao'].filter(x=>A.F[x]&&!P.filters.some(f=>dimDe(f.f)===x));let melhor=null;
+    dimsL.forEach(dm=>{const ga=new Map(agrega(A,RA,A.F[dm],mt).map(o=>[o.k,o.v])),gb=new Map(agrega(A,RB,A.F[dm],mt).map(o=>[o.k,o.v])),df=[...new Set([...ga.keys(),...gb.keys()])].map(k=>({k,v:(ga.get(k)||0)-(gb.get(k)||0),novo:!gb.has(k)})).filter(x=>Math.abs(d)<1e-9||(d>0?x.v>0:x.v<0)).sort((x,y)=>Math.abs(y.v)-Math.abs(x.v)).slice(0,3);
+      if(!df.length)return;const cob=Math.abs(d)>1e-9?df.reduce((s,x)=>s+Math.abs(x.v),0)/Math.abs(d)*100:0;if(Math.abs(d)>1e-9&&Math.abs(df[0].v)/Math.abs(d)<0.15)return;
+      L2.push('• Por '+DIMN[dm]+': '+df.map(x=>x.k+' ('+sinal(x.v,mt)+(x.novo?', novo':'')+(Math.abs(d)>1e-9?', '+(Math.abs(x.v)/Math.abs(d)>1?'maior que a variação total; outros itens compensam':pc(Math.abs(x.v)/Math.abs(d)*100)+' da variação'):'')+')').join('; ')+'.');
+      if(!melhor||cob>melhor.cob)melhor={dm,df,cob}});
+    if(L2.length===2)L2.push('Nenhum fator isolado explica a maior parte da variação: ela está espalhada entre vários motivos, clientes e peças.');
+    if(melhor)L2.push({chart:'bars',t:'Principais fatores — '+DIMN[melhor.dm],cor:d>=0?'#ef4444':'#22c55e',items:melhor.df.map(x=>({l:x.k,v:Math.abs(x.v),txt:sinal(x.v,mt)}))});
+    L2.push('É uma análise de contribuição (quanto cada motivo/cliente/peça explica da diferença), não uma prova de causa: confirme no chão de fábrica.');
+    return finish(L2,['E comparando com o mês passado?','E a evolução por mês?','E o que posso melhorar?'])}
+  if(op==='pareto'){
+    const dm=P.dim||'motivo',fn=A.F[dm]||A.F.motivo,R0=semF(filtra(A,rowsIn(A,per),P.filters)),g=agrega(A,R0,fn,mt).sort((x,y)=>y.v-x.v),tot=g.reduce((s,o)=>s+o.v,0);if(!tot)return finish(['Sem dados para o Pareto nesse recorte.'],[]);
+    let cum=0,it=[],n80=0;g.forEach((o,i)=>{cum+=o.v;it.push({o,c:cum/tot*100});if(!n80&&cum/tot>=0.8)n80=i+1});
+    return finish(['Pareto por '+DIMN[dm]+': '+n80+' de '+g.length+' '+DIMN[dm]+'(s) respondem por 80% ('+mTxt(mt,tot)+' no total).'].concat(it.slice(0,Math.min(8,Math.max(n80,3))).map((x,i)=>(i+1)+'. '+x.o.k+': '+mTxt(mt,x.o.v)+' ('+pc(x.o.v/tot*100)+', acumulado '+pc(x.c)+')')).concat([{chart:'bars',t:'Pareto — % acumulado',cor:'#a78bfa',items:it.slice(0,Math.min(8,Math.max(n80,3))).map(x=>({l:x.o.k,v:x.c,txt:pc(x.c)}))}]),['E por cliente?','E por peça?','E a evolução por mês?'])}
+  return null}
+function cruzar(q0){
+  const q=N(q0),ults=['refugo','devol','retrab'].map(ultDe),u=ults.sort().pop(),pp=perPar(q,u),dim=/peca|produto|item/.test(q)?'peca':'cliente',key=dim==='peca'?(A=>A.F.pecaNome):(A=>A.F.cliente);
+  const R={};['refugo','devol','retrab'].forEach(dom=>{const A=ADAPT[dom],m=new Map();rowsIn(A,pp).forEach(r=>{const k=W(key(A)(r)||'');if(!k)return;const o=m.get(k)||{n:A.F[dim==='peca'?'pecaNome':'cliente'](r),v:0};o.v+=A.M.kg?A.M.kg(r):A.M.q(r);o.u=A.M.kg&&dom==='refugo'?'kg':'pç';m.set(k,o)});R[dom]=m});
+  const ks=new Set([...R.refugo.keys(),...R.devol.keys(),...R.retrab.keys()]),L=[...ks].map(k=>({k,n:(R.refugo.get(k)||R.devol.get(k)||R.retrab.get(k)).n,a:R.refugo.get(k),b:R.devol.get(k),c:R.retrab.get(k)})).map(x=>({...x,z:(x.a?1:0)+(x.b?1:0)+(x.c?1:0)})).filter(x=>x.z>=2).sort((x,y)=>y.z-x.z||((y.a?y.a.v:0)-(x.a?x.a.v:0)));
+  ULT.last=null;ULT.sug=['Principal motivo de refugo','Qual cliente mais devolveu?','Resumo geral'];
+  const t=x=>[x.a?'refugo '+F(x.a.v)+' kg':null,x.b?'devolução '+fmt(Math.round(x.b.v))+' pç':null,x.c?'retrabalho '+fmt(Math.round(x.c.v))+' pç':null].filter(Boolean).join(' • ');
+  if(!L.length)return['🔎 Cruzamento • '+pp.nota,'Nenhum '+(dim==='peca'?'item':'cliente')+' aparece em mais de uma área (refugo, devolução, retrabalho) nesse período.'];
+  return['🔎 Cruzamento refugo × devolução × retrabalho • '+pp.nota,(dim==='peca'?'Itens':'Clientes')+' que aparecem em mais de uma área:'].concat(L.slice(0,6).map((x,i)=>(i+1)+'. '+x.n+' ('+x.z+' áreas): '+t(x)))}
+const EXEMPLOS=['Quanto o cliente ACME refugou em outubro?','Qual o principal motivo de refugo?','Compare outubro com setembro','Por que o refugo subiu em outubro?','Evolução do refugo por mês','Pareto dos motivos de refugo','Qual cliente mais devolveu?','Devoluções aguardando análise','Retrabalhos em aberto','Projeção do mês','Refugo da Fundição vs meta','Qual material perdeu mais no forno?','Rendimento do forno por mês','Clientes com refugo e devolução','Lançamentos mais pesados','O que posso melhorar?'];
+function maisParecidas(q){const tk=W(q).split(' ').filter(t=>t.length>=4&&!STOP.test(t));const sc=EXEMPLOS.map(e=>({e,s:tk.filter(t=>W(e).includes(t.slice(0,5))).length})).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,3).map(x=>x.e);return sc.length?sc:EXEMPLOS.slice(0,3)}
+function destaques(dom){try{const A=dom==='devol'?devAnalise:dom==='retrab'?rtAnalise:dom==='forno'?null:refAnalise;let R;if(dom==='forno')R=fornoAnalise();else{const u=ultDe(dom);R=A({de:u.slice(0,8)+'01',ate:u,nota:'',ult:u})}return R.alertas.filter(x=>!/^Nada fora|^Não há/.test(x)).slice(0,2)}catch(e){return[]}}
+/* forno: comparar, evoluir e explicar o rendimento */
+function fornoMotor(q0,q,ult){
+  const op=detOp(q);if(!['comp','serie','why'].includes(op))return null;const pp=perPar(q,ult),per=pp.explicit?pp:{de:ult.slice(0,8)+'01',ate:ult,nota:'mês atual até '+D(ult)};
+  const sum=(de,ate)=>{const ds=asstDias(de,ate),S=asstSoma(ds);return{ds,S,ren:S.T?S.p/S.T*100:0,pf:S.T?S.F/S.T*100:0,pl:S.T?S.l/S.T*100:0,pg:S.T?S.g/S.T*100:0}};
+  if(op==='serie'){const ds=asstDias(per.de,per.ate);if(!ds.length)return['Sem dias com boletim nesse período.'];const dias=ds.length,m=/por dia|diari/.test(q)?false:(dias>45||/por mes|mensal|evolu/.test(q));let it;
+    if(m){const g=new Map();ds.forEach(x=>{const k=x.d.slice(0,7),o=g.get(k)||[];o.push(x);g.set(k,o)});it=[...g.keys()].sort().map(k=>{const S=asstSoma(g.get(k));return{l:NM[+k.slice(5)-1]+'/'+k.slice(2,4),v:S.T?S.p/S.T*100:0}})}else it=ds.slice(-20).map(x=>({l:D(x.d).slice(0,5),v:x.ren}));
+    const vs=it.map(x=>x.v),med=vs.reduce((a,b)=>a+b,0)/vs.length,S=asstSoma(ds);ULT.sug=['E comparando com o mês passado?','Qual material perdeu mais?','Resumo do forno'];
+    return['🔎 Forno • '+per.nota+' • rendimento '+(m?'por mês':'por dia'),'Rendimento do forno: '+pc(S.T?S.p/S.T*100:0)+' no período; média '+pc(med)+', melhor '+it[vs.indexOf(Math.max(...vs))].l+' ('+pc(Math.max(...vs))+'), pior '+it[vs.indexOf(Math.min(...vs))].l+' ('+pc(Math.min(...vs))+').',{chart:'cols',t:'Rendimento do forno (%)',cor:'#22c55e',items:it.map(x=>({l:x.l,v:x.v,txt:(Math.round(x.v*10)/10).toLocaleString('pt-BR')}))}]}
+  const{a,b}=pares(pp,{per:pp.explicit?pp:null},per,ult),A1=sum(a.de,a.ate),B1=sum(b.de,b.ate);if(!A1.ds.length||!B1.ds.length)return['Não há dias de boletim suficientes em um dos períodos para comparar.'];
+  const pt=v=>(v>=0?'+':'−')+(Math.round(Math.abs(v)*10)/10).toLocaleString('pt-BR')+' p.p.';ULT.sug=['E o que posso melhorar?','Qual material perdeu mais?','E a evolução por mês?'];
+  const L=['🔎 Forno • '+a.nota+' contra '+b.nota,'Rendimento: '+pc(A1.ren)+' contra '+pc(B1.ren)+' ('+pt(A1.ren-B1.ren)+').','• Lingotes: '+pc(A1.pl)+' contra '+pc(B1.pl)+' ('+pt(A1.pl-B1.pl)+')','• Respingos: '+pc(A1.pg)+' contra '+pc(B1.pg)+' ('+pt(A1.pg-B1.pg)+')','• Perda na fusão: '+pc(A1.pf)+' contra '+pc(B1.pf)+' ('+pt(A1.pf-B1.pf)+')'];
+  const comp=[['Lingotes',A1.pl-B1.pl],['Respingos',A1.pg-B1.pg],['Perda na fusão',A1.pf-B1.pf]].sort((x,y)=>Math.abs(y[1])-Math.abs(x[1]));
+  if(op==='why')L.push('O que mais explica a mudança do rendimento: '+comp[0][0]+' ('+pt(comp[0][1])+').');
+  const ma=asstMats(asstCorr(a.de,a.ate)).filter(m=>m.n>=3),mb=new Map(asstMats(asstCorr(b.de,b.ate)).map(m=>[m.k,m]));const dm=ma.filter(m=>mb.has(m.k)).map(m=>({k:m.k,v:m.pp-mb.get(m.k).pp})).sort((x,y)=>Math.abs(y.v)-Math.abs(x.v)).slice(0,3);
+  if(dm.length)L.push('Perda na fusão por material (variação): '+dm.map(x=>x.k+' '+pt(x.v)).join('; ')+'.');
+  L.push({chart:'bars',t:'Rendimento do forno',cor:'#22c55e',items:[{l:a.nota,v:A1.ren,txt:pc(A1.ren)},{l:b.nota,v:B1.ren,txt:pc(B1.ren)}]});return L}
 function motor(dom,q0,explicit,follow){
   const A=ADAPT[dom],q=N(q0),qw=W(q0),ult=ultDe(dom);let notas=[];
   let pp=perPar(q,ult),fl=achaEnt(dom,qw);const fz=fuzzyEnt(dom,qw,fl);fz.forEach(z=>{fl.push(z.x);notas.push('Interpretei “'+z.t+'” como “'+z.x.v+'”.')});
   const dims=detDim(q),L=ULT.last,P={dom,per:pp.explicit?pp:null,filters:fl,dim:null,metric:detMetric(q),op:detOp(q),n:detN(q)};
   const dimsLivres=dims.filter(d=>!fl.some(x=>dimDe(x.f)===d)&&A.F[d]);P.dim=dimsLivres[0]||null;
   if(follow&&L&&L.dom===dom){if(!P.per)P.per=L.per;const novos=new Set(fl.map(x=>dimDe(x.f)));P.filters=L.filters.filter(x=>!novos.has(dimDe(x.f))&&!dims.includes(dimDe(x.f))).concat(fl);if(!P.dim&&!(P.op==='serie'||P.op==='comp'||P.op==='proj'))P.dim=L.dim;if(!P.metric)P.metric=L.metric;if(!P.op)P.op=P.dim&&P.dim!==L.dim?'rank':L.op;if(P.dim&&(P.op==='total'||!P.op))P.op='rank'}
+  if(!explicit&&(!follow||!/^(e|agora|tambem|so|apenas|mesmo|desse|dele|nele|dela)\b/.test(W(q0).trim()))&&!dims.length&&!fl.length&&!detOp(q)&&!detMetric(q)&&!pp.explicit){ULT.sug=maisParecidas(q0);return['Não consegui entender essa pergunta. Estas se parecem com o que sei responder:'].concat(ULT.sug.map(x=>'• '+x))}
   const per=P.per||pp,op=P.op||(P.dim?'rank':'total');P.op=op;let mt=P.metric&&A.M[P.metric]?P.metric:A.defM;P.metric=P.metric||null;
   P.sem=/\b(abert|pendente|aguardand|em andamento|nao concluid)/.test(q)?'ab':/\b(concluid|finalizad|encerrad)/.test(q)?'ok':(follow&&L&&L.dom===dom?L.sem:null);
   const semF=rs=>(!P.sem||!A.F.situacao)?rs:rs.filter(r=>{const v=String(A.F.situacao(r));const fechado=dom==='retrab'?/conclu/i.test(v):!/aguardando/i.test(v);return P.sem==='ab'?!fechado:fechado});
@@ -187,9 +242,9 @@ function motor(dom,q0,explicit,follow){
   if(op==='resumo')return finish(An(pr).resumo,['E o que posso melhorar?','E os alertas?','E a evolução por mês?']);
   if(op==='alertas')return finish(An(pr).alertas,['E o que posso melhorar?','Resumo','E a evolução por mês?']);
   if(op==='acoes')return finish(An(pr).acoes,['E os alertas?','Resumo','E a evolução por mês?']);
+  if(op==='why'||op==='pareto'){const ex=motorExtra(A,dom,op,P,per,pp,ult,mt,semF,finish,q);if(ex)return ex}
   if(op==='comp'){
-    let a,b;const ms=pp.meses||[];if(ms.length>=2){a=ms[0];b=ms[1]}else if(ms.length===1){a=ms[0];const d1=mesAntIso(a.de,false);b={de:d1,ate:mesAntIso(a.ate,true),nota:'mês anterior'}}
-    else if(P.per&&P.per.explicit&&per.de!==per.ate&&!/semana|dia/.test(per.nota)){a=per;b={de:mesAntIso(per.de,false),ate:mesAntIso(per.ate,true),nota:'mesmo período do mês passado'}}else{a={de:ult.slice(0,8)+'01',ate:ult,nota:'mês atual (até '+D(ult)+')'};b={de:mesAntIso(a.de,false),ate:mesAntIso(ult,true),nota:'mesmo período do mês passado'}}
+    const{a,b}=pares(pp,P,per,ult);
     const RA=semF(filtra(A,rowsIn(A,a),P.filters)),RB=semF(filtra(A,rowsIn(A,b),P.filters)),TA=totais(A,RA),TB=totais(A,RB),dl=(x,y)=>Math.abs(x-y)<1e-9?'= igual':y?(x>y?'▲ ':'▼ ')+pc(Math.abs((x-y)/y*100)):(x?'▲ novo':'—');
     const L2=['Comparação: '+a.nota+' ('+D(a.de)+' a '+D(a.ate)+') contra '+b.nota+' ('+D(b.de)+' a '+D(b.ate)+'):'];
     if(TA.kg!=null)L2.push('• Peso: '+F(TA.kg)+' kg contra '+F(TB.kg)+' kg  '+dl(TA.kg,TB.kg));L2.push('• Peças: '+fmt(Math.round(TA.q))+' contra '+fmt(Math.round(TB.q))+'  '+dl(TA.q,TB.q));L2.push('• Lançamentos: '+TA.n+' contra '+TB.n+'  '+dl(TA.n,TB.n));
@@ -228,16 +283,17 @@ function responder(q0){
   if(/^(oi|ola|bom dia|boa tarde|boa noite|ajuda|help|o que (voce|vc) faz|como (funciona|usar))/.test(q.trim()))return['Sou o assistente do Controle de Refugos. Respondo sobre refugos, devoluções, retrabalhos, forno/boletim e produção, com os dados que estão no app.','Você pode combinar filtros (cliente, motivo, peça, planta, material, período), comparar períodos, pedir evolução por dia/semana/mês, projeção do mês e continuar a conversa (“e em setembro?”, “e por cliente?”).','Exemplos: “quanto o cliente ACME refugou por porosidade em outubro?”, “compare outubro com setembro”, “evolução de devoluções por mês”, “quais retrabalhos estão abertos?”, “resumo geral”.'];
   if(/resumo geral|visao geral do site|como estamos|panorama/.test(q)&&!/devol|retrabal|forno|refug/.test(q))return resumoGeral();
   const strong=/devol|fq051|reclamac/.test(q)?'devol':/retrabal/.test(q)?'retrab':/forno|lingote|respingo|gota|carga fria|panela|boletim|corrida|fusao|rendimento|perda na/.test(q)?'forno':/refug/.test(q)?'refugo':null;
+  const nStrong=['devol|fq051|reclamac','retrabal','refug'].filter(r=>new RegExp(r).test(q)).length;if(nStrong>=2||/(em|nas) (todas|mais de uma|duas|tres) (as )?areas|ao mesmo tempo|alem d[eo] (refugo|devol|retrab)/.test(q))return cruzar(q0);
   const nw=W(q0).split(' ').length,cont=!strong&&!!L&&(/^(e|agora|tambem|so|apenas|mesmo|desse|dele|nele|dela)\b/.test(q.trim())||(nw<=3&&!detOp(q)));
   let dom=strong||(cont?L.dom:null);
   if(!dom){const weak=/motivo|cliente|peca|produto|planta|usinagem|fundicao|responsavel|setor|meta|etiqueta|causa|material/.test(q);dom=pag==='forno'?(/material/.test(q)||!weak?'forno':'refugo'):pag}
-  if(dom==='forno'){let q1=q0;if(cont&&L&&L.dom==='forno'&&ULT.fq)q1=q0+' '+ULT.fq.replace(new RegExp('\\b('+MESES.join('|')+')\\b','gi'),'');ULT.fq=q1;ULT.last={dom:'forno'};ULT.sug=['Qual o pior dia?','Quanto de lingote no mês?','Resumo do forno'];return asstPergunta(q1)}
+  if(dom==='forno'){let q1=q0;if(cont&&L&&L.dom==='forno'&&ULT.fq)q1=q0+' '+ULT.fq.replace(new RegExp('\\b('+MESES.join('|')+')\\b','gi'),'');ULT.fq=q1;ULT.last={dom:'forno'};{const B=lingBase(),ult=[...B.keys()].filter(d=>B.get(d).p>0).sort().pop()||hojeIso(),fm=fornoMotor(q1,N(q1),ult);if(fm)return fm}ULT.sug=['Qual o pior dia?','Quanto de lingote no mês?','Resumo do forno'];return asstPergunta(q1)}
   return motor(dom,q0,!!strong,cont)}
 function resumoGeral(){
   const L=['Panorama geral (período mais recente de cada área):'],add=(t,R)=>{L.push(t+' '+R.resumo.slice(0,2).join(' '));if(R.alertas[0]&&!/^Nada fora|^Não há/.test(R.alertas[0]))L.push('   ⚠ '+R.alertas[0])};
   const pr=d=>{const u=ultDe(d);return periodo('',u)};add('🧱 Refugos:',refAnalise(pr('refugo')));add('↩ Devoluções:',devAnalise(pr('devol')));add('🔧 Retrabalhos:',rtAnalise(pr('retrab')));add('🔥 Forno:',fornoAnalise());return L}
 /* ---------- interface ---------- */
-const CHIPS={refugo:['Principal motivo de refugo','Compare este mês com o mês passado','Evolução do refugo por mês','Refugo da Fundição vs meta','Projeção do mês','O que posso melhorar?'],devol:['Qual cliente mais devolveu?','Evolução das devoluções por mês','Devoluções aguardando análise','Compare este mês com o mês passado'],retrab:['Retrabalhos abertos','Principais motivos de retrabalho','Evolução dos retrabalhos por mês','Compare este mês com o mês passado'],forno:['Qual material perdeu mais?','Qual o pior dia?','Quanto de lingote no mês?','Resumo do forno']};
+const CHIPS={refugo:['Principal motivo de refugo','Compare este mês com o mês passado','Evolução do refugo por mês','Refugo da Fundição vs meta','Por que o refugo variou este mês?','Pareto dos motivos de refugo','Clientes com refugo e devolução','O que posso melhorar?'],devol:['Qual cliente mais devolveu?','Evolução das devoluções por mês','Devoluções aguardando análise','Compare este mês com o mês passado'],retrab:['Retrabalhos abertos','Principais motivos de retrabalho','Evolução dos retrabalhos por mês','Compare este mês com o mês passado'],forno:['Qual material perdeu mais?','Compare este mês com o mês passado','Por que o rendimento variou?','Resumo do forno']};
 const TITULO={refugo:'Refugos',devol:'Devoluções',retrab:'Retrabalhos',forno:'Forno e produção'};
 function css(){if(document.getElementById('asstGCss'))return;const s=document.createElement('style');s.id='asstGCss';
   s.textContent='@keyframes asstUp{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}@keyframes asstPulse{0%,100%{box-shadow:0 4px 14px #0006,0 0 0 0 rgba(255,106,31,.55)}60%{box-shadow:0 4px 14px #0006,0 0 0 12px rgba(255,106,31,0)}}'+
@@ -247,6 +303,7 @@ function css(){if(document.getElementById('asstGCss'))return;const s=document.cr
   '#asstLog{flex:1;overflow:auto;padding:10px 12px}#asstLog .am{margin:6px 0;padding:8px 10px;border-radius:12px;line-height:1.45;animation:rFade .3s ease both}#asstLog .u{background:rgba(255,106,31,.18);margin-left:34px;border-bottom-right-radius:4px}#asstLog .b{background:rgba(136,136,136,.16);margin-right:12px;border-bottom-left-radius:4px}'+
   '#asstChips{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 8px}#asstChips button{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid rgba(255,106,31,.6);background:transparent;color:inherit;cursor:pointer}#asstChips button:hover{background:rgba(255,106,31,.2)}'+
   '#asstPanel form{display:flex;gap:6px;padding:8px 10px;border-top:1px solid rgba(136,136,136,.3)}#asstPanel form input{flex:1;min-width:0;padding:8px 10px;border-radius:10px;border:1px solid rgba(136,136,136,.45);background:transparent;color:inherit;font-size:14px}#asstPanel form button{border:0;border-radius:10px;padding:0 14px;background:#ff6a1f;color:#fff;font-weight:800;cursor:pointer}'+
+  '.acp{display:block;margin-top:6px;border:1px solid #d0d5dd;background:#fff;color:#475467;border-radius:8px;font-size:11px;padding:3px 8px;cursor:pointer}#asstMic{border:0;background:#eef0f4;border-radius:10px;width:38px;cursor:pointer;font-size:16px}#asstMic.rec{background:#ef4444;animation:asstRec 1s infinite}@keyframes asstRec{50%{opacity:.5}}#asstDl{background:none;border:0;color:#fff;cursor:pointer;font-size:16px;margin-right:6px}'+
   '@media (max-width:640px){#asstFab{bottom:74px}#asstPanel{right:8px;left:8px;width:auto;bottom:138px;max-height:calc(100vh - 170px)}}@media print{#asstFab,#asstPanel{display:none!important}}html.gate-on #asstFab,html.gate-on #asstPanel{display:none!important}@media (prefers-reduced-motion:reduce){#asstFab,#asstPanel.on,#asstLog .am{animation:none!important}}';
   document.head.appendChild(s)}
 function chartHtml(c){
@@ -257,20 +314,29 @@ function chartHtml(c){
       if(n<=14||i%2===0)sv+='<text x="'+(xx+bw/2).toFixed(1)+'" y="126" text-anchor="middle" font-size="'+(n>14?7:9)+'" fill="currentColor" fill-opacity=".8">'+esc(x.l)+'</text>'});
     return'<div style="margin-top:8px"><div class="small" style="font-weight:700">'+esc(c.t||'')+'</div>'+sv+'</svg></div>'}
   return'<div style="margin-top:8px"><div class="small" style="font-weight:700;margin-bottom:2px">'+esc(c.t||'')+'</div>'+it.map((x,i)=>'<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><span title="'+esc(x.l)+'" style="flex:0 0 34%;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.l)+'</span><div style="flex:1;height:12px;background:rgba(136,136,136,.2);border-radius:4px;overflow:hidden"><span class="rW" style="width:'+Math.max(2,x.v/mx*100).toFixed(1)+'%;background:'+cor+';--d:'+(i*0.07).toFixed(2)+'s"></span></div><b style="font-size:11px;white-space:nowrap">'+esc(x.txt)+'</b></div>').join('')+'</div>'}
+const LOGTXT=[];
+function copiar(t,bt){const ok=()=>{if(bt){bt.textContent='✔ Copiado';setTimeout(()=>bt.textContent='📋 Copiar',1500)}};try{navigator.clipboard.writeText(t).then(ok,()=>fb())}catch(e){fb()}function fb(){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');ok()}catch(e){}a.remove()}}
+function baixarConversa(){const el=[...document.querySelectorAll('#asstLog .am')].map(m=>(m.classList.contains('u')?'Você: ':'Assistente: ')+m.innerText.replace(/📋 (Copiar|Copiado)|✔ Copiado/g,'').trim()).join('\n\n');if(!el)return;const b=new Blob([el],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='conversa_assistente_'+new Date().toISOString().slice(0,10)+'.txt';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},3000)}
+function voz(bt){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){alert('Este navegador não suporta entrada por voz. Use o Chrome ou o Edge.');return}if(bt._rec){try{bt._rec.stop()}catch(e){}return}const r=new SR();r.lang='pt-BR';r.interimResults=true;r.maxAlternatives=1;bt._rec=r;bt.classList.add('rec');const i=document.getElementById('asstGq');let fin='';
+  r.onresult=e=>{let t='';for(let k=0;k<e.results.length;k++)t+=e.results[k][0].transcript;fin=t;i.value=t};
+  r.onend=()=>{bt._rec=null;bt.classList.remove('rec');if(fin.trim()){enviar(fin);i.value=''}};r.onerror=()=>{bt._rec=null;bt.classList.remove('rec')};try{r.start()}catch(e){bt._rec=null;bt.classList.remove('rec')}}
 function msg(items,cls){const lg=document.getElementById('asstLog'),d=document.createElement('div');d.className='am '+cls;
   if(Array.isArray(items)){const tx=items.filter(x=>typeof x==='string'),ch=items.filter(x=>x&&typeof x==='object');lg.appendChild(d);asstDigitar(d,tx);
-    if(ch.length)setTimeout(()=>{ch.forEach(c=>{const h=document.createElement('div');h.innerHTML=chartHtml(c);d.appendChild(h.firstChild)});lg.scrollTop=lg.scrollHeight},Math.min(1800,tx.join('').length*4));
+    setTimeout(()=>{ch.forEach(c=>{const h=document.createElement('div');h.innerHTML=chartHtml(c);d.appendChild(h.firstChild)});
+      if(cls==='b'&&tx.length>1){const plano=tx.concat(ch.map(c=>(c.items||[]).map(i=>i.l+': '+i.txt).join('\n'))).join('\n').replace(/<[^>]+>/g,'');const bt=document.createElement('button');bt.type='button';bt.className='acp';bt.textContent='📋 Copiar';bt.onclick=()=>copiar(plano,bt);d.appendChild(bt);LOGTXT.push(plano)}
+      lg.scrollTop=lg.scrollHeight},Math.min(1800,tx.join('').length*4));
     let k=0;const iv=setInterval(()=>{lg.scrollTop=lg.scrollHeight;if(++k>40)clearInterval(iv)},100)}
   else{d.textContent=items;lg.appendChild(d)}lg.scrollTop=lg.scrollHeight}
 function chipsSug(list){const el=document.getElementById('asstChips');if(!el)return;el.innerHTML=list.map(t=>'<button type="button">'+t+'</button>').join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>enviar(b.textContent))}
 function chips(){const dom=paginaAtual(),el=document.getElementById('asstChips');el.innerHTML=(CHIPS[dom]||CHIPS.refugo).concat(['Resumo geral']).map(t=>'<button type="button">'+t+'</button>').join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>enviar(b.textContent));document.getElementById('asstCtx').textContent=TITULO[dom]}
 function enviar(t){t=String(t||'').trim();if(!t)return;msg(t,'u');let r;try{r=responder(t)}catch(e){console.error(e);r=['Tive um problema ao analisar essa pergunta. Tente reformular.']}msg(r.filter(Boolean),'b');if(ULT.sug&&ULT.sug.length)chipsSug(ULT.sug)}
-function abrir(){const pn=document.getElementById('asstPanel');if(!pn.classList.contains('on')){pn.classList.add('on');chips();if(!document.getElementById('asstLog').children.length)msg(['Olá! Sou o assistente do site. Pergunte sobre refugos, devoluções, retrabalhos, forno ou produção — ou toque em uma sugestão abaixo.'],'b');setTimeout(()=>document.getElementById('asstGq').focus(),50)}else pn.classList.remove('on')}
+function abrir(){const pn=document.getElementById('asstPanel');if(!pn.classList.contains('on')){pn.classList.add('on');chips();if(!document.getElementById('asstLog').children.length){const dom=paginaAtual(),al=destaques(dom);msg(['Olá! Sou o assistente do site. Pergunte sobre refugos, devoluções, retrabalhos, forno ou produção — ou toque em uma sugestão abaixo.'].concat(al.length?['⚠ Destaques de '+TITULO[dom]+':'].concat(al.map(x=>'• '+x)):[]),'b')}setTimeout(()=>document.getElementById('asstGq').focus(),50)}else pn.classList.remove('on')}
 function montar(){if(document.getElementById('asstFab'))return;css();
   const b=document.createElement('button');b.id='asstFab';b.type='button';b.title='Assistente';b.setAttribute('aria-label','Abrir assistente');b.textContent='🤖';b.onclick=abrir;
-  const p=document.createElement('div');p.id='asstPanel';p.setAttribute('role','dialog');p.innerHTML='<div class="ah">🤖<span>Assistente <small id="asstCtx" style="font-weight:400;opacity:.9"></small></span><button type="button" id="asstX" aria-label="Fechar">✕</button></div><div id="asstLog"></div><div id="asstChips"></div><form id="asstForm"><input id="asstGq" type="text" placeholder="Pergunte algo sobre o site…" autocomplete="off"><button type="submit">➤</button></form>';
+  const p=document.createElement('div');p.id='asstPanel';p.setAttribute('role','dialog');p.innerHTML='<div class="ah">🤖<span>Assistente <small id="asstCtx" style="font-weight:400;opacity:.9"></small></span><button type="button" id="asstDl" title="Baixar conversa" aria-label="Baixar conversa" style="margin-left:auto">⬇</button><button type="button" id="asstX" aria-label="Fechar">✕</button></div><div id="asstLog"></div><div id="asstChips"></div><form id="asstForm"><input id="asstGq" type="text" placeholder="Pergunte algo sobre o site…" autocomplete="off"><button type="button" id="asstMic" title="Perguntar por voz" aria-label="Perguntar por voz">🎤</button><button type="submit">➤</button></form>';
   document.body.appendChild(p);document.body.appendChild(b);
   document.getElementById('asstX').onclick=()=>p.classList.remove('on');
+  document.getElementById('asstDl').onclick=baixarConversa;document.getElementById('asstMic').onclick=function(){voz(this)};
   document.getElementById('asstForm').onsubmit=e=>{e.preventDefault();const i=document.getElementById('asstGq');enviar(i.value);i.value=''};
   document.addEventListener('keydown',e=>{if(e.key==='Escape')p.classList.remove('on')});
   document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.tab,[data-page]')&&p.classList.contains('on'))setTimeout(chips,50)})}
