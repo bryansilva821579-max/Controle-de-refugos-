@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v217';
+window.__V=window.__V||{};window.__V.app='v218';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -2722,7 +2722,23 @@ function edit(i){
   switchLaunchTab('refugo');
 }
 
-function removeRow(i){if(confirm('Excluir este lançamento?')){historySelected.delete(Number(i));{const fs=data[i]&&data[i].FOTOS;if(Array.isArray(fs))fs.forEach(id=>{fotoApagarRemoto(id)})}data.splice(i,1);historySelected.clear();save();refresh();}}
+function undoToast(msg,fn,ms){
+  let t=document.getElementById('appUndo');
+  if(!t){t=document.createElement('div');t.id='appUndo';t.setAttribute('role','status');document.body.appendChild(t)}
+  t.innerHTML='<span></span><button type="button">Desfazer</button>';t.querySelector('span').textContent=msg;
+  const fechar=()=>{t.classList.remove('on')};
+  t.querySelector('button').onclick=()=>{clearTimeout(t._h);fechar();try{fn()}catch(e){console.error(e)}};
+  t.classList.remove('on');void t.offsetWidth;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(fechar,ms||8000);
+}
+function removeRow(i){
+  i=Number(i);const rec=data[i];if(!rec)return;
+  const fs=Array.isArray(rec.FOTOS)?rec.FOTOS.slice():[];
+  historySelected.delete(i);data.splice(i,1);historySelected.clear();save();refresh();
+  let desfeito=false;
+  undoToast('Lançamento excluído.',()=>{desfeito=true;rec._rts=Date.now();data.splice(Math.min(i,data.length),0,rec);save();refresh();try{scheduleFirebasePush()}catch(e){}showToast('Lançamento restaurado.')},9000);
+  /* as fotos só são apagadas da nuvem depois do prazo de desfazer */
+  setTimeout(()=>{if(!desfeito)fs.forEach(id=>{try{fotoApagarRemoto(id)}catch(e){}})},9800);
+}
 
 /* ===== Fotos anexadas ao lançamento =====
    - Reduzidas no aparelho (máx. 1000 px, JPEG) para não pesar
@@ -2857,6 +2873,9 @@ refugoForm?.addEventListener('submit',async e=>{
 
     const i=document.getElementById('editIndex')?.value??'';
     if(i==='' && !r[cols.dataLancamento]){const n=new Date();r[cols.dataLancamento]=new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,10)}
+    if(i===''){const K=x=>String(x==null?'':x).trim().toUpperCase().replace(/\s+/g,' '),ks=[cols.data,cols.cliente,cols.codigo,cols.of,cols.quantidade,cols.motivo];
+      const dup=data.some(x=>ks.every(c=>K(x[c])===K(r[c])));
+      if(dup&&!confirm('Já existe um lançamento igual (mesma data, cliente, peça, OF, quantidade e motivo).\n\nSalvar mesmo assim?'))return}
     await commitFormFotos(r);
     {const velho=(i!==''&&Number.isInteger(Number(i)))?data[Number(i)]:null;r._rid=(velho&&velho._rid)||refNovoId();r._rts=Date.now()}
     if(i==='' || !Number.isInteger(Number(i))) data.push(r); else data[Number(i)]=r;

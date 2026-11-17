@@ -13,7 +13,7 @@ const hojeIso=()=>rendIso(new Date());
 /* ---------- fontes de dados ---------- */
 function isoRef(r){let d=null;try{d=date(r)}catch(e){}if(d instanceof Date&&!isNaN(d))return rendIso(d);const y=recordYear(r),m=recordMonth(r);return y&&m?y+'-'+String(m).padStart(2,'0')+'-15':null}
 function devAll(){try{return(window.devDados?window.devDados():JSON.parse(localStorage.getItem('controle_refugos_2026_devolucoes_v1')||'[]')).filter(r=>r&&r.data)}catch(e){return[]}}
-function rtAll(){try{return JSON.parse(localStorage.getItem('controle_refugos_2026_retrabalhos')||'[]').filter(r=>r&&r.dt)}catch(e){return[]}}
+function rtAll(){try{const a=(typeof rtLoad==='function')?rtLoad():JSON.parse(localStorage.getItem((typeof KEY!=='undefined'?KEY:'controle_refugos_2026_v2')+'_retrabalhos')||'[]');return a.filter(r=>r&&r.dt&&!r.del)}catch(e){return[]}}
 function maxIso(a,f){let m='';a.forEach(x=>{const d=f(x);if(d&&d>m)m=d});return m||hojeIso()}
 /* ---------- período ---------- */
 function periodo(q,ult,defAno){
@@ -278,9 +278,43 @@ function motor(dom,q0,explicit,follow){
   const L2=[cap(A.nome)+(fdesc?' ('+fdesc+')':'')+': '+totTxt(A,T)+'.'];if(g.length>1)L2.push('Principal '+DIMN[dm]+': '+g[0].k+' ('+mTxt(mt,g[0].v)+', '+pc(tv?g[0].v/tv*100:0)+').');
   return finish(L2.concat(g.length>1?[barsC('Por '+DIMN[dm],g.slice(0,5),mt,tv)]:[]),sg('E a evolução por mês?','E comparando com o mês passado?',dm!=='cliente'&&'E por cliente?',dm!=='motivo'&&'E por motivo?'))
 }
+
+/* ---------- navegação: onde fica / abrir ---------- */
+const NAV=[
+ [/pcp|programacao do pcp/,'lancamentos','launch','producao','Importar programação do PCP','Lançamentos › aba “Produção diária da Fundição” › botão “📥 Importar programação do PCP”.'],
+ [/boletim|corrida|fusao/,'lancamentos','launch','boletim','Boletim de Fusão','Lançamentos › aba “Boletim de Fusão”. Para ver os gráficos do forno, use o Dashboard e a aba do forno.'],
+ [/producao|kg fundido/,'lancamentos','launch','producao','Produção diária da Fundição','Lançamentos › aba “Produção diária da Fundição”.'],
+ [/insumo|gusa|sucata|ferro liga|ferroliga|preco (do|por|de) (kg|material|insumo)|custo (do|dos|de) (material|materiais|insumo)/,'cadastro','cad','insumos','Insumos (quantidades e preços)','Cadastro › aba “🧪 Insumos”.'],
+ [/meta/,'cadastro','cad','metas','Metas','Cadastro › aba “🎯 Metas”.'],
+ [/valor(es)? (por|do) kg|r\$/,'cadastro','cad','valores','Valores (R$/kg)','Cadastro › aba “💰 Valores (R$/kg)”.'],
+ [/cadastr|pecas?\b|produto|cliente|motivo|setor/,'cadastro','cad','produtos','Cadastro','Menu › ⚙ Cadastro (abas Motivos, Produto, Clientes, Responsável, Setores...).'],
+ [/excel|planilha|backup|exportar|restaurar/,'auditoria','aud','bk','Backup e exportação para Excel','Menu › 🗂 Auditoria › aba “💾 Backup”: lá estão “Baixar backup agora” e “Exportar tudo para Excel”.'],
+ [/lixeira|auditoria|historico de alteracoes/,'auditoria','aud','hist','Auditoria','Menu › 🗂 Auditoria (Histórico de alterações, Lixeira e Backup).'],
+ [/retrabal/,'retrabalho',null,null,'Retrabalhos','Menu › 🔧 Retrabalhos. Para lançar um novo, use o botão de novo retrabalho no topo da tela.'],
+ [/devol|reclamac|fq051/,'devolucoes',null,null,'Devoluções','Menu › ↩ Devoluções (Dashboard, lançadas e novo lançamento).'],
+ [/reuniao|ata\b/,'reuniao',null,null,'Reunião','Menu › 👥 Reunião (gera a ata e o PDF com comparação do mês anterior).'],
+ [/gestao|alertas|comparativo|relatorio mensal/,'gestao',null,null,'Gestão','Menu › 📈 Gestão (Visão geral, Alertas, Comparativo, Relatório mensal).'],
+ [/historico|lista de refugos|editar.*lancamento|excluir.*lancamento/,'historico',null,null,'Histórico','Menu › ☷ Histórico: pesquise, edite ou exclua lançamentos (dá para desfazer a exclusão).'],
+ [/quantidade/,'dashboardQtd',null,null,'Dashboard quantidade','Menu › ▥ Dashboard quantidade.'],
+ [/dashboard|painel|grafico/,'dashboard',null,null,'Dashboard peso','Menu › ▣ Dashboard peso.'],
+ [/hoje|resumo do dia/,'hoje',null,null,'Hoje','Menu › 🏠 Hoje.'],
+ [/lancar|lanco|lancamento|novo refugo|registrar refugo|refugo/,'lancamentos','launch','refugo','Lançar refugo','Lançamentos › aba “Lançar refugo”.'],
+ [/ajuda|tutorial/,'ajuda',null,null,'Ajuda','Menu › ❓ Ajuda.']
+];
+function navegar(q){
+  const gat=/\b(onde|aonde)\b.*\b(fica|ficam|esta|estao|acho|encontro|vejo|lanco|cadastro|registro|faco)\b|\bcomo (eu )?(lanco|cadastro|registro|importo|exporto|baixo|acesso|abro|vejo|chego|acho|faco para (lancar|cadastrar|importar|exportar))|\b(abrir|abra|abre|ir para|va para|vai para|me leva|me leve|leva para|quero ir|quero ver a (aba|tela)|mostrar? a (aba|tela)|qual (a )?(aba|tela|menu))\b|\bem qual (aba|tela|menu)\b|\bcaminho\b/;
+  if(!gat.test(q))return null;
+  const h=NAV.find(x=>x[0].test(q));if(!h)return null;
+  ULT.sug=['Abrir '+h[4],'Onde fica o backup em Excel?','Onde lanço um retrabalho?'];
+  return['📍 '+h[4]+': '+h[5],{nav:h[1],sub:h[2],tab:h[3],label:h[4]}];
+}
+window.asstIr=function(page,sub,tab){try{document.getElementById('asstPanel').classList.remove('on')}catch(e){}
+  try{navigate(page)}catch(e){return}
+  if(sub)setTimeout(function(){try{if(sub==='launch')switchLaunchTab(tab);else if(sub==='cad')switchCadTab(tab);else if(sub==='aud')audTab(tab)}catch(e){}},120)};
 function responder(q0){
   const q=N(q0),pag=paginaAtual(),L=ULT.last;ULT.sug=[];
   if(/^(oi|ola|bom dia|boa tarde|boa noite|ajuda|help|o que (voce|vc) faz|como (funciona|usar))/.test(q.trim()))return['Sou o assistente do Controle de Refugos. Respondo sobre refugos, devoluções, retrabalhos, forno/boletim e produção, com os dados que estão no app.','Você pode combinar filtros (cliente, motivo, peça, planta, material, período), comparar períodos, pedir evolução por dia/semana/mês, projeção do mês e continuar a conversa (“e em setembro?”, “e por cliente?”).','Exemplos: “quanto o cliente ACME refugou por porosidade em outubro?”, “compare outubro com setembro”, “evolução de devoluções por mês”, “quais retrabalhos estão abertos?”, “resumo geral”.'];
+  {const nv=navegar(q);if(nv)return nv}
   if(/resumo geral|visao geral do site|como estamos|panorama/.test(q)&&!/devol|retrabal|forno|refug/.test(q))return resumoGeral();
   const strong=/devol|fq051|reclamac/.test(q)?'devol':/retrabal/.test(q)?'retrab':/forno|lingote|respingo|gota|carga fria|panela|boletim|corrida|fusao|rendimento|perda na/.test(q)?'forno':/refug/.test(q)?'refugo':null;
   const nStrong=['devol|fq051|reclamac','retrabal','refug'].filter(r=>new RegExp(r).test(q)).length;if(nStrong>=2||/(em|nas) (todas|mais de uma|duas|tres) (as )?areas|ao mesmo tempo|alem d[eo] (refugo|devol|retrab)/.test(q))return cruzar(q0);
@@ -321,8 +355,8 @@ function voz(bt){const SR=window.SpeechRecognition||window.webkitSpeechRecogniti
   r.onresult=e=>{let t='';for(let k=0;k<e.results.length;k++)t+=e.results[k][0].transcript;fin=t;i.value=t};
   r.onend=()=>{bt._rec=null;bt.classList.remove('rec');if(fin.trim()){enviar(fin);i.value=''}};r.onerror=()=>{bt._rec=null;bt.classList.remove('rec')};try{r.start()}catch(e){bt._rec=null;bt.classList.remove('rec')}}
 function msg(items,cls){const lg=document.getElementById('asstLog'),d=document.createElement('div');d.className='am '+cls;
-  if(Array.isArray(items)){const tx=items.filter(x=>typeof x==='string'),ch=items.filter(x=>x&&typeof x==='object');lg.appendChild(d);asstDigitar(d,tx);
-    setTimeout(()=>{ch.forEach(c=>{const h=document.createElement('div');h.innerHTML=chartHtml(c);d.appendChild(h.firstChild)});
+  if(Array.isArray(items)){const tx=items.filter(x=>typeof x==='string'),ch=items.filter(x=>x&&typeof x==='object'&&!x.nav),nv=items.filter(x=>x&&x.nav);lg.appendChild(d);asstDigitar(d,tx);
+    setTimeout(()=>{nv.forEach(n=>{const bt=document.createElement('button');bt.type='button';bt.className='acp';bt.style.cssText='background:#ff6a1f;color:#fff;border:0;font-weight:800;padding:7px 12px;font-size:12px';bt.textContent='➡ Abrir agora';bt.onclick=()=>window.asstIr(n.nav,n.sub,n.tab);d.appendChild(bt)});ch.forEach(c=>{const h=document.createElement('div');h.innerHTML=chartHtml(c);d.appendChild(h.firstChild)});
       if(cls==='b'&&tx.length>1){const plano=tx.concat(ch.map(c=>(c.items||[]).map(i=>i.l+': '+i.txt).join('\n'))).join('\n').replace(/<[^>]+>/g,'');const bt=document.createElement('button');bt.type='button';bt.className='acp';bt.textContent='📋 Copiar';bt.onclick=()=>copiar(plano,bt);d.appendChild(bt);LOGTXT.push(plano)}
       lg.scrollTop=lg.scrollHeight},Math.min(1800,tx.join('').length*4));
     let k=0;const iv=setInterval(()=>{lg.scrollTop=lg.scrollHeight;if(++k>40)clearInterval(iv)},100)}
@@ -340,6 +374,6 @@ function montar(){if(document.getElementById('asstFab'))return;css();
   document.getElementById('asstForm').onsubmit=e=>{e.preventDefault();const i=document.getElementById('asstGq');enviar(i.value);i.value=''};
   document.addEventListener('keydown',e=>{if(e.key==='Escape')p.classList.remove('on')});
   document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.tab,[data-page]')&&p.classList.contains('on'))setTimeout(chips,50)})}
-window.asstResponder=responder;window.asstAbrir=abrir;
+window.asstResponder=responder;window.asstAbrir=abrir;window.asstDestaques=function(d){try{return destaques(d)}catch(e){return[]}};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',montar);else montar();
 })();
