@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.relatorios='v224';
+window.__V=window.__V||{};window.__V.relatorios='v225';
 /* ==================================================================
    RELATÓRIOS MENSAIS — Retrabalhos e Devoluções
    Mesmo formato do relatório mensal de refugos: gráficos com análise
@@ -368,7 +368,7 @@ function dados(){
     perc:(mt==='kg'&&PF&&pi)?sum(Rp.filter(r=>plc(r.pl)==='F'),r=>N(r.kg))/pi*100:null,
     ppm:(mt==='kg'&&PF&&pi)?sum(Dp.filter(r=>plc(r.tipo)==='F'),r=>N(r.kg))/pi*1e6:null};
   let cu=false;try{cu=costAccessAllowed()}catch(e){}
-  return{mt,PF,PU,both,vv,ms,len,R,D,T,ref,dev,rtq,prod,perc,ppm,refF,refU,cus,tot,prev,cu,un:mt==='qtd'?'peças':'kg'};
+  return{mt,PF,PU,both,vv,ms,len,R,D,T,ref,dev,rtq,prod,perc,ppm,refF,refU,cus,tot,prev,cu,ci,pi,un:mt==='qtd'?'peças':'kg'};
 }
 function rank(rows,key,val,lim){const m=new Map();rows.forEach(r=>{const k=String(key(r)||'').trim()||'Não informado';m.set(k,(m.get(k)||0)+val(r))});const a=[...m].map(([nome,v])=>({nome,v})).filter(e=>e.v>0).sort((x,y)=>y.v-x.v);return lim?a.slice(0,lim):a}
 
@@ -437,6 +437,81 @@ function kpi(l,v,sub,sp,c){const i=kinfo(l);return '<div class="p3k'+(i>=0?' p3k
 document.addEventListener('click',function(e){var k=e.target.closest&&e.target.closest('.p3ki');if(!k||e.target.closest('.p3info'))return;kiToggle(k)});
 document.addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('p3ki')){e.preventDefault();kiToggle(e.target)}});
 function kiToggle(k){var o=k.querySelector('.p3info');if(o){o.remove();return}var x=KINFO[+k.dataset.ki],d=document.createElement('div');d.className='p3info';d.innerHTML='<b>'+x[1]+'</b><p><u>De onde vêm os dados</u><br>'+x[2]+'</p><p><u>Como é calculado</u><br>'+x[3]+'</p>';k.appendChild(d)}
+/* ---------- Diagnóstico integrado (cruza refugo × produção × forno × peças × devolução × retrabalho × custos) ---------- */
+function pearson(a,b){const p=[];a.forEach((x,i)=>{if(x!=null&&b[i]!=null&&isFinite(x)&&isFinite(b[i]))p.push([x,b[i]])});if(p.length<5)return null;const n=p.length,mx=sum(p,q=>q[0])/n,my=sum(p,q=>q[1])/n;let sxy=0,sxx=0,syy=0;p.forEach(q=>{sxy+=(q[0]-mx)*(q[1]-my);sxx+=(q[0]-mx)*(q[0]-mx);syy+=(q[1]-my)*(q[1]-my)});return sxx&&syy?{r:sxy/Math.sqrt(sxx*syy),n}:null}
+function fornoMes(ms){const L=window.__ling;if(!L||!L.dias)return null;let dias;try{dias=L.dias()}catch(e){return null}const pF=L.perdaF||(()=>0),o=ms.map(()=>({p:0,l:0,g:0,f:0}));
+  dias.forEach((x,dt)=>{const i=ms.indexOf(dt.slice(0,7));if(i>=0&&x.p>0){o[i].p+=x.p;o[i].l+=x.l;o[i].g+=x.g;o[i].f+=pF(x)}});
+  return o.map(m=>{const t=m.p+m.l+m.g+m.f;return{p:m.p,l:m.l,g:m.g,f:m.f,t,ren:t?m.p/t*100:null,perda:t?(m.l+m.g+m.f)/t*100:null}})}
+function insCustoPeriodo(ms){try{if(typeof insLer!=='function')return null;const I=insLer(),it=I.qtd.itens;if(!it.length)return null;let tc=0,tq=0,semP=0,prodC=0;const por=new Map();
+  ms.forEach(m=>{let cm=0;it.forEach(nm=>{const q=(I.qtd.meses[m]||{})[nm]||0,p=(I.preco.v[nm]||{})[m];tq+=q;if(q>0&&p==null)semP++;else if(q>0){const c=q*(+p);cm+=c;por.set(nm,(por.get(nm)||0)+c)}});tc+=cm;if(cm>0){try{prodC+=insProdKg(m)}catch(e){}}});
+  const top=[...por].sort((a,b)=>b[1]-a[1])[0];return{tc,tq,semP,prodC,top}}catch(e){return null}}
+function diag(d){
+  const g=G(),U=d.un,mt=d.mt==='qtd',fk=v=>fm(v,mt?0:1),pc=v=>(v>=0?'+':'−')+fm(Math.abs(v),0)+'%',pp=v=>(v>=0?'+':'−')+fm(Math.abs(v),2)+' p.p.';
+  const meta_=(typeof meta!=='undefined'&&meta&&meta.perc>0)?meta.perc:null,S_=[],att=[];
+  const per=g.lblM(d.ms[0])+(d.ms.length>1?' a '+g.lblM(d.ms[d.ms.length-1]):'');
+  const kgFc=d.tot.perc!=null?d.tot.perc*d.ci/100:null,kgFp=d.prev.perc!=null?d.prev.perc*d.pi/100:null;
+  /* 1. situação geral */
+  {const P=[];
+   if(d.tot.perc!=null){let t='A <b>% de refugo da Fundição</b> em '+per+' é <b>'+fm(d.tot.perc,2)+'%</b>';
+     if(meta_!=null)t+=d.tot.perc>meta_?', <b class="up">'+fm(d.tot.perc-meta_,2)+' p.p. acima da meta de '+fm(meta_,1)+'%</b>':', <b class="dn">dentro da meta de '+fm(meta_,1)+'%</b> (folga de '+fm(meta_-d.tot.perc,2)+' p.p.)';
+     if(d.prev.perc!=null)t+='; no período anterior era '+fm(d.prev.perc,2)+'% ('+pp(d.tot.perc-d.prev.perc)+')';P.push(t+'.')}
+   P.push('O refugo total foi de <b>'+fk(d.tot.ref)+' '+U+'</b>'+(d.prev.ref>0?' ('+pc((d.tot.ref-d.prev.ref)/d.prev.ref*100)+' contra o período anterior)':'')+', com '+fm(d.tot.dev,mt?0:1)+' '+U+' de devolução procedente e '+fm(d.tot.rt)+' peça(s) retrabalhada(s).');
+   const pv=d.perc.filter(v=>v!=null);if(pv.length>=6){const a=pv.slice(-3),b=pv.slice(-6,-3),ma=sum(a,x=>x)/3,mb=sum(b,x=>x)/3;P.push('Tendência: a média da % de refugo nos últimos 3 meses é <b>'+fm(ma,2)+'%</b> contra <b>'+fm(mb,2)+'%</b> nos 3 anteriores ('+(ma>mb*1.05?'<b class="up">piorando</b>':ma<mb*.95?'<b class="dn">melhorando</b>':'estável')+').')}
+   S_.push(['Situação geral',P]);
+}
+  /* 2. produção × qualidade */
+  if(d.tot.perc!=null&&d.ci>0){const P=[];P.push('A produção da Fundição somou <b>'+fm(d.ci,0)+' kg</b>'+(d.pi>0?' ('+pc((d.ci-d.pi)/d.pi*100)+' vs período anterior)':'')+' e o refugo da Fundição <b>'+fm(kgFc,0)+' kg</b>'+(kgFp>0?' ('+pc((kgFc-kgFp)/kgFp*100)+')':'')+'.');
+    if(d.pi>0&&kgFp>0){const vp=(d.ci-d.pi)/d.pi*100,vr=(kgFc-kgFp)/kgFp*100;
+      P.push(vr>vp+5?'<b>Leitura:</b> o refugo cresceu mais do que a produção; isso indica <b class="up">piora na qualidade do processo</b>, não apenas efeito de volume.':vr<vp-5?'<b>Leitura:</b> o refugo evoluiu melhor do que a produção; há <b class="dn">ganho de qualidade</b> no período.':'<b>Leitura:</b> refugo e produção variaram de forma parecida; a % de refugo ficou praticamente no mesmo patamar.')}
+    const sem=d.ms.filter((k,i)=>d.ref[i]>0&&!(d.prod[i]>0));if(sem.length){P.push('Atenção: em '+sem.map(g.lblM).join(', ')+' há refugo e nenhuma produção lançada; nesses meses a % não é calculada.');att.push('Faltou lançar a produção de '+sem.map(g.lblM).join(', ')+'.')}
+    S_.push(['Produção × qualidade',P])}
+  /* 3. causas */
+  if(d.R.length&&d.tot.ref>0){const P=[],mot=rank(d.R,r=>r.mot,d.vv),cli=rank(d.R,r=>r.cli,d.vv,1),cau=rank(d.R,r=>r.causa,d.vv,1);let ac=0,n80=0;mot.forEach((e,i)=>{ac+=e.v;if(!n80&&ac/d.tot.ref>=.8)n80=i+1});
+    P.push('O principal motivo é <b>'+esc(mot[0].nome)+'</b> ('+fm(mot[0].v/d.tot.ref*100,0)+'% do refugo). <b>'+n80+'</b> de '+mot.length+' motivos concentram 80% do refugo.');
+    const k3=d.ms.slice(-3),k6=d.ms.slice(-6,-3);if(k6.length===3){const ma=new Map(),mb=new Map();d.R.forEach(r=>{const v=d.vv(r);if(k3.includes(r.k))ma.set(r.mot,(ma.get(r.mot)||0)+v);else if(k6.includes(r.k))mb.set(r.mot,(mb.get(r.mot)||0)+v)});
+      const df=[...new Set([...ma.keys(),...mb.keys()])].map(k=>({k,v:(ma.get(k)||0)-(mb.get(k)||0)})).sort((a,b)=>b.v-a.v);if(df[0]&&df[0].v>0)P.push('Maior alta nos últimos 3 meses: <b>'+esc(df[0].k)+'</b> (+'+fk(df[0].v)+' '+U+').');if(df.length>1&&df[df.length-1].v<0)P.push('Maior queda: <b>'+esc(df[df.length-1].k)+'</b> ('+fk(df[df.length-1].v)+' '+U+').')}
+    if(cau[0]&&!/n[aã]o classificad/i.test(cau[0].nome))P.push('Causa 6M predominante: <b>'+esc(cau[0].nome)+'</b> ('+fm(cau[0].v/d.tot.ref*100,0)+'%).');if(cli[0])P.push('Cliente com maior parcela: <b>'+esc(cli[0].nome)+'</b> ('+fm(cli[0].v/d.tot.ref*100,0)+'%).');
+    S_.push(['Causas do refugo',P]);d._top=mot[0]}
+  /* 4. peças e clientes (cruzamento refugo × devolução × retrabalho) */
+  {const P=[],pl=pecasLista(d),tri=pl.filter(e=>e.ref>0&&e.dev>0&&e.rt>0),duo=pl.filter(e=>e.ref>0&&(e.dev>0||e.rt>0));
+   if(tri.length)P.push('<b>'+tri.length+'</b> peça(s) aparecem ao mesmo tempo em refugo, devolução e retrabalho: '+tri.slice(0,3).map(e=>'<b>'+esc((e.cod?e.cod+' ':'')+(e.nome||''))+'</b>').join(', ')+'. É o grupo mais crítico: o problema passa pela fábrica e chega ao cliente.');
+   else if(duo.length)P.push('Peças com refugo e também devolução ou retrabalho: '+duo.slice(0,3).map(e=>'<b>'+esc((e.cod?e.cod+' ':'')+(e.nome||''))+'</b>').join(', ')+'.');
+   if(pl[0]&&pl[0].sc>0)P.push('Peça de maior criticidade: <b>'+esc((pl[0].cod?pl[0].cod+' — ':'')+(pl[0].nome||''))+'</b>'+(pl[0].cli?' ('+esc(pl[0].cli)+')':'')+', com índice de '+fm(pl[0].sc,1)+'%.');
+   const cm=new Map();d.R.forEach(r=>{const o=cm.get(r.cli)||{r:0,d:0};o.r+=d.vv(r);cm.set(r.cli,o)});d.D.forEach(r=>{const o=cm.get(r.cli)||{r:0,d:0};o.d+=d.vv(r);cm.set(r.cli,o)});
+   const cb=[...cm].filter(([k,o])=>o.r>0&&o.d>0).map(([k,o])=>({k,o,s:(d.tot.ref?o.r/d.tot.ref:0)+(d.tot.dev?o.d/d.tot.dev:0)})).sort((a,b)=>b.s-a.s)[0];
+   if(cb)P.push('Cliente que acumula refugo e devolução: <b>'+esc(cb.k)+'</b> ('+fm(d.tot.ref?cb.o.r/d.tot.ref*100:0,0)+'% do refugo e '+fm(d.tot.dev?cb.o.d/d.tot.dev*100:0,0)+'% da devolução).');
+   const ag=d.D.filter(r=>/aguardando/i.test(r.disp||'')).length;if(ag){P.push('Há <b>'+ag+'</b> devolução(ões) ainda aguardando análise.');att.push(ag+' devolução(ões) aguardando análise.')}
+   const mr=rank(d.T,r=>r.mot,r=>N(r.qtd),1);if(mr[0]&&d.tot.rt>0)P.push('Principal motivo de retrabalho: <b>'+esc(mr[0].nome)+'</b> ('+fm(mr[0].v/d.tot.rt*100,0)+'% das peças).');
+   if(d.tot.ppm!=null&&d.tot.ppm>0)P.push('PPM de devolução: <b>'+fm(d.tot.ppm,0)+'</b>'+(d.prev.ppm>0?' ('+pc((d.tot.ppm-d.prev.ppm)/d.prev.ppm*100)+' vs anterior)':'')+'.');
+   if(P.length)S_.push(['Peças, clientes, devolução e retrabalho',P])}
+  /* 5. forno × refugo */
+  {const fm_=fornoMes(d.ms);if(fm_&&fm_.some(x=>x.t>0)&&sum(fm_,x=>x.l+x.g+x.f)>0){const P=[],T=sum(fm_,x=>x.t),rp=T?sum(fm_,x=>x.p)/T*100:0,vi=fm_.map((x,i)=>x.ren!=null?{i,r:x.ren}:null).filter(Boolean),ult=vi[vi.length-1];
+    P.push('No forno, <b>'+fm(rp,1)+'%</b> da carga virou peça bruta; <b>'+fm(100-rp,1)+'%</b> foi lingote, respingo e perda na fusão.');
+    if(vi.length>=3){const ant=vi.slice(0,-1),mm=sum(ant,x=>x.r)/ant.length;P.push('Em '+g.lblM(d.ms[ult.i])+' o rendimento foi de <b>'+fm(ult.r,1)+'%</b>, '+(ult.r<mm-1?'<b class="up">abaixo</b>':ult.r>mm+1?'<b class="dn">acima</b>':'em linha com')+' a média dos meses anteriores ('+fm(mm,1)+'%).')}
+    const pr=pearson(fm_.map(x=>x.ren),d.perc);if(pr){const a=Math.abs(pr.r);P.push(a>=.5?'<b>Cruzamento:</b> em '+pr.n+' meses com dados dos dois lados, quando o rendimento do forno '+(pr.r<0?'cai a % de refugo tende a subir':'sobe a % de refugo também tende a subir')+' (correlação '+fm(pr.r,2)+'). '+(pr.r<0?'Vale investigar fusão, vazamento e temperatura nesses meses.':'Isso não é esperado; confira se os lançamentos do boletim estão completos.'):a<.3?'<b>Cruzamento:</b> não há relação clara entre o rendimento do forno e a % de refugo nos '+pr.n+' meses comparados; as causas estão mais ligadas a moldagem, projeto e processo do que ao forno.':'<b>Cruzamento:</b> há uma relação fraca entre o rendimento do forno e a % de refugo ('+fm(pr.r,2)+'); não é suficiente para concluir.')}
+    S_.push(['Forno (Boletim de Fusão)',P])}}
+  /* 6. custos */
+  {const P=[],ic=insCustoPeriodo(d.ms);
+   if(d.cu){if(d.tot.rs>0)P.push('A <b>não qualidade</b> (refugo + devolução) custou <b>R$ '+fm(d.tot.rs,0)+'</b>'+(d.prev.rs>0?' ('+pc((d.tot.rs-d.prev.rs)/d.prev.rs*100)+' vs anterior)':'')+'.');
+     if(ic&&ic.tc>0){P.push('Os <b>insumos</b> da fundição custaram <b>R$ '+fm(ic.tc,0)+'</b>'+(ic.prodC>0?' (R$ '+fm(ic.tc/ic.prodC,2)+' por kg fundido)':'')+(ic.top?'; o maior custo é <b>'+esc(ic.top[0])+'</b> ('+fm(ic.top[1]/ic.tc*100,0)+'%)':'')+'.');
+       if(d.tot.rs>0)P.push('Cruzando: para cada <b>R$ 100</b> gastos em insumos, cerca de <b>R$ '+fm(d.tot.rs/ic.tc*100,0)+'</b> foram perdidos em refugo e devolução.');
+       if(ic.semP){P.push('Há '+ic.semP+' lançamento(s) de insumo sem preço; o custo de insumos está parcial.');att.push('Preencher o preço dos insumos em Cadastro › Insumos.')}}
+     else if(ic&&ic.tq>0&&!(ic.tc>0)){P.push('Há consumo de insumos no período ('+fm(ic.tq,0)+' kg), mas nenhum preço cadastrado; informe os preços em Cadastro › Insumos para calcular o custo e cruzar com a não qualidade.');att.push('Cadastrar o preço dos insumos.')}
+     else if(!ic)P.push('Sem insumos cadastrados no período; cadastre em Cadastro › Insumos para cruzar custo de insumos com a não qualidade.')}
+   else P.push('Os valores em R$ estão bloqueados. Libere com “Mostrar custos” para incluir custo da não qualidade e de insumos nesta análise.');
+   if(P.length)S_.push(['Custos',P])}
+  /* 7. conclusão */
+  {const P=[],t=d._top,pl=pecasLista(d)[0];let cls='';
+   if(d.tot.perc!=null&&meta_!=null)cls=d.tot.perc>meta_?'<b class="up">situação de atenção</b>: a % de refugo está acima da meta':'<b class="dn">situação sob controle</b>: a % de refugo está dentro da meta';
+   if(cls)P.push('Em resumo, o período está em '+cls+(d.prev.perc!=null?' e '+(d.tot.perc>d.prev.perc+.05?'<b class="up">piorou</b>':d.tot.perc<d.prev.perc-.05?'<b class="dn">melhorou</b>':'ficou estável')+' em relação ao período anterior':'')+'.');
+   const pr=[];if(t)pr.push('atacar <b>'+esc(t.nome)+'</b>, o motivo de maior peso');if(pl&&pl.sc>0)pr.push('revisar a peça <b>'+esc((pl.cod?pl.cod+' ':'')+(pl.nome||''))+'</b>, a mais crítica no cruzamento de refugo, devolução e retrabalho');
+   if(pr.length)P.push('Prioridades sugeridas: '+pr.map((x,i)=>(i+1)+') '+x).join('; ')+'.');
+   if(att.length)P.push('Pontos de atenção nos dados: '+att.join(' ')+'');
+   P.push('<span class="mu">Texto gerado automaticamente a partir dos lançamentos do período e dos filtros escolhidos; os cruzamentos mostram associação, não prova de causa. Confirme no chão de fábrica antes de decidir.</span>');
+   S_.push(['Conclusão',P])}
+  const plain=S_.map(s=>s[0].toUpperCase()+'\n'+s[1].map(x=>x.replace(/<[^>]+>/g,'').replace(/&amp;/g,'&')).join('\n')).join('\n\n');window.__p3diag='DIAGNÓSTICO INTEGRADO — '+per+'\n\n'+plain;
+  return '<div class="p3c p3dg"><h4>🧠 Diagnóstico integrado — situação atual ('+per+')</h4>'+S_.map(s=>'<h5>'+s[0]+'</h5>'+s[1].map(x=>'<p>'+x+'</p>').join('')).join('')+'<div class="p3bar" style="margin-top:10px"><button class="btn secondary" type="button" id="p3dgcp">📋 Copiar texto</button></div></div>'}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('#p3dgcp');if(!b)return;var t=window.__p3diag||'';try{navigator.clipboard.writeText(t).then(function(){b.textContent='✅ Copiado'})}catch(x){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');b.textContent='✅ Copiado'}catch(y){}a.remove()}});
 function tExec(d){
   const g=G(),lb=d.ms.map(g.lblM),U=d.un,mt=d.mt==='qtd';
   const yld=d.tot.perc!=null?100-d.tot.perc:null,yp=d.prev.perc!=null?100-d.prev.perc:null;
@@ -459,6 +534,7 @@ function tExec(d){
     if(cau.length&&d.tot.ref)L.push('Causa 6M predominante: <b>'+esc(cau[0].nome)+'</b> ('+fm(cau[0].v/d.tot.ref*100,0)+'%).');
     const a3=d.ref.slice(-3),b3=d.ref.slice(-6,-3);if(b3.length===3&&sum(b3,x=>x)>0){const t=(sum(a3,x=>x)-sum(b3,x=>x))/sum(b3,x=>x)*100;L.push('Últimos 3 meses vs 3 anteriores: <b class="'+(t>0?'up':'dn')+'">'+(t>0?'▲ +':'▼ ')+fm(Math.abs(t),0)+'%</b> no refugo.')}}
   h+='<div class="p3c"><h4>🔎 Leitura automática</h4>'+(L.length?'<ul class="p3ul">'+L.map(x=>'<li>'+x+'</li>').join('')+'</ul>':'<span class="mu">Sem lançamentos no período.</span>')+'</div>';
+  try{h+=diag(d)}catch(e){console.warn('Diagnóstico:',e)}
   return h;
 }
 function tPareto(d){
@@ -631,7 +707,7 @@ function pngFish(){
 /* ---------- página ---------- */
 const CSS='@media(max-width:640px){.p3 .p3bar{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:8px!important;align-items:center}.p3 .p3bar label{grid-column:1}.p3 .p3bar input[type=month]{grid-column:2/-1;width:100%;min-width:0;box-sizing:border-box}.p3 .p3bar select{grid-column:1/-1;width:100%;min-width:0}.p3 .p3bar .btn{grid-column:span 2;width:100%;min-height:42px;padding:8px 6px;font-size:13px}.p3 .p3tabs{display:flex;overflow-x:auto;gap:6px;scrollbar-width:none}.p3 .p3tabs button{flex:0 0 auto;white-space:nowrap}}.p3{--o:#ff6a1f}.p3 .p3bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}.p3 .p3bar label{font-size:12px;font-weight:800;color:var(--muted)}.p3 .p3bar input,.p3 .p3bar select,.p3in{border:1px solid var(--border);border-radius:10px;padding:7px 10px;background:var(--card);color:var(--text);font:inherit}.p3in{width:100%;max-width:340px;margin:6px 0 10px}'+
 '.p3tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px}.p3tabs button{white-space:nowrap;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:8px 15px;font-weight:800;cursor:pointer}.p3tabs button.on{background:linear-gradient(180deg,#ff9a55,#ff6a1f 55%,#d94a08);color:#fff;border-color:transparent;box-shadow:0 4px 14px rgba(255,106,31,.4)}'+
-'.p3ki{cursor:pointer}.p3ki:focus-visible{outline:2px solid #ff6a1f}.p3ii{position:absolute;top:8px;right:10px;font-style:normal;font-size:13px;color:var(--muted);opacity:.7}.p3ki:hover .p3ii{opacity:1;color:#ff6a1f}.p3info{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(255,106,31,.09);border:1px solid rgba(255,106,31,.35);font-size:12px;line-height:1.45;font-weight:500;text-transform:none;letter-spacing:0;cursor:default}.p3k .p3info b{display:block;font-size:13px;font-weight:800;margin:0 0 4px}.p3info p{margin:6px 0 0}.p3info u{text-decoration:none;font-weight:800;color:#ff6a1f}'+
+'.p3dg h5{margin:14px 0 4px;font-size:13px;color:#ff6a1f;text-transform:uppercase;letter-spacing:.5px}.p3dg p{margin:5px 0;line-height:1.55;font-size:14px}.p3ki{cursor:pointer}.p3ki:focus-visible{outline:2px solid #ff6a1f}.p3ii{position:absolute;top:8px;right:10px;font-style:normal;font-size:13px;color:var(--muted);opacity:.7}.p3ki:hover .p3ii{opacity:1;color:#ff6a1f}.p3info{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(255,106,31,.09);border:1px solid rgba(255,106,31,.35);font-size:12px;line-height:1.45;font-weight:500;text-transform:none;letter-spacing:0;cursor:default}.p3k .p3info b{display:block;font-size:13px;font-weight:800;margin:0 0 4px}.p3info p{margin:6px 0 0}.p3info u{text-decoration:none;font-weight:800;color:#ff6a1f}'+
 '.p3kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:12px}.p3k{position:relative;border:1px solid var(--border);border-radius:14px;padding:12px 14px;background:linear-gradient(150deg,rgba(255,255,255,.1),rgba(255,255,255,.02) 40%,rgba(0,0,0,.1)),var(--card);box-shadow:var(--shadow,0 4px 14px rgba(0,0,0,.15)),inset 0 1px 0 rgba(255,255,255,.25);overflow:hidden}.p3k::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c);box-shadow:0 0 10px var(--c)}'+
 '.p3k span{display:block;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}.p3k b{display:block;font-size:26px;font-weight:900;margin:3px 0}.p3k small{display:block;font-size:11px}.p3sk{margin-top:4px;height:26px}.p3sp{width:100%;height:26px}'+
 '.p3g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-bottom:12px}.p3g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}'+
