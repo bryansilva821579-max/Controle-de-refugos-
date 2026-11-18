@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v222';
+window.__V=window.__V||{};window.__V.app='v223';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -797,7 +797,7 @@ async function refEnviarConfig(root,forcar){
   await blobEnviar('reunioes',window.reunioes||[],forcar);
   if(forcar||fsStable(bolImpLer())!==blobSig['boletim']){try{const r=await blobLerRemoto('boletim',root);if(r&&Array.isArray(r.valor)){const x=bolAplicarRemoto(r.valor);if(x.local){try{renderLingGotas()}catch(e){}}}}catch(e){console.warn('Mescla do boletim:',e)}}
   await blobEnviar('boletim',bolImpLer(),forcar);
-  try{const I=insLer();await blobEnviar('insumos',{qtd:I.qtd,preco:I.preco},forcar)}catch(e){console.warn('Insumos (envio):',e)}
+  try{if(forcar||blobSig['insumos']===undefined){try{const r=await blobLerRemoto('insumos',root);if(r&&r.valor)insMesclarRemoto(r.valor)}catch(e){}}const I=insLer();if(I.qtd.itens.length||Object.keys(I.preco.v).length)await blobEnviar('insumos',{qtd:I.qtd,preco:I.preco},forcar)}catch(e){console.warn('Insumos (envio):',e)}
   if(forcar||sig!==refCfgSig||!refLegadoLimpo){
     const F=window.firebase.firestore.FieldValue;
     await root.collection('config').doc('estado').set(Object.assign(fsSanitize(Object.assign({},estado)),{updatedAt:F.serverTimestamp(),cadastros:F.delete(),reunioes:F.delete(),historicoFonte:F.delete()}),{merge:true});
@@ -883,7 +883,7 @@ async function pullRemoteQuiet(){
     const cs=fsDesanitize(cfgSnap.data());
     const _B=blobMontar((await blobCol().get()).docs);
     if(_B.cadastros)cs.cadastros=_B.cadastros.valor;if(_B.reunioes)cs.reunioes=_B.reunioes.valor;
-    try{const R=_B.insumos&&_B.insumos.valor;if(R){const I=insLer();let ch=false;if(R.qtd&&(R.qtd.em||0)>I.qtd.em){localStorage.setItem(INS_QTD_KEY,JSON.stringify(R.qtd));ch=true}if(R.preco&&(R.preco.em||0)>I.preco.em){localStorage.setItem(INS_PRECO_KEY,JSON.stringify(R.preco));ch=true}if(ch&&document.getElementById('insBox')&&document.getElementById('insBox').offsetParent)insRender()}}catch(e){console.warn('Insumos da nuvem:',e)}
+    try{insMesclarRemoto(_B.insumos&&_B.insumos.valor)}catch(e){console.warn('Insumos (nuvem):',e)}
     try{const bolR=(_B.boletim&&Array.isArray(_B.boletim.valor))?bolAplicarRemoto(_B.boletim.valor):{local:false,nuvem:bolImpLer().length>0};
       if(bolR.nuvem)scheduleFirebasePush();if(bolR.local){try{renderLingGotas()}catch(e){}}}catch(e){console.warn('Boletim da nuvem:',e)}
     const dMeta=cs.meta&&fsStable(cs.meta)!==fsStable(meta),dCad=cs.cadastros&&fsStable(cs.cadastros)!==fsStable(cadastros),prodR=Array.isArray(cs.producaoFundicao)?prodAplicar(cs.producaoFundicao,cs.producaoDel):{local:false,nuvem:false},dProd=prodR.local||prodR.nuvem,dReu=Array.isArray(cs.reunioes)&&fsStable(cs.reunioes)!==fsStable(window.reunioes||[]);
@@ -3535,6 +3535,20 @@ const INS_QTD_KEY='controle_refugos_2026_insumos_qtd_v1',INS_PRECO_KEY='controle
 let insAno=new Date().getFullYear();
 const INS_MES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 function insLer(){const j=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')||{}}catch(e){return{}}};const q=j(INS_QTD_KEY),p=j(INS_PRECO_KEY);return{qtd:{itens:q.itens||[],meses:q.meses||{},em:q.em||0},preco:{v:p.v||{},em:p.em||0}}}
+function insMesclarRemoto(R){
+  if(!R)return false;const I=insLer();let ch=false;
+  const temP=o=>!!(o&&o.v&&Object.keys(o.v).length);
+  if(R.qtd&&Array.isArray(R.qtd.itens)&&R.qtd.itens.length&&((R.qtd.em||0)>I.qtd.em||!I.qtd.itens.length)){localStorage.setItem(INS_QTD_KEY,JSON.stringify(R.qtd));ch=true}
+  if(R.preco&&temP(R.preco)&&((R.preco.em||0)>I.preco.em||!temP(I.preco))){localStorage.setItem(INS_PRECO_KEY,JSON.stringify(R.preco));ch=true}
+  if(ch&&document.getElementById('insBox')&&document.getElementById('insBox').offsetParent)insRender();
+  return ch}
+async function insNuvem(){
+  try{if(typeof firebaseDbOnline==='undefined'||!firebaseDbOnline||!firebaseOnlineConnected){alert('Este aparelho não está conectado online. Conecte em Dados e backup (Conectar online) e tente de novo.');return}
+    const r=await blobLerRemoto('insumos',firebaseRoot()),R=r&&r.valor,nI=R&&R.qtd&&R.qtd.itens?R.qtd.itens.length:0,nP=R&&R.preco&&R.preco.v?Object.keys(R.preco.v).length:0,I=insLer();
+    const ch=insMesclarRemoto(R),J=insLer();
+    if(J.qtd.itens.length||Object.keys(J.preco.v).length){await blobEnviar('insumos',{qtd:J.qtd,preco:J.preco},true)}
+    insRender();alert('Insumos sincronizados.\n\nNa nuvem havia: '+nI+' insumo(s) e '+nP+' com preço.\nNeste aparelho agora: '+J.qtd.itens.length+' insumo(s) e '+Object.keys(J.preco.v).length+' com preço.'+(ch?'\nOs dados da nuvem foram trazidos para cá.':'\nNenhum dado novo veio da nuvem.')+(!nI&&!J.qtd.itens.length?'\n\nA nuvem está vazia: importe o Boletim de Fusão no aparelho que tem os dados e use este botão lá.':''))
+  }catch(e){alert('Não consegui sincronizar: '+(e&&e.message||e))}}
 function insGravarQtd(q){q.em=Date.now();localStorage.setItem(INS_QTD_KEY,JSON.stringify(q))}
 function insGravarPreco(p){p.em=Date.now();localStorage.setItem(INS_PRECO_KEY,JSON.stringify(p))}
 function insAplicarLinhas(rows){
@@ -3575,7 +3589,7 @@ function insRender(){
   const host=document.getElementById('insBox');if(!host)return;
   const L=insLer(),itens=L.qtd.itens,anos=new Set([new Date().getFullYear()]);Object.keys(L.qtd.meses).forEach(k=>anos.add(+k.slice(0,4)));
   const ver=(typeof costAccessAllowed!=='function')||costAccessAllowed();
-  const bar=`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0"><label>Ano <select onchange="insAno=+this.value;insRender()">${[...anos].sort().map(a=>`<option${a===insAno?' selected':''}>${a}</option>`).join('')}</select></label><label class="btn secondary" style="cursor:pointer">📥 Ler quantidades do Boletim (.xlsx)<input type="file" multiple accept=".xlsx,.xlsm" style="display:none" onchange="insImportar(this.files);this.value=''"></label>${itens.length?'<button type="button" class="btn secondary" onclick="insExcel()">📊 Baixar planilha (Excel)</button>':''}</div>`;
+  const bar=`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0"><label>Ano <select onchange="insAno=+this.value;insRender()">${[...anos].sort().map(a=>`<option${a===insAno?' selected':''}>${a}</option>`).join('')}</select></label><button type="button" class="btn secondary" onclick="insNuvem()">☁ Sincronizar com a nuvem</button><label class="btn secondary" style="cursor:pointer">📥 Ler quantidades do Boletim (.xlsx)<input type="file" multiple accept=".xlsx,.xlsm" style="display:none" onchange="insImportar(this.files);this.value=''"></label>${itens.length?'<button type="button" class="btn secondary" onclick="insExcel()">📊 Baixar planilha (Excel)</button>':''}</div>`;
   if(!itens.length){host.innerHTML=bar+'<div class="small">Ainda não há quantidades. Toque em <b>Ler quantidades do Boletim</b> e escolha os arquivos do Boletim de Fusão (a aba “BOLETIM - Carregamento” traz Gusa, Sucatas, Ligas, Nodularizante etc. de cada corrida). Também são lidas automaticamente quando você importa o Boletim na aba Produção.</div>';return}
   const C=insCalc(),f2=v=>v?v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'',f0=v=>v?v.toLocaleString('pt-BR',{maximumFractionDigits:1}):'';
   const th='<th style="text-align:left;position:sticky;left:0;background:var(--card)">Material</th>'+INS_MES.map(x=>`<th>${x}</th>`).join('');
