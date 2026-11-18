@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.relatorios='v223';
+window.__V=window.__V||{};window.__V.relatorios='v224';
 /* ==================================================================
    RELATÓRIOS MENSAIS — Retrabalhos e Devoluções
    Mesmo formato do relatório mensal de refugos: gráficos com análise
@@ -411,7 +411,32 @@ function delta(c,p,bad){if(p==null||!(p>0)||c==null)return '<small class="mu">se
 
 /* ---------- abas ---------- */
 const TABS=[['exec','🏁 Executivo'],['pareto','📉 Pareto e causas'],['heat','🔥 Mapa de calor'],['pecas','🧩 Peças críticas'],['cli','👥 Clientes'],['cal','📅 Calendário'],['peixe','🐟 Espinha 6M'],['ling','🧲 Lingotes e respingos'],['ins','🧪 Insumos e custos']];
-function kpi(l,v,sub,sp,c){return '<div class="p3k" style="--c:'+(c||OR)+'"><span>'+l+'</span><b>'+v+'</b>'+sub+'<div class="p3sk">'+(sp||'')+'</div></div>'}
+const KINFO=[
+ ['refugo (','Refugo (kg ou peças)','Lançamentos de refugo (Lançamentos › Lançar refugo / Histórico) com data dentro do período e da planta escolhidos no topo.','Soma do peso (ou das peças, se você escolheu peças) conforme o tipo de peso selecionado: bruto fracionado, líquido ou usinado. A seta compara com o período anterior de mesmo tamanho; o mini-gráfico mostra mês a mês.'],
+ ['% refugo','% refugo Fundição','Refugos da planta Fundição (Lançamentos de refugo) e a Produção diária da Fundição (Lançamentos › Produção diária, vinda do PCP ou lançada).','Refugo da Fundição (kg) ÷ produção da Fundição (kg) × 100, no período. Só entra a planta “Fundição”: Usinagem e Fundição na Usinagem ficam de fora. A produção segue o tipo de peso escolhido (bruto ou líquido). A meta vem de Cadastro › Metas. Só aparece em kg e com a planta Fundição marcada.'],
+ ['rendimento de qualidade','Rendimento de qualidade','Mesma base da % de refugo Fundição.','100% − % de refugo da Fundição. É a parte da produção que não virou refugo.'],
+ ['retrabalho','Retrabalho (peças)','Retrabalhos lançados no menu 🔧 Retrabalhos (etiqueta FQ 099) com data no período.','Soma das peças retrabalhadas. A planta é a do setor do retrabalho, respeitando o filtro de planta do topo.'],
+ ['devolução','Devolução procedente','Devoluções lançadas no menu ↩ Devoluções (FQ 051) com data no período.','Soma em kg (ou peças) das devoluções, sem as marcadas como “Reclamação não procede”.'],
+ ['ppm','PPM de devolução','Devoluções procedentes da Fundição e a Produção diária da Fundição.','kg devolvidos (Fundição) ÷ kg produzidos × 1.000.000. Quanto menor, melhor.'],
+ ['custo da não qualidade','Custo da não qualidade','Refugos e devoluções do período e os valores R$/kg de Cadastro › Valores.','Soma, em R$, do custo dos refugos e das devoluções (peso × valor por kg cadastrado). Só aparece com a senha de custos liberada.'],
+ ['lingotes + respingos','Lingotes + respingos','Boletim de Fusão (Lançamentos › Boletim de Fusão), dias com boletim no período.','Soma dos kg de lingotes e respingos; embaixo, o número de corridas.'],
+ ['lingotes','Lingotes','Boletim de Fusão, dias com boletim no período.','Soma dos kg de lingotes lançados nas corridas.'],
+ ['respingos','Respingos','Boletim de Fusão, dias com boletim no período.','Soma dos kg de respingos (gotas) lançados nas corridas.'],
+ ['média por corrida','Média por corrida','Boletim de Fusão.','(Lingotes + respingos) ÷ número de corridas do período.'],
+ ['rendimento do forno','Rendimento do forno','Boletim de Fusão: carga fria, total dos panelões, lingotes e respingos.','Peso bruto de peças (total dos panelões − lingotes − respingos) ÷ carga fria. O restante é lingote, respingo e perda na fusão. Só conta dias com boletim lançado.'],
+ ['perda na fusão','Perda na fusão','Boletim de Fusão: carga fria e total dos panelões.','Carga fria − total dos panelões (o que sumiu na fusão). O % é sobre a carga fria; só dias com carga fria lançada.'],
+ ['consumo total','Consumo total','Cadastro › 🧪 Insumos (quantidades vindas do Boletim de Fusão ou digitadas).','Soma, em kg, de todos os insumos nos meses do período.'],
+ ['maior consumo','Maior consumo','Cadastro › 🧪 Insumos.','Insumo com maior quantidade em kg no período.'],
+ ['custo de insumos','Custo de insumos','Quantidades e preços de Cadastro › 🧪 Insumos.','Σ quantidade × preço pago do mês. Meses com quantidade e sem preço não entram, então o valor pode ser parcial.'],
+ ['r$ por kg fundido','R$ por kg fundido','Custo de insumos e Produção diária da Fundição.','Custo de insumos ÷ produção bruta dos meses que têm preço cadastrado.'],
+ ['maior custo','Maior custo','Cadastro › 🧪 Insumos.','Insumo que mais custou no período (quantidade × preço).'],
+ ['preço médio','Preço médio','Cadastro › 🧪 Insumos.','Custo total ÷ consumo total do período.']
+];
+function kinfo(l){const t=String(l).toLowerCase();return KINFO.findIndex(x=>t.indexOf(x[0])===0)}
+function kpi(l,v,sub,sp,c){const i=kinfo(l);return '<div class="p3k'+(i>=0?' p3ki':'')+'"'+(i>=0?' data-ki="'+i+'" tabindex="0" role="button" title="Toque para ver de onde vem este número"':'')+' style="--c:'+(c||OR)+'">'+(i>=0?'<i class="p3ii">ⓘ</i>':'')+'<span>'+l+'</span><b>'+v+'</b>'+sub+'<div class="p3sk">'+(sp||'')+'</div></div>'}
+document.addEventListener('click',function(e){var k=e.target.closest&&e.target.closest('.p3ki');if(!k||e.target.closest('.p3info'))return;kiToggle(k)});
+document.addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('p3ki')){e.preventDefault();kiToggle(e.target)}});
+function kiToggle(k){var o=k.querySelector('.p3info');if(o){o.remove();return}var x=KINFO[+k.dataset.ki],d=document.createElement('div');d.className='p3info';d.innerHTML='<b>'+x[1]+'</b><p><u>De onde vêm os dados</u><br>'+x[2]+'</p><p><u>Como é calculado</u><br>'+x[3]+'</p>';k.appendChild(d)}
 function tExec(d){
   const g=G(),lb=d.ms.map(g.lblM),U=d.un,mt=d.mt==='qtd';
   const yld=d.tot.perc!=null?100-d.tot.perc:null,yp=d.prev.perc!=null?100-d.prev.perc:null;
@@ -606,6 +631,7 @@ function pngFish(){
 /* ---------- página ---------- */
 const CSS='@media(max-width:640px){.p3 .p3bar{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:8px!important;align-items:center}.p3 .p3bar label{grid-column:1}.p3 .p3bar input[type=month]{grid-column:2/-1;width:100%;min-width:0;box-sizing:border-box}.p3 .p3bar select{grid-column:1/-1;width:100%;min-width:0}.p3 .p3bar .btn{grid-column:span 2;width:100%;min-height:42px;padding:8px 6px;font-size:13px}.p3 .p3tabs{display:flex;overflow-x:auto;gap:6px;scrollbar-width:none}.p3 .p3tabs button{flex:0 0 auto;white-space:nowrap}}.p3{--o:#ff6a1f}.p3 .p3bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}.p3 .p3bar label{font-size:12px;font-weight:800;color:var(--muted)}.p3 .p3bar input,.p3 .p3bar select,.p3in{border:1px solid var(--border);border-radius:10px;padding:7px 10px;background:var(--card);color:var(--text);font:inherit}.p3in{width:100%;max-width:340px;margin:6px 0 10px}'+
 '.p3tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px}.p3tabs button{white-space:nowrap;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:8px 15px;font-weight:800;cursor:pointer}.p3tabs button.on{background:linear-gradient(180deg,#ff9a55,#ff6a1f 55%,#d94a08);color:#fff;border-color:transparent;box-shadow:0 4px 14px rgba(255,106,31,.4)}'+
+'.p3ki{cursor:pointer}.p3ki:focus-visible{outline:2px solid #ff6a1f}.p3ii{position:absolute;top:8px;right:10px;font-style:normal;font-size:13px;color:var(--muted);opacity:.7}.p3ki:hover .p3ii{opacity:1;color:#ff6a1f}.p3info{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(255,106,31,.09);border:1px solid rgba(255,106,31,.35);font-size:12px;line-height:1.45;font-weight:500;text-transform:none;letter-spacing:0;cursor:default}.p3k .p3info b{display:block;font-size:13px;font-weight:800;margin:0 0 4px}.p3info p{margin:6px 0 0}.p3info u{text-decoration:none;font-weight:800;color:#ff6a1f}'+
 '.p3kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:12px}.p3k{position:relative;border:1px solid var(--border);border-radius:14px;padding:12px 14px;background:linear-gradient(150deg,rgba(255,255,255,.1),rgba(255,255,255,.02) 40%,rgba(0,0,0,.1)),var(--card);box-shadow:var(--shadow,0 4px 14px rgba(0,0,0,.15)),inset 0 1px 0 rgba(255,255,255,.25);overflow:hidden}.p3k::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c);box-shadow:0 0 10px var(--c)}'+
 '.p3k span{display:block;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}.p3k b{display:block;font-size:26px;font-weight:900;margin:3px 0}.p3k small{display:block;font-size:11px}.p3sk{margin-top:4px;height:26px}.p3sp{width:100%;height:26px}'+
 '.p3g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-bottom:12px}.p3g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}'+
