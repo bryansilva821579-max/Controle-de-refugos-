@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.relatorios='v219';
+window.__V=window.__V||{};window.__V.relatorios='v222';
 /* ==================================================================
    RELATÓRIOS MENSAIS — Retrabalhos e Devoluções
    Mesmo formato do relatório mensal de refugos: gráficos com análise
@@ -331,7 +331,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 const fm=(v,d)=>N(v).toLocaleString('pt-BR',{maximumFractionDigits:d==null?0:d,minimumFractionDigits:0});
 const sum=(a,f)=>a.reduce((s,x)=>s+f(x),0);
 const norm=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
-const plc=t=>{t=norm(t);return t.includes('FUND')?'F':t.includes('USIN')?'U':''};
+const plc=t=>{t=norm(t);return t.includes('FUND')&&t.includes('USIN')?'M':t.includes('FUND')?'F':t.includes('USIN')?'U':''};
 const rgb=c=>{const m=String(c).match(/^#([0-9a-f]{6})$/i);return m?[0,2,4].map(i=>parseInt(m[1].slice(i,i+2),16)):[255,106,31]};
 const mix=(c,t,k)=>'rgb('+rgb(c).map(v=>Math.round(v+((t?255:0)-v)*k)).join(',')+')';
 const hk=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
@@ -344,7 +344,7 @@ let _g=0;
 
 /* ---------- dados ---------- */
 function dados(){
-  const g=G(),PF=S.pl!=='u',PU=S.pl!=='f',both=PF&&PU,keep=c=>c==='F'?PF:c==='U'?PU:both,mt=S.mt==='qtd'?'qtd':'kg',vv=r=>mt==='qtd'?N(r.qtd):N(r.kg);
+  const g=G(),PF=S.pl!=='u',PU=S.pl!=='f',both=PF&&PU,keep=c=>c==='F'?PF:(c==='U'||c==='M')?PU:both,mt=S.mt==='qtd'?'qtd':'kg',vv=r=>mt==='qtd'?N(r.qtd):N(r.kg);
   const R0=g.refAll().filter(r=>keep(plc(r.pl))),D0=g.devAll().filter(r=>keep(plc(r.tipo))&&!(r.raw&&(r.raw.procede==='Não'||r.raw.disp==='Reclamação não procede')));
   let T0=[];try{T0=(typeof rtLoad==='function'?rtLoad():[]).filter(r=>r.dt)}catch(e){}
   const T1=T0.filter(r=>{try{return keep(plc((typeof setorInfo==='function'&&setorInfo(r.setor)||{}).planta))}catch(e){return true}});
@@ -358,7 +358,7 @@ function dados(){
   const dkF=ms.map(k=>sum(by(D,k).filter(r=>plc(r.tipo)==='F'),r=>N(r.kg)));
   const perc=ms.map((k,i)=>(mt==='kg'&&PF&&prod[i])?kgF[i]/prod[i]*100:null);
   const ppm=ms.map((k,i)=>(mt==='kg'&&PF&&prod[i])?dkF[i]/prod[i]*1e6:null);
-  const refF=ms.map(k=>sum(by(R,k).filter(r=>plc(r.pl)==='F'),vv)),refU=ms.map(k=>sum(by(R,k).filter(r=>plc(r.pl)==='U'),vv));
+  const refF=ms.map(k=>sum(by(R,k).filter(r=>plc(r.pl)==='F'),vv)),refU=ms.map(k=>sum(by(R,k).filter(r=>(plc(r.pl)==='U'||plc(r.pl)==='M')),vv));
   const cus=ms.map(k=>sum(by(R,k),r=>N(r.rs))+sum(by(D,k),r=>N(r.rs)));
   const pi=sum(pms,k=>g.metricasMes(k,R0,D0).prod),ci=sum(ms,k=>g.metricasMes(k,R0,D0).prod);
   const tot={ref:sum(R,vv),dev:sum(D,vv),rt:sum(T,r=>N(r.qtd)),rs:sum(R,r=>N(r.rs))+sum(D,r=>N(r.rs)),pecas:sum(R,r=>N(r.qtd)),
@@ -438,7 +438,7 @@ function tExec(d){
 }
 function tPareto(d){
   const U=d.un,mot=rank(d.R,r=>r.mot,d.vv,14),tot=d.tot.ref||1;let ac=0;const cum=mot.map(e=>(ac+=e.v)/tot*100);
-  const cau=rank(d.R,r=>r.causa,d.vv),pl=rank(d.R,r=>plc(r.pl)==='F'?'Fundição':plc(r.pl)==='U'?'Usinagem':'Outros',d.vv);
+  const cau=rank(d.R,r=>r.causa,d.vv),pl=rank(d.R,r=>plc(r.pl)==='F'?'Fundição':plc(r.pl)==='U'?'Usinagem':plc(r.pl)==='M'?'Fundição na Usinagem':'Outros',d.vv);
   let h='<div class="p3c"><h4>Pareto — motivos de refugo ('+U+') · linha = % acumulado</h4>'+(mot.length?combo({labels:mot.map(e=>e.nome),bars:[{name:'Refugo',color:OR,values:mot.map(e=>e.v)}],unit:U,line:{name:'% acumulado',color:'#cfe0f2',values:cum,max:100,suf:'%'},ref:80,refTxt:'80%',rot:true,h:340}):'<span class="mu">Sem dados.</span>')+'<div class="p3hint">Clique em uma barra para ver clientes e peças daquele motivo.</div><div id="p3det"></div></div>';
   h+='<div class="p3g2"><div class="p3c"><h4>Causa 6M</h4>'+(cau.length?hbar(cau,v=>fm(v,0)+' '+U,tot,TE):'<span class="mu">—</span>')+'</div><div class="p3c"><h4>Por planta</h4>'+(pl.length?hbar(pl,v=>fm(v,0)+' '+U,tot,ST):'<span class="mu">—</span>')+'</div></div>';
   const v80=cum.findIndex(x=>x>=80)+1;if(v80)h+='<div class="p3c"><h4>Regra 80/20</h4><p><b>'+v80+'</b> motivo(s) concentram <b>80%</b> do refugo do período. Priorize ação nesses primeiro.</p></div>';
@@ -529,7 +529,7 @@ function fishSvg(o){
   if(sem>0.0001||semQ>0)s+='<text x="12" y="'+(H-6)+'" font-size="11" fill="'+mu+'">Sem classificação 6M: '+fm(semQ)+' pç · '+fm(sem,1)+' kg ('+fm(tk>0?sem/tk*100:0,0)+'%) — classifique os motivos em Cadastro para completar o diagrama.</text>';
   return s+'</svg>';
 }
-function fishRows(a,b,pl){const PF=pl!=='u',PU=pl!=='f',ms=range(a,b);return G().refAll().filter(r=>ms.includes(r.k)&&(plc(r.pl)==='F'?PF:plc(r.pl)==='U'?PU:(PF&&PU)))}
+function fishRows(a,b,pl){const PF=pl!=='u',PU=pl!=='f',ms=range(a,b);return G().refAll().filter(r=>ms.includes(r.k)&&(plc(r.pl)==='F'?PF:(plc(r.pl)==='U'||plc(r.pl)==='M')?PU:(PF&&PU)))}
 function costOk(){try{return costAccessAllowed()}catch(e){return false}}
 function tLing(d){
   const L=window.__ling;if(!L)return '<div class="p3c"><span class="mu">Dados de lingotes indisponíveis.</span></div>';

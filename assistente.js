@@ -109,7 +109,7 @@ const ADAPT={
 const dimDe=f=>/^peca/.test(f)?'peca':f;
 const NO_ENT=/^(nao informado|)$/;
 const ENTC={};
-function entidadesDe(dom){const A=ADAPT[dom],all=A.all(),key=all.length+':'+(all[0]?JSON.stringify(all[all.length-1]).length:0);if(ENTC[dom]&&ENTC[dom].k===key)return ENTC[dom].e;
+function entidadesDe(dom){const A=ADAPT[dom],all=A.all(),key=all.length+':'+(function(){let h=0;try{const t=JSON.stringify(all);h=t.length;for(let i=0;i<t.length;i+=97)h=(h*31+t.charCodeAt(i))|0}catch(e){}return h})();if(ENTC[dom]&&ENTC[dom].k===key)return ENTC[dom].e;
   const e=[];Object.keys(A.F).forEach(f=>{if(f==='peca')return;const s=new Map();all.forEach(r=>{const v=String(A.F[f](r)||'').trim();if(v&&!s.has(v))s.set(v,W(v))});s.forEach((nv,v)=>{if(nv.length>=3&&!NO_ENT.test(nv))e.push({f,v,nv,w:nv.split(' ').filter(x=>x.length>=3)})})});
   ENTC[dom]={k:key,e};return e}
 function achaEnt(dom,qw){const pad=' '+qw+' ',hits=[];entidadesDe(dom).forEach(x=>{if(pad.includes(' '+x.nv+' ')||(x.w.length>=2&&x.w.every(w=>pad.includes(' '+w+' '))))hits.push(x)});
@@ -311,10 +311,121 @@ function navegar(q){
 window.asstIr=function(page,sub,tab){try{document.getElementById('asstPanel').classList.remove('on')}catch(e){}
   try{navigate(page)}catch(e){return}
   if(sub)setTimeout(function(){try{if(sub==='launch')switchLaunchTab(tab);else if(sub==='cad')switchCadTab(tab);else if(sub==='aud')audTab(tab)}catch(e){}},120)};
+/* ---------- v222: PRODUÇÃO, INSUMOS, PENDÊNCIAS e COMO-FAZER (cobre o site todo) ---------- */
+const nB=v=>{const x=Number(String(v==null?'':v).replace(',','.'));return isFinite(x)?x:0};
+const kgT=v=>fmt(Math.round(v))+' kg';
+const brl=v=>'R$ '+(Math.round(v*100)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const mesTxt=k=>NM[+k.slice(5,7)-1]+'/'+k.slice(2,4);
+const ehCusto=()=>{try{return typeof costAccessAllowed==='function'&&!!costAccessAllowed()}catch(e){return false}};
+function prodRows(){try{return(typeof producaoFundicao!=='undefined'&&Array.isArray(producaoFundicao)?producaoFundicao:[]).filter(p=>p&&p.data&&(typeof isProdDia==='function'?isProdDia(p):true))}catch(e){return[]}}
+function prodSoma(rows){const o={br:0,li:0,brL:0,nLi:0,dias:0,co:0,melhor:null,pior:null};rows.forEach(r=>{const b=nB(r.kg);o.br+=b;if(r.kgLiq!=null&&r.kgLiq!==''){o.li+=nB(r.kgLiq);o.brL+=b;o.nLi++}o.co+=nB(r.corridas);if(b>0){o.dias++;if(!o.melhor||b>o.melhor.v)o.melhor={d:r.data,v:b};if(!o.pior||b<o.pior.v)o.pior={d:r.data,v:b}}});return o}
+function prodMotor(q0,q){
+  const rows=prodRows();if(!rows.length)return['Ainda não há produção diária lançada. Use Lançamentos › Produção diária da Fundição, ou importe a programação do PCP.'];
+  const ult=rows.map(r=>r.data).sort().pop(),pp=perPar(q,ult);let per=pp.explicit?pp:{de:ult.slice(0,8)+'01',ate:ult,nota:'mês atual até '+D(ult),meses:[]};
+  const op0=detOp(q),mesRel=/mes passado|mes anterior|ultimo mes/.test(q)&&!(pp.meses&&pp.meses.length),qComp=op0==='comp'&&!(pp.meses&&pp.meses.length>=2);
+  if(qComp||mesRel&&op0==='comp')per={de:ult.slice(0,8)+'01',ate:ult,nota:'mês atual até '+D(ult),meses:[]};
+  else if(op0==='serie'&&!pp.explicit)per={de:ult.slice(0,4)+'-01-01',ate:ult,nota:'ano '+ult.slice(0,4)+' até '+D(ult),meses:[]};
+  if(!pp.explicit&&/\bano\b|no ano|do ano|acumulad/.test(q))per={de:ult.slice(0,4)+'-01-01',ate:ult,nota:'ano '+ult.slice(0,4)+' até '+D(ult),meses:[]};
+  const inP=(a)=>rows.filter(r=>r.data>=a.de&&r.data<=a.ate),R=inP(per),S=prodSoma(R),L=[];
+  if(!R.length){ULT.sug=['Produção deste ano','Compare produção com o mês passado'];return['Não há produção lançada em '+per.nota+' ('+D(per.de)+' a '+D(per.ate)+'). O último dia lançado foi '+D(ult)+'.']}
+  const op=detOp(q);
+  L.push('🔥 Produção — '+per.nota+' ('+D(per.de)+' a '+D(per.ate)+'): '+kgT(S.br)+' de peso bruto'+(S.nLi?' e '+kgT(S.li)+' de peso líquido':'')+', em '+S.dias+' dia(s) lançado(s)'+(S.co?', '+fmt(Math.round(S.co))+' corrida(s)':'')+'.');
+  if(S.dias>1)L.push('Média: '+kgT(S.br/S.dias)+' por dia (bruto). Melhor dia: '+D(S.melhor.d)+' ('+kgT(S.melhor.v)+'). Menor dia: '+D(S.pior.d)+' ('+kgT(S.pior.v)+').');
+  if(S.nLi&&S.brL)L.push('O peso líquido é '+rendPc(S.li/S.brL*100)+' do bruto'+(S.nLi<S.dias?' (calculado só nos '+S.nLi+' dia(s) em que o líquido foi lançado)':'')+'.');
+  if(op==='comp'||(per.meses&&per.meses.length>=2)){
+    const{a,b}=pares(qComp||mesRel?{meses:[]}:pp,qComp||mesRel?null:{per},per,ult),SA=prodSoma(inP(a)),SB=prodSoma(inP(b)),d=SA.br-SB.br;
+    L.push('Comparação: '+a.nota+' = '+kgT(SA.br)+' ('+SA.dias+' dia(s)) contra '+b.nota+' = '+kgT(SB.br)+' ('+SB.dias+' dia(s)).');
+    if(SB.br)L.push('Diferença: '+(d>=0?'+':'−')+kgT(Math.abs(d))+' ('+(d>=0?'+':'−')+rendPc(Math.abs(d)/SB.br*100)+').');
+    if(SA.dias&&SB.dias)L.push('Por dia lançado: '+kgT(SA.br/SA.dias)+' contra '+kgT(SB.br/SB.dias)+'.');
+    if(SA.dias!==SB.dias)L.push('Atenção: os períodos têm quantidades diferentes de dias lançados, por isso compare também a média por dia.')}
+  if(op==='serie'||/por mes|mensal|evolu|mes a mes|por dia|diari/.test(q)){
+    const dia=/por dia|diari/.test(q)||(R.length<=31&&!/por mes|mensal|evolu/.test(q)),g=new Map();R.forEach(r=>{const k=dia?r.data:r.data.slice(0,7);g.set(k,(g.get(k)||0)+nB(r.kg))});
+    const ks=[...g.keys()].sort().slice(dia?-20:-24);L.push({chart:'bars',t:'Produção bruta '+(dia?'por dia':'por mês'),cor:'#ff6a1f',items:ks.map(k=>({l:dia?D(k).slice(0,5):mesTxt(k),v:g.get(k),txt:kgT(g.get(k))}))})}
+  try{const fp=(typeof recordPlant==='function'&&typeof data!=='undefined')?data.filter(r=>{const i=isoRef(r);return i&&i>=per.de&&i<=per.ate&&recordPlant(r)==='FUNDICAO'}):[],kg=fp.reduce((s,r)=>s+kg(r),0);
+    if(kg>0&&S.br)L.push('Refugo da Fundição no mesmo período: '+kgT(kg)+' = '+rendPc(kg/S.br*100)+' da produção bruta (só plantas “Fundição”, sem Usinagem e sem Fundição na Usinagem).')}catch(e){}
+  ULT.sug=['Compare produção com o mês passado','Produção por mês','Quais dias estão sem produção lançada?'];return L}
+function insDados(){try{return insLer()}catch(e){return null}}
+function insMotor(q0,q){
+  const Ld=insDados();if(!Ld||!(Ld.qtd.itens||[]).length)return['Ainda não há insumos cadastrados. Vá em Cadastro › 🧪 Insumos (as quantidades podem vir do Boletim de Fusão importado) e informe o preço de cada mês.'];
+  const itens=Ld.qtd.itens,meses=Object.keys(Ld.qtd.meses||{}).sort(),ver=ehCusto();
+  const ultK=meses[meses.length-1]||hojeIso().slice(0,7),pp=perPar(q,ultK+'-28');let de,ate,nota;
+  if(pp.explicit){de=pp.de.slice(0,7);ate=pp.ate.slice(0,7);nota=pp.nota}else{de=ultK.slice(0,4)+'-01';ate=ultK;nota='ano '+ultK.slice(0,4)+' até '+mesTxt(ultK)}
+  const ks=meses.filter(k=>k>=de&&k<=ate),pad=' '+W(q0)+' ';
+  const sel=itens.filter(it=>{const w=W(it);return pad.includes(' '+w+' ')||w.split(' ').some(x=>x.length>=4&&pad.includes(' '+x+' '))});
+  const lista=sel.length?sel:itens,pedeCusto=/custo|gast|pagu|valor|r\$|pag(o|ou)|cust(a|ou)|caro/.test(q),pedePreco=/preco|pre[cç]o|por kg|r\$\/kg/.test(q);
+  if(!ks.length)return['Não há quantidades de insumos lançadas em '+nota+'. Último mês com dados: '+mesTxt(ultK)+'.'];
+  const calc=lista.map(it=>{let qt=0,cu=0,qp=0,sem=0;const pm=[];ks.forEach(k=>{const qq=nB((Ld.qtd.meses[k]||{})[it]),pr=((Ld.preco.v[it]||{})[k]);qt+=qq;if(pr!=null&&isFinite(+pr)){cu+=qq*(+pr);qp+=qq;if(qq>0)pm.push([k,+pr])}else if(qq>0)sem++});return{it,qt,cu,qp,sem,pm}}).filter(x=>x.qt>0||sel.length);
+  const L=[];const tot=calc.reduce((s,x)=>s+x.cu,0),totQ=calc.reduce((s,x)=>s+x.qt,0),semT=calc.reduce((s,x)=>s+x.sem,0);
+  let prodKg=0;ks.forEach(k=>{try{prodKg+=insProdKg(k)}catch(e){}});
+  L.push('🧪 Insumos — '+nota+(sel.length?' · '+sel.join(', '):'')+':');
+  calc.sort((a,b)=>(ver&&pedeCusto?b.cu-a.cu:b.qt-a.qt));
+  if(sel.length&&calc.length<=4){calc.forEach(x=>{L.push('• '+x.it+': '+kgT(x.qt)+(ver?(x.qp?' · custo '+brl(x.cu)+' · preço médio '+brl(x.cu/x.qp)+'/kg'+(x.sem?' (faltam preços em '+x.sem+' mês(es))':''):' · sem preço cadastrado'):''));
+      if(ver&&pedePreco&&x.pm.length)L.push('   Preço por mês: '+x.pm.slice(-8).map(p=>mesTxt(p[0])+' '+brl(p[1])).join(' · '))})}
+  else{L.push('Total de '+calc.length+' insumo(s): '+kgT(totQ)+(ver?' · custo '+brl(tot):'')+'.')}
+  if(ver){if(!sel.length&&prodKg>0&&tot>0)L.push('Custo de insumos por kg fundido: '+brl(tot/prodKg)+'/kg (produção bruta do período: '+kgT(prodKg)+').');
+    if(semT)L.push('⚠ '+semT+' lançamento(s) de quantidade sem preço no mês: o custo acima é parcial. Preencha em Cadastro › Insumos.')}
+  else if(pedeCusto||pedePreco)L.push('🔒 Os valores em R$ estão bloqueados. Libere com “Mostrar custos” (senha) para eu informar custos e preços; as quantidades acima já estão liberadas.');
+  if(calc.length>1||ks.length>1){
+    if(calc.length>1)L.push({chart:'bars',t:(ver&&pedeCusto?'Custo':'Quantidade')+' por insumo — '+nota,cor:'#2dd4bf',items:calc.slice(0,8).map(x=>({l:x.it,v:ver&&pedeCusto?x.cu:x.qt,txt:ver&&pedeCusto?brl(x.cu):kgT(x.qt)}))});
+    else if(ks.length>1)L.push({chart:'bars',t:'Quantidade por mês — '+calc[0].it,cor:'#2dd4bf',items:ks.map(k=>({l:mesTxt(k),v:nB((Ld.qtd.meses[k]||{})[calc[0].it]),txt:kgT(nB((Ld.qtd.meses[k]||{})[calc[0].it]))}))})}
+  ULT.sug=['Quanto gastei de insumos no ano?','Qual insumo tem maior custo?','Onde cadastro o preço dos insumos?'];return L}
+function pendMotor(q0,q){
+  const hoje=hojeIso(),ini=hoje.slice(0,8)+'01',prod=new Set(prodRows().filter(r=>nB(r.kg)>0).map(r=>r.data));let B;try{B=lingBase()}catch(e){B=new Map()}
+  const bol=new Set([...B.keys()].filter(d=>(B.get(d).det||[]).length&&B.get(d).p>0)),dias=[];for(let d=ini;d<hoje;d=rendAddDias(d,1))dias.push(d);
+  const util=dias.filter(d=>{const w=new Date(d+'T12:00:00').getDay();return w>0&&w<6});
+  const semProd=util.filter(d=>!prod.has(d)),semBol=util.filter(d=>prod.has(d)&&!bol.has(d)),bolSemProd=[...bol].filter(d=>d>=ini&&d<hoje&&!prod.has(d)).sort();
+  const f=a=>a.slice(0,10).map(d=>D(d).slice(0,5)).join(', ')+(a.length>10?'… (+'+(a.length-10)+')':'');
+  const L=['📝 Pendências de lançamento em '+NM[+hoje.slice(5,7)-1]+'/'+hoje.slice(0,4)+' (dias úteis, até ontem):'];
+  L.push(semProd.length?'• Sem produção lançada: '+semProd.length+' dia(s) — '+f(semProd):'• Produção lançada em todos os dias úteis.');
+  if(bolSemProd.length)L.push('• Tem Boletim de Fusão mas falta a produção: '+f(bolSemProd));
+  if(semBol.length)L.push('• Tem produção mas falta o Boletim de Fusão: '+f(semBol));
+  L.push('Dias de fim de semana ficam de fora; se a fábrica operou nesses dias, lance normalmente.');
+  ULT.sug=['Produção deste mês','Onde lanço a produção?','Resumo geral'];return L}
+/* Base de conhecimento do site: respostas de "como faço…". Também alimenta a Ajuda. */
+const KB=[
+ {r:/lancar (a )?producao|producao (do )?dia|registrar producao|kg fundido/,t:'Lançar a produção do dia',a:'Lançamentos › aba “Produção diária da Fundição”. Escolha a data e informe o peso bruto (e o líquido, se tiver) e as corridas; salve. Cada dia vale um lançamento, e o total do mês é a soma dos dias.',go:['lancamentos','launch','producao']},
+ {r:/pcp|programacao/,t:'Importar a programação do PCP',a:'Lançamentos › Produção diária da Fundição › botão “📥 Importar programação do PCP”. Selecione as planilhas do PCP (pode ser mais de uma): o app lê o peso bruto e o líquido de cada dia e grava na produção. Dias que diferem do Boletim aparecem marcados em outra cor no calendário.',go:['lancamentos','launch','producao']},
+ {r:/bruto.*liquido|liquido.*bruto|tipo de peso|qual peso|diferenca.*peso/,t:'Peso bruto x líquido',a:'A produção guarda os dois pesos por dia. O seletor PESO do site define qual deles aparece nos totais e percentuais. Bruto é o peso fundido total; líquido é o peso aproveitável informado no PCP. Use sempre o mesmo tipo ao comparar períodos.'},
+ {r:/(dia|dias).*(cor|marcad|colorid|diferente)|calendario.*(cor|marc)|panelao|panelo/,t:'Dia marcado em outra cor no calendário',a:'No calendário da produção, o dia aparece em outra cor quando o total do PCP difere do Boletim de Fusão. O total dos panelões costuma ficar um pouco maior mesmo, então a marca serve de aviso, não de erro.',go:['lancamentos','launch','producao']},
+ {r:/insumo|gusa|sucata|ferro ?liga|elemento.*fundicao|preco.*(material|insumo|elemento)|custo.*(material|insumo|elemento)/,t:'Insumos: quantidades, preços e custos',a:'Cadastro › aba “🧪 Insumos”. As quantidades por mês vêm do Boletim de Fusão (ao importar) ou podem ser digitadas; o preço pago por elemento é informado mês a mês (há o botão para repetir o preço nos meses seguintes). O custo é quantidade × preço. Para ver gráficos e o custo por kg fundido, abra Painel 360 › aba “🧪 Insumos e custos”. Também dá para baixar tudo em Excel na própria aba. Valores em R$ só aparecem com a senha de custos liberada.',go:['cadastro','cad','insumos']},
+ {r:/excel|planilha|backup|exportar|baixar tudo|restaurar/,t:'Backup e Excel',a:'Menu › 🗂 Auditoria › aba “💾 Backup”: “Baixar backup agora” (arquivo para restaurar depois) e “Exportar tudo para Excel” (uma planilha com refugos, devoluções, retrabalhos, produção, boletim, insumos e cadastros). Faça um backup antes de importações grandes.',go:['auditoria','aud','bk']},
+ {r:/desfazer|excluí|excluir|apaguei|lixeira|recuperar/,t:'Desfazer exclusão e lixeira',a:'Ao excluir um lançamento aparece, por alguns segundos, o botão “Desfazer”. Depois disso, o item pode ser recuperado em Menu › 🗂 Auditoria › Lixeira, e o Histórico de alterações mostra quem mexeu.',go:['auditoria','aud','hist']},
+ {r:/fundicao na usinagem|tipos? de planta|quais plantas/,t:'Plantas: Fundição, Usinagem e Fundição na Usinagem',a:'Há três plantas de refugo. A % de refugo (Dashboard, Executivo do Painel 360 e Gestão) usa só os refugos da planta “Fundição” dividido pela produção da Fundição: Usinagem e Fundição na Usinagem não entram nessa conta, mas aparecem nos rankings e totais em kg e quantidade.'},
+ {r:/(alter|mud|troc|cadastr|defin|onde).*meta|meta.*(onde|alter|mud)/,t:'Alterar a meta',a:'Somente em Cadastro › 🎯 Metas, com a senha do Cadastro liberada.',go:['cadastro','cad','metas']},
+ {r:/senha|bloquead|cadeado|mostrar custos|liberar/,t:'Senhas e valores bloqueados',a:'Os custos (R$) e o Cadastro são protegidos por senha. Valores bloqueados aparecem como 🔒: use “Mostrar custos” e informe a senha. A tela de senha é por sessão.'},
+ {r:/outro aparelho|celular e computador|sincroniz|online|nuvem|firebase|compartilh/,t:'Ver os mesmos dados em outro aparelho',a:'Use “Conectar online” (Firebase) em Dados e backup, nos dois aparelhos. As alterações sobem para a nuvem automaticamente e os dados dos dois lados são mesclados. Em caso de dúvida, baixe um backup antes.'},
+ {r:/instalar|tela inicial|aplicativo|app no celular|pwa/,t:'Instalar no celular',a:'Abra o site no Chrome do celular, toque no menu ⋮ e escolha “Adicionar à tela inicial” (ou “Instalar app”). Ele abre como aplicativo e carrega mais rápido.'},
+ {r:/atualiz|nova versao|faixa vermelha|ctrl ?\+? ?f5|cache|versao/,t:'Atualizar a versão do site',a:'Depois de subir arquivos novos, espere o GitHub Pages publicar e aperte Ctrl+F5. Se aparecer a faixa vermelha, algum arquivo ficou sem atualizar: reenvie o arquivo citado. A versão atual aparece em Ajuda.'},
+ {r:/\bhoje\b.*(tela|aba|pagina)|menu (de baixo|inferior)|barra (de baixo|inferior)/,t:'Tela Hoje e menu inferior',a:'Menu › 🏠 Hoje reúne o resumo do dia: lançamentos recentes, pendências e atalhos. No celular há uma barra inferior com os atalhos principais.',go:['hoje']},
+ {r:/microfone|falar|voz|ditar|copiar resposta/,t:'Usar a IA por voz e copiar respostas',a:'No painel da IA, toque no 🎤 para falar a pergunta (precisa permitir o microfone no navegador, de preferência no Chrome). Cada resposta tem botões para copiar e baixar.'},
+ {r:/lancar (um )?refugo|novo refugo|registrar refugo|cadastrar refugo/,t:'Lançar um refugo',a:'Lançamentos › aba “Lançar refugo”. Informe data, código do produto (o cadastro preenche peso e cliente), motivo, quantidade e responsável. Se a peça não tiver peso no cadastro, o app avisa. O app também avisa se o lançamento parecer duplicado.',go:['lancamentos','launch','refugo']},
+ {r:/devolucao|devolver|fq ?051/,t:'Lançar devolução',a:'Menu › ↩ Devoluções › novo lançamento. A aba Dashboard mostra por cliente e motivo, e as lançadas ficam listadas para editar.',go:['devolucoes']},
+ {r:/retrabalho|fq ?099/,t:'Lançar retrabalho',a:'Menu › 🔧 Retrabalhos › botão de novo retrabalho. Há painel com abertos, motivos e evolução.',go:['retrabalho']},
+ {r:/reuniao|ata\b|fq ?095/,t:'Reunião e ata',a:'Menu › 👥 Reunião: escolha o período, o app monta os números com comparação do mês anterior, você registra decisões e ações e gera a ata em PDF.',go:['reuniao']},
+ {r:/painel 360|executivo|pareto|mapa de calor/,t:'Painel 360',a:'Dashboards › Painel 360. Abas: Executivo (KPIs e % de refugo da Fundição), Pareto, mapa de calor, peças críticas, clientes, calendário, espinha de peixe 6M e 🧪 Insumos e custos. O filtro de período e de planta fica no topo.',go:['painel360']},
+ {r:/\btema\b|modo (escuro|claro)|aparencia/,t:'Tema claro, escuro e automático',a:'Botão 🎨 Aparência no topo: Claro, Escuro, Laranja e preto, ou Automático (segue o aparelho).'}
+];
+window.asstKB=KB.map(k=>({t:k.t,a:k.a,go:k.go||null}));
+function kbResp(q){
+  if(/como (foi|esta|estao|ficou|ficaram|anda|andou|variou)|\b(quanto|quantos|quantas|total|media|evolu|compar|ultim[oa]s?|este mes|esse mes|mes passado|20\d\d)\b/.test(q)||MESES.some(m=>q.includes(m)))return null;
+  if(!/\b(como|onde|aonde|o que (e|eh|significa|sao)|para que serve|por ?que (o|a) (dia|calendario)|qual (a )?diferenca|tem como|posso|ensina|explica|passo a passo|tutorial|duvida|nao consigo|funciona)\b/.test(q))return null;
+  const h=KB.filter(k=>k.r.test(q));if(!h.length)return null;const k=h[0];
+  ULT.sug=['Onde fica o backup em Excel?','Como lanço a produção?','Como cadastrar preço de insumo?'];
+  const o=['💡 '+k.t+': '+k.a];if(k.go)o.push({nav:k.go[0],sub:k.go[1]||null,tab:k.go[2]||null,label:k.t});
+  if(h.length>1)o.push('Veja também: '+h.slice(1,3).map(x=>x.t).join(' · ')+'.');return o}
+window.asstPerguntar=function(t){try{const pn=document.getElementById('asstPanel');if(pn&&!pn.classList.contains('on'))abrir();setTimeout(function(){enviar(t)},80)}catch(e){}};
 function responder(q0){
   const q=N(q0),pag=paginaAtual(),L=ULT.last;ULT.sug=[];
-  if(/^(oi|ola|bom dia|boa tarde|boa noite|ajuda|help|o que (voce|vc) faz|como (funciona|usar))/.test(q.trim()))return['Sou o assistente do Controle de Refugos. Respondo sobre refugos, devoluções, retrabalhos, forno/boletim e produção, com os dados que estão no app.','Você pode combinar filtros (cliente, motivo, peça, planta, material, período), comparar períodos, pedir evolução por dia/semana/mês, projeção do mês e continuar a conversa (“e em setembro?”, “e por cliente?”).','Exemplos: “quanto o cliente ACME refugou por porosidade em outubro?”, “compare outubro com setembro”, “evolução de devoluções por mês”, “quais retrabalhos estão abertos?”, “resumo geral”.'];
+  if(/^(oi|ola|bom dia|boa tarde|boa noite|ajuda|help|o que (voce|vc) faz|como (funciona|usar))/.test(q.trim()))return['Sou o assistente do Controle de Refugos. Respondo sobre refugos, devoluções, retrabalhos, forno/boletim, produção diária (bruto e líquido), insumos e custos, pendências de lançamento e também ensino a usar o site (“como lanço…”, “onde fica…”), com os dados que estão no app.','Você pode combinar filtros (cliente, motivo, peça, planta, material, período), comparar períodos, pedir evolução por dia/semana/mês, projeção do mês e continuar a conversa (“e em setembro?”, “e por cliente?”).','Exemplos: “quanto o cliente ACME refugou por porosidade em outubro?”, “compare outubro com setembro”, “evolução de devoluções por mês”, “quais retrabalhos estão abertos?”, “resumo geral”.'];
+  {const kb=kbResp(q);if(kb)return kb}
   {const nv=navegar(q);if(nv)return nv}
+  {const temA=/refug|devol|retrab/.test(q),L0=ULT.last,nw0=W(q0).split(' ').length;let nd=null;
+   if(/(falta|faltam|esqueci|pendenc|nao lancei|sem lancamento|sem lancar|sem (producao|boletim)|nao (foi|foram|esta|estao) lancad|falta(m)? lancar)/.test(q)&&/lanc|producao|boletim|pendenc/.test(q))return pendMotor(q0,q);
+   let nomes=[];try{nomes=(insLer().qtd.itens||[])}catch(e){}const pad0=' '+W(q0)+' ',achaIns=nomes.some(it=>{const w=W(it);return pad0.includes(' '+w+' ')||w.split(' ').some(x=>x.length>=4&&pad0.includes(' '+x+' '))});
+   if(!temA&&!/perd|rendimento|boletim|corrida|lingote|respingo|gota|carga fria/.test(q)&&(/insumo|elementos? (da|de|do) fundicao|ferro ?liga|\bgusa\b|sucata/.test(q)||(achaIns&&/gast|custo|pagu|preco|consum|quantidade|comprei|quanto|valor/.test(q))))nd='ins';
+   else if(!temA&&!/boletim|corrida|lingote|respingo|gota|carga fria|rendimento|perda|material/.test(q)&&/\bproduc|produzi|fundimos|fundiu|fundiram|kg fundid|peso bruto|peso liquido|\bpcp\b/.test(q))nd='prod';
+   else if(!temA&&L0&&(L0.dom==='prod'||L0.dom==='ins')&&(/^(e|agora|tambem|so|apenas|mesmo)\b/.test(q.trim())||(nw0<=3&&(/\b20\d\d\b/.test(q)||MESES.some(m=>q.includes(m))))))nd=L0.dom;
+   if(nd){let q1=q0;if(L0&&L0.dom===nd&&ULT.pq&&(/^(e|agora|tambem|so|apenas|mesmo)\b/.test(q.trim())||nw0<=3&&(/\b20\d\d\b/.test(q)||MESES.some(m=>q.includes(m)))))q1=q0+' '+ULT.pq.replace(new RegExp('\\b('+MESES.join('|')+')\\b','gi'),'');ULT.pq=q1;ULT.last={dom:nd};return nd==='ins'?insMotor(q1,N(q1)):prodMotor(q1,N(q1))}}
   if(/resumo geral|visao geral do site|como estamos|panorama/.test(q)&&!/devol|retrabal|forno|refug/.test(q))return resumoGeral();
   const strong=/devol|fq051|reclamac/.test(q)?'devol':/retrabal/.test(q)?'retrab':/forno|lingote|respingo|gota|carga fria|panela|boletim|corrida|fusao|rendimento|perda na/.test(q)?'forno':/refug/.test(q)?'refugo':null;
   const nStrong=['devol|fq051|reclamac','retrabal','refug'].filter(r=>new RegExp(r).test(q)).length;if(nStrong>=2||/(em|nas) (todas|mais de uma|duas|tres) (as )?areas|ao mesmo tempo|alem d[eo] (refugo|devol|retrab)/.test(q))return cruzar(q0);
@@ -325,9 +436,9 @@ function responder(q0){
   return motor(dom,q0,!!strong,cont)}
 function resumoGeral(){
   const L=['Panorama geral (período mais recente de cada área):'],add=(t,R)=>{L.push(t+' '+R.resumo.slice(0,2).join(' '));if(R.alertas[0]&&!/^Nada fora|^Não há/.test(R.alertas[0]))L.push('   ⚠ '+R.alertas[0])};
-  const pr=d=>{const u=ultDe(d);return periodo('',u)};add('🧱 Refugos:',refAnalise(pr('refugo')));add('↩ Devoluções:',devAnalise(pr('devol')));add('🔧 Retrabalhos:',rtAnalise(pr('retrab')));add('🔥 Forno:',fornoAnalise());return L}
+  const pr=d=>{const u=ultDe(d);return periodo('',u)};add('🧱 Refugos:',refAnalise(pr('refugo')));add('↩ Devoluções:',devAnalise(pr('devol')));add('🔧 Retrabalhos:',rtAnalise(pr('retrab')));add('🔥 Forno:',fornoAnalise());try{const pr=prodMotor('producao deste mes','producao deste mes');L.push(pr[0]);}catch(e){}try{const pd=pendMotor('','');if(/Sem produção/.test(pd[1]||''))L.push('   ⚠ '+pd[1].replace('• ',''))}catch(e){}return L}
 /* ---------- interface ---------- */
-const CHIPS={refugo:['Principal motivo de refugo','Compare este mês com o mês passado','Evolução do refugo por mês','Refugo da Fundição vs meta','Por que o refugo variou este mês?','Pareto dos motivos de refugo','Clientes com refugo e devolução','O que posso melhorar?'],devol:['Qual cliente mais devolveu?','Evolução das devoluções por mês','Devoluções aguardando análise','Compare este mês com o mês passado'],retrab:['Retrabalhos abertos','Principais motivos de retrabalho','Evolução dos retrabalhos por mês','Compare este mês com o mês passado'],forno:['Qual material perdeu mais?','Compare este mês com o mês passado','Por que o rendimento variou?','Resumo do forno']};
+const CHIPS={refugo:['Como faço um backup em Excel?','Principal motivo de refugo','Compare este mês com o mês passado','Evolução do refugo por mês','Refugo da Fundição vs meta','Por que o refugo variou este mês?','Pareto dos motivos de refugo','Clientes com refugo e devolução','O que posso melhorar?'],devol:['Qual cliente mais devolveu?','Evolução das devoluções por mês','Devoluções aguardando análise','Compare este mês com o mês passado'],retrab:['Retrabalhos abertos','Principais motivos de retrabalho','Evolução dos retrabalhos por mês','Compare este mês com o mês passado'],forno:['Qual material perdeu mais?','Compare este mês com o mês passado','Por que o rendimento variou?','Resumo do forno','Produção deste mês','Quais dias estão sem produção lançada?','Quanto gastei de insumos no ano?','Como importo o PCP?']};
 const TITULO={refugo:'Refugos',devol:'Devoluções',retrab:'Retrabalhos',forno:'Forno e produção'};
 function css(){if(document.getElementById('asstGCss'))return;const s=document.createElement('style');s.id='asstGCss';
   s.textContent='@keyframes asstUp{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}@keyframes asstPulse{0%,100%{box-shadow:0 4px 14px #0006,0 0 0 0 rgba(255,106,31,.55)}60%{box-shadow:0 4px 14px #0006,0 0 0 12px rgba(255,106,31,0)}}'+
@@ -364,7 +475,7 @@ function msg(items,cls){const lg=document.getElementById('asstLog'),d=document.c
 function chipsSug(list){const el=document.getElementById('asstChips');if(!el)return;el.innerHTML=list.map(t=>'<button type="button">'+t+'</button>').join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>enviar(b.textContent))}
 function chips(){const dom=paginaAtual(),el=document.getElementById('asstChips');el.innerHTML=(CHIPS[dom]||CHIPS.refugo).concat(['Resumo geral']).map(t=>'<button type="button">'+t+'</button>').join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>enviar(b.textContent));document.getElementById('asstCtx').textContent=TITULO[dom]}
 function enviar(t){t=String(t||'').trim();if(!t)return;msg(t,'u');let r;try{r=responder(t)}catch(e){console.error(e);r=['Tive um problema ao analisar essa pergunta. Tente reformular.']}msg(r.filter(Boolean),'b');if(ULT.sug&&ULT.sug.length)chipsSug(ULT.sug)}
-function abrir(){const pn=document.getElementById('asstPanel');if(!pn.classList.contains('on')){pn.classList.add('on');chips();if(!document.getElementById('asstLog').children.length){const dom=paginaAtual(),al=destaques(dom);msg(['Olá! Sou o assistente do site. Pergunte sobre refugos, devoluções, retrabalhos, forno ou produção — ou toque em uma sugestão abaixo.'].concat(al.length?['⚠ Destaques de '+TITULO[dom]+':'].concat(al.map(x=>'• '+x)):[]),'b')}setTimeout(()=>document.getElementById('asstGq').focus(),50)}else pn.classList.remove('on')}
+function abrir(){const pn=document.getElementById('asstPanel');if(!pn.classList.contains('on')){pn.classList.add('on');chips();if(!document.getElementById('asstLog').children.length){const dom=paginaAtual(),al=destaques(dom);msg(['Olá! Sou o assistente do site. Pergunte sobre refugos, devoluções, retrabalhos, forno, produção, insumos e custos, ou peça ajuda para usar o site (ex.: “como importo o PCP?”) — ou toque em uma sugestão abaixo.'].concat(al.length?['⚠ Destaques de '+TITULO[dom]+':'].concat(al.map(x=>'• '+x)):[]),'b')}setTimeout(()=>document.getElementById('asstGq').focus(),50)}else pn.classList.remove('on')}
 function montar(){if(document.getElementById('asstFab'))return;css();
   const b=document.createElement('button');b.id='asstFab';b.type='button';b.title='Assistente';b.setAttribute('aria-label','Abrir assistente');b.textContent='🤖';b.onclick=abrir;
   const p=document.createElement('div');p.id='asstPanel';p.setAttribute('role','dialog');p.innerHTML='<div class="ah">🤖<span>Assistente <small id="asstCtx" style="font-weight:400;opacity:.9"></small></span><button type="button" id="asstDl" title="Baixar conversa" aria-label="Baixar conversa" style="margin-left:auto">⬇</button><button type="button" id="asstX" aria-label="Fechar">✕</button></div><div id="asstLog"></div><div id="asstChips"></div><form id="asstForm"><input id="asstGq" type="text" placeholder="Pergunte algo sobre o site…" autocomplete="off"><button type="button" id="asstMic" title="Perguntar por voz" aria-label="Perguntar por voz">🎤</button><button type="submit">➤</button></form>';

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<link rel="preload" as="image" href="logo.png?v=219"><link rel="icon" type="image/png" href="icone.png?v=219">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=219">
-<link rel="manifest" href="manifest.json?v=219">
+<link rel="preload" as="image" href="logo.png?v=222"><link rel="icon" type="image/png" href="icone.png?v=222">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=222">
+<link rel="manifest" href="manifest.json?v=222">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#2f3b47">
@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Refugos">
 <title>Controle de Refugos 2026</title>
-<link rel="stylesheet" href="base.css?v=219">
+<link rel="stylesheet" href="base.css?v=222">
 
 <style id="dashboardPdfStyles">
 @page{size:A4 landscape;margin:8mm 8mm 9mm 8mm}
@@ -175,6 +175,7 @@ html[data-theme="dark"] .firebase-modal{background:#101a2a;color:#f3f4f6}.data-o
 .help-tools{margin-bottom:16px}
 .help-tools input{width:100%;box-sizing:border-box;min-height:46px;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:15px}
 .help-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.help-tasks-t{margin:14px 0 8px;font-weight:800;font-size:13px}.help-tasks-t span{font-weight:500;color:var(--muted);font-size:12px}.help-tasks{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:8px}.help-tasks button{padding:11px 12px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);font-weight:700;font-size:13px;text-align:left;cursor:pointer;transition:transform .12s,border-color .15s}.help-tasks button:hover{border-color:#ff6a1f}.help-tasks button:active{transform:scale(.97)}
 .help-chip{padding:8px 13px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);font-weight:700;font-size:12px;cursor:pointer}
 .help-chip:hover{border-color:var(--orange);color:var(--orange)}
 .help-faq details{border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-top:8px;background:var(--card)}
@@ -190,8 +191,8 @@ html[data-theme="dark"] .firebase-modal{background:#101a2a;color:#f3f4f6}.data-o
 @media (max-width:760px){.help-intro{grid-template-columns:1fr}.help-badge{justify-self:start}.help-grid{grid-template-columns:1fr}}
 </style>
 <style id="logoIndi">.sidebar .brand img{width:auto!important;height:48px!important;max-width:64px;object-fit:contain!important;border-radius:8px;background:#fff;padding:3px}.pdf-only-title .pdf-brand img{width:auto!important;object-fit:contain!important;border-radius:0}</style>
-<link rel="stylesheet" href="graficos.css?v=219">
-<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=219">
+<link rel="stylesheet" href="graficos.css?v=222">
+<style>.reu-pres{background:var(--bg);padding:24px;overflow:auto}.reu-pres .value{font-size:44px}.reu-pres table{font-size:18px}.reu-sub{margin:18px 0 6px;font-weight:800}.reu-in{width:100%;padding:6px;border:1px solid var(--border);border-radius:8px}</style><link rel="stylesheet" href="modulos.css?v=222">
 <script>
 /* ===== CONFIGURAÇÃO DO FIREBASE =====
    Preencha uma vez e todos os computadores conectam sozinhos. Deixe "" para não usar. */
@@ -203,7 +204,7 @@ window.EMBEDDED_FIREBASE_CONFIG={
   messagingSenderId:"894679339944",
   appId:"1:894679339944:web:fcf8fc0bf6f45439c7c39d"
 };
-window.APP_VERSION="v219";
+window.APP_VERSION="v222";
 /* Mostra erros de JavaScript na tela em vez de ficar em branco */
 window.addEventListener('error',function(ev){
   try{
@@ -235,7 +236,7 @@ html[data-theme="dark"] .prodcal .dia span.ref,html[data-theme="dark"] .prodcal 
 .prodcal .vazio{min-height:66px}
 html[data-theme="dark"] .sidebar{background:linear-gradient(180deg,#1a2c47,#142238);border-right:1px solid var(--border)}
 </style>
-<link rel="stylesheet" href="mobile.css?v=219">
+<link rel="stylesheet" href="mobile.css?v=222">
 <style id="metalCss">
 /* ===== TEMA METAL LÍQUIDO (camada visual; só cores/efeitos, não altera layout) ===== */
 html.metal{--orange:#ff6a1f;--radius:16px;--mx:#ff6a1f}
@@ -418,7 +419,7 @@ html.indi.indi table thead th{color:#fff!important}
 </style>
 </head>
 <body>
-<div id="siteGate"><div class="gbox"><div class="gbrand"><img class="glogo" alt="Metal Indianápolis" width="163" height="161" decoding="sync" src="logo.png?v=219"></div><div class="gh">ACESSO RESTRITO</div><svg class="gic" viewBox="0 0 24 24" fill="none" stroke="#ff5a1f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.3"/></svg><h2>Controle de Perdas, Refugos e Retrabalhos</h2><p>Digite a senha para acessar o sistema.</p><input id="gatePw" type="password" autocomplete="current-password" placeholder="Senha" aria-label="Senha"><button type="button" id="gateBtn">Entrar</button><div class="gerr" id="gateErr"></div><a class="gsite" href="https://indianapolis.com.br/" target="_blank" rel="noopener noreferrer">indianapolis.com.br</a></div></div></div>
+<div id="siteGate"><div class="gbox"><div class="gbrand"><img class="glogo" alt="Metal Indianápolis" width="163" height="161" decoding="sync" src="logo.png?v=222"></div><div class="gh">ACESSO RESTRITO</div><svg class="gic" viewBox="0 0 24 24" fill="none" stroke="#ff5a1f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.3"/></svg><h2>Controle de Perdas, Refugos e Retrabalhos</h2><p>Digite a senha para acessar o sistema.</p><input id="gatePw" type="password" autocomplete="current-password" placeholder="Senha" aria-label="Senha"><button type="button" id="gateBtn">Entrar</button><div class="gerr" id="gateErr"></div><a class="gsite" href="https://indianapolis.com.br/" target="_blank" rel="noopener noreferrer">indianapolis.com.br</a></div></div></div>
 <script>
 (function(){var H="2dce6a5aebed4ac66c1025924455f76a488bf8d2c560fa9214de0770716061b1",K="refugosGateOk",T="refugosGateTry",de=document.documentElement;
 function ok(){try{return sessionStorage.getItem(K)===H}catch(e){return false}}
@@ -538,7 +539,7 @@ service cloud.firestore {
 <button class="tab" data-page="gestao">📈 &nbsp; Gestão</button>
 <button class="tab" data-page="ajuda">❓ &nbsp; Ajuda</button>
 </nav></div></div>
-<div class="app"><aside class="sidebar"><div class="brand"><img src="logo.png?v=219" alt="Logo"><div><strong>CONTROLE DE REFUGOS</strong><span>Gestão industrial • FQ103 e FQ013 Rev 01</span></div></div><div class="menu"><button class="tab active" data-page="dashboard">▣ <span>Dashboard peso</span></button><button class="tab" data-page="dashboardQtd">▥ <span>Dashboard quantidade</span></button><button class="tab" data-page="lancamentos">＋ <span>Lançamentos</span></button><button class="tab" data-page="historico">☷ <span>Histórico</span></button><button class="tab" data-page="cadastro">⚙ <span>Cadastro</span></button><button class="tab" data-page="reuniao">👥 <span>Reunião</span></button><button class="tab" data-page="dados">⚙ <span>Dados e backup</span></button><button class="tab" data-page="auditoria">🗂 <span>Auditoria</span></button><button class="tab" data-page="retrabalho">🔧 <span>Retrabalhos</span></button><button class="tab" data-page="devolucoes">↩ <span>Devoluções</span></button><button class="tab" data-page="gestao">📈 <span>Gestão</span></button><button class="tab" data-page="ajuda">❓ <span>Ajuda</span></button></div><div class="side-foot">FQ103 + FQ013 Rev 01 • Fundição e Usinagem<br><a href="https://indianapolis.com.br/" target="_blank" rel="noopener noreferrer" style="color:#ff8a5c;font-weight:700;text-decoration:none">indianapolis.com.br ↗</a></div></aside><main class="main"><header class="topbar"><button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menu" aria-expanded="false" onclick="var m=document.getElementById('mobileDrawer');m.classList.add('open');m.setAttribute('aria-hidden','false');document.body.style.overflow='hidden'">☰</button><div class="top-title"><h1>Dashboard de Refugos</h1><p>Informações baseadas nas FQ103 e FQ013 Rev 01, referentes aos refugos gerados na Fundição e Usinagem.</p></div><div class="top-actions"><span id="onlineStatus" class="online-status offline">● Offline</span><button class="theme-toggle firebase-config-btn" id="firebaseConfigBtn" type="button" onclick="openFirebaseModal()" title="Configurar conexão online">☁ <span>Conectar online</span></button><button class="theme-toggle" id="aparBtn" type="button" aria-haspopup="true" aria-expanded="false" title="Mudar a aparência do sistema">🎨 <span>Aparência</span></button><button class="theme-toggle" id="indiBtn" type="button" onclick="toggleIndi()" title="Aparência laranja e preto (igual ao site da empresa)">🔥 <span>Laranja/Preto</span></button><button class="theme-toggle" id="metalBtn" type="button" onclick="toggleMetal()" title="Ligar/desligar o visual metal líquido">✨ <span>Metal</span></button><button class="theme-toggle" id="themeToggle" type="button" onclick="toggleTheme()" title="Alternar modo claro/escuro">🌙 <span>Modo escuro</span></button></div></header><div class="wrap">
+<div class="app"><aside class="sidebar"><div class="brand"><img src="logo.png?v=222" alt="Logo"><div><strong>CONTROLE DE REFUGOS</strong><span>Gestão industrial • FQ103 e FQ013 Rev 01</span></div></div><div class="menu"><button class="tab active" data-page="dashboard">▣ <span>Dashboard peso</span></button><button class="tab" data-page="dashboardQtd">▥ <span>Dashboard quantidade</span></button><button class="tab" data-page="lancamentos">＋ <span>Lançamentos</span></button><button class="tab" data-page="historico">☷ <span>Histórico</span></button><button class="tab" data-page="cadastro">⚙ <span>Cadastro</span></button><button class="tab" data-page="reuniao">👥 <span>Reunião</span></button><button class="tab" data-page="dados">⚙ <span>Dados e backup</span></button><button class="tab" data-page="auditoria">🗂 <span>Auditoria</span></button><button class="tab" data-page="retrabalho">🔧 <span>Retrabalhos</span></button><button class="tab" data-page="devolucoes">↩ <span>Devoluções</span></button><button class="tab" data-page="gestao">📈 <span>Gestão</span></button><button class="tab" data-page="ajuda">❓ <span>Ajuda</span></button></div><div class="side-foot">FQ103 + FQ013 Rev 01 • Fundição e Usinagem<br><a href="https://indianapolis.com.br/" target="_blank" rel="noopener noreferrer" style="color:#ff8a5c;font-weight:700;text-decoration:none">indianapolis.com.br ↗</a></div></aside><main class="main"><header class="topbar"><button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menu" aria-expanded="false" onclick="var m=document.getElementById('mobileDrawer');m.classList.add('open');m.setAttribute('aria-hidden','false');document.body.style.overflow='hidden'">☰</button><div class="top-title"><h1>Dashboard de Refugos</h1><p>Informações baseadas nas FQ103 e FQ013 Rev 01, referentes aos refugos gerados na Fundição e Usinagem.</p></div><div class="top-actions"><span id="onlineStatus" class="online-status offline">● Offline</span><button class="theme-toggle firebase-config-btn" id="firebaseConfigBtn" type="button" onclick="openFirebaseModal()" title="Configurar conexão online">☁ <span>Conectar online</span></button><button class="theme-toggle" id="aparBtn" type="button" aria-haspopup="true" aria-expanded="false" title="Mudar a aparência do sistema">🎨 <span>Aparência</span></button><button class="theme-toggle" id="indiBtn" type="button" onclick="toggleIndi()" title="Aparência laranja e preto (igual ao site da empresa)">🔥 <span>Laranja/Preto</span></button><button class="theme-toggle" id="metalBtn" type="button" onclick="toggleMetal()" title="Ligar/desligar o visual metal líquido">✨ <span>Metal</span></button><button class="theme-toggle" id="themeToggle" type="button" onclick="toggleTheme()" title="Alternar modo claro/escuro">🌙 <span>Modo escuro</span></button></div></header><div class="wrap">
 
 <section id="dashboard" class="page active"><div class="filterbar"><strong style="font-size:12px;margin-right:4px">PERÍODO</strong><select id="filterYear"><option value="">Todos os anos</option></select><select id="filterPlant"><option value="">Todas as plantas</option></select><select id="filterMonth"><option value="">Todos os meses</option><option value="1">Jan</option><option value="2">Fev</option><option value="3">Mar</option><option value="4">Abr</option><option value="5">Mai</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Ago</option><option value="9">Set</option><option value="10">Out</option><option value="11">Nov</option><option value="12">Dez</option></select><strong style="font-size:12px;margin-left:6px">PESO</strong><select id="filterPeso" title="Tipo de peso usado nos números" onchange="setPesoTipo(this.value)"><option value="bruto">Peso bruto fracionado</option><option value="liquido">Líquido Fundição / bruto Usinagem</option><option value="usinado">Peso usinado</option></select><span class="pesoAviso small" style="display:none;color:#d97706"></span><button class="btn secondary" onclick="resetFilters()">Limpar</button><button id="dashboardCostAccessBtn" class="btn secondary" type="button" onclick="toggleCostAccess()">🔐 Mostrar custos</button><button class="btn primary" onclick="gerarPdfDashboard('dashboard')">📄 Gerar PDF A4</button></div><div id="anaResumo"></div><div class="cards"><div class="card"><div class="kpi-accent"></div><div class="label">Refugo total</div><div class="value" id="kpiKg">0 kg</div><div class="sub">peso refugado no período</div></div><div class="card"><div class="kpi-accent"></div><div class="label">% de refugo</div><div class="value" id="kpiPerc">0%</div><div class="sub">refugo da Fundição ÷ produção da Fundição</div></div><div class="card cost-sensitive-card cost-sensitive-locked" onclick="toggleCostAccess()"><div class="kpi-accent"></div><div class="label">Custo estimado</div><div class="value" id="kpiCusto">🔒 Restrito</div><div class="sub cost-sensitive-lock" id="kpiCustoSub">valores protegidos — acesso restrito</div></div><div class="card meta-card"><div class="kpi-accent"></div><div class="label">🎯 Meta</div><div class="value" id="kpiMeta">—</div><div class="sub" id="kpiMetaSub">situação frente ao limite</div><div class="meta-bar"><i id="kpiMetaBar"></i></div></div></div><div id="anaCusto"></div><div class="grid"><div class="panel wide"><h3>Evolução mensal do refugo</h3><div class="hint">Refugo em kg e limite mensal configurado.</div><div class="chartbox"><canvas id="chartMonth"></canvas></div></div><div class="panel"><h3>Pareto — motivos de refugo</h3><div class="hint">Principais causas por peso.</div><div class="chartbox"><canvas id="chartPareto"></canvas></div></div><div class="panel"><h3>Distribuição por planta</h3><div class="hint">Participação do refugo por unidade.</div><div class="chartbox"><canvas id="chartPlant"></canvas></div></div><div class="panel"><h3>Distribuição por planta — pizza</h3><div class="hint">Participação do refugo em kg por planta.</div><div class="chartbox"><canvas id="chartPlantPie"></canvas></div></div><div class="panel"><h3>Top clientes</h3><div class="hint">Clientes com maior volume de refugo.</div><div class="chartbox"><canvas id="chartClient"></canvas></div></div><div class="panel"><h3>Produção × refugo</h3><div class="hint">Percentual mensal do refugo da Fundição sobre a produção da Fundição.</div><div class="chartbox"><canvas id="chartRate"></canvas></div></div><div class="panel wide"><h3>Resumo mensal — produção, refugo, % e valor</h3><div class="hint">Percentual de refugo sobre a produção e valor em R$ do refugo, mês a mês (valor do kg vigente em cada data). Valores em R$ protegidos por senha.</div><div class="tablewrap"><table><thead><tr><th>Mês</th><th>Produção (kg)</th><th>Refugo (kg)</th><th>% refugo (Fundição)</th><th>Valor (R$)</th></tr></thead><tbody id="monthSummaryBody"></tbody></table></div></div><div class="top-summary pdf-page-break"><div class="mini"><span>Registros</span><b id="kpiReg">0</b></div><div class="mini"><span>Quantidade</span><b id="kpiQtd">0</b></div><div class="mini"><span>Principal motivo no período</span><b id="kpiMotivo">—</b></div></div><div class="plant-motives"><div class="plant-motive"><div class="pm-label">Principal motivo — Fundição</div><div class="pm-value" id="kpiMotivoFundicao">—</div><div class="pm-sub" id="kpiMotivoFundicaoSub">Por peso no período</div><div class="pm-items-title">3 principais itens desse motivo</div><ol class="pm-items" id="kpiMotivoFundicaoItems"><li>—</li></ol></div><div class="plant-motive"><div class="pm-label">Principal motivo — Fundição na Usinagem</div><div class="pm-value" id="kpiMotivoFU">—</div><div class="pm-sub" id="kpiMotivoFUSub">Por peso no período</div><div class="pm-items-title">3 principais itens desse motivo</div><ol class="pm-items" id="kpiMotivoFUItems"><li>—</li></ol></div><div class="plant-motive"><div class="pm-label">Principal motivo — Usinagem</div><div class="pm-value" id="kpiMotivoUsinagem">—</div><div class="pm-sub" id="kpiMotivoUsinagemSub">Por peso no período</div><div class="pm-items-title">3 principais itens desse motivo</div><ol class="pm-items" id="kpiMotivoUsinagemItems"><li>—</li></ol></div></div></div>
 <div class="panel wide" id="quadroPanelKg"><h3>📅 Quadro de meses</h3><div id="quadroMesesKg"></div></div>
@@ -981,14 +982,14 @@ service cloud.firestore {
   <div>
     <div class="help-kicker">❓ Central de ajuda</div>
     <h2 class="help-title">Como utilizar o Controle de Refugos</h2>
-    <p class="help-lead">Guia para registrar, acompanhar e analisar refugos, retrabalhos e devoluções da Fundição e da Usinagem, e conduzir a reunião. Referências: <b>FQ103 Rev 01</b>, <b>FQ013 Rev 01</b>, <b>FQ051</b> (devolução), <b>FQ 099</b> (etiqueta de retrabalho) e a ata <b>FQ095</b>.</p>
+    <p class="help-lead">Guia para registrar, acompanhar e analisar refugos, retrabalhos, devoluções, produção e insumos da Fundição e da Usinagem, e conduzir a reunião. Prefere perguntar? Use o 🤖 no canto da tela. Referências: <b>FQ103 Rev 01</b>, <b>FQ013 Rev 01</b>, <b>FQ051</b> (devolução), <b>FQ 099</b> (etiqueta de retrabalho) e a ata <b>FQ095</b>.</p>
     <div class="hint" id="helpVer" style="margin-top:6px"></div>
   </div>
   <div class="help-badge">FQ103 + FQ013 Rev 01<br><span style="font-weight:700;color:var(--muted)">Fundição e Usinagem</span></div>
 </div>
 
 <div class="panel help-tools">
-  <input id="helpSearch" type="search" placeholder="🔎 Pesquise sua dúvida (ex.: peso, 6M, composição, backup, espinha de peixe)" oninput="helpBusca()" autocomplete="off">
+  <input id="helpSearch" type="search" placeholder="🔎 Pesquise sua dúvida (ex.: PCP, insumos, backup, peso bruto, 6M, desfazer)" oninput="helpBusca()" autocomplete="off">
   <div class="help-chips">
     <button type="button" class="help-chip" onclick="helpIr('hp-inicio')">🚀 Primeiros passos</button>
     <button type="button" class="help-chip" onclick="helpIr('hp-menu')">🧭 Menu</button>
@@ -998,11 +999,28 @@ service cloud.firestore {
     <button type="button" class="help-chip" onclick="helpIr('hp-6m')">🐟 6M e espinha</button>
     <button type="button" class="help-chip" onclick="helpIr('hp-apres')">🎬 Apresentação</button>
     <button type="button" class="help-chip" onclick="helpIr('hp-reuniao')">👥 Reunião e ata</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-prod')">🔥 Produção e PCP</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-ins')">🧪 Insumos e custos</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-hoje')">🏠 Hoje e atalhos</button>
+    <button type="button" class="help-chip" onclick="helpIr('hp-ia')">🤖 Assistente (IA)</button>
     <button type="button" class="help-chip" onclick="helpIr('hp-seg')">🔐 Acessos</button>
     <button type="button" class="help-chip" onclick="helpIr('hp-faq')">💬 Dúvidas</button>
     <button type="button" class="help-chip" onclick="helpIr('hp-novo')">🆕 Novidades</button>
   </div>
-  <div id="helpEmpty" class="hint" style="display:none;margin-top:10px">Nada encontrado para essa busca. Tente outra palavra ou veja as dúvidas frequentes.</div>
+  <div class="help-tasks-t">⚡ O que você quer fazer agora? <span>(toque para ir direto)</span></div>
+  <div class="help-tasks">
+    <button type="button" onclick="helpGo('lancamentos','launch','refugo')">＋ Lançar refugo</button>
+    <button type="button" onclick="helpGo('lancamentos','launch','producao')">🔥 Lançar produção do dia</button>
+    <button type="button" onclick="helpGo('lancamentos','launch','producao')">📥 Importar PCP</button>
+    <button type="button" onclick="helpGo('lancamentos','launch','boletim')">🧾 Boletim de Fusão</button>
+    <button type="button" onclick="helpGo('cadastro','cad','insumos')">🧪 Preços dos insumos</button>
+    <button type="button" onclick="helpGo('painel360')">🔭 Painel 360</button>
+    <button type="button" onclick="helpGo('auditoria','aud','bk')">💾 Backup / Excel</button>
+    <button type="button" onclick="helpGo('reuniao')">👥 Reunião e ata</button>
+    <button type="button" onclick="helpGo('retrabalho')">🔧 Retrabalhos</button>
+    <button type="button" onclick="helpGo('devolucoes')">↩ Devoluções</button>
+  </div>
+  <div id="helpEmpty" class="hint" style="display:none;margin-top:10px">Nada encontrado para essa busca. Tente outra palavra, veja as dúvidas frequentes ou <button type="button" class="help-chip" style="margin-left:6px" onclick="helpAsk()">🤖 Perguntar à IA</button></div>
 </div>
 
 <div class="help-grid">
@@ -1106,6 +1124,7 @@ service cloud.firestore {
       <li><b>👥 Clientes:</b> refugo e devolução por cliente e % do total.</li>
       <li><b>📅 Calendário:</b> refugo por dia da semana, semana do mês e dia do mês (usa a data do refugo).</li>
       <li><b>🐟 Espinha 6M:</b> veja o próximo item.</li>
+      <li><b>🧪 Insumos e custos:</b> gasto por elemento, evolução mensal e custo por kg fundido (valores em R$ com a senha de custos).</li>
     </ul>
     <p class="hint">O mês em andamento entra como parcial. O botão <b>Imprimir / PDF</b> imprime a tela atual.</p>
   </div>
@@ -1205,6 +1224,53 @@ service cloud.firestore {
       <li>Não compartilhe as senhas em mensagens abertas; em caso de dúvida, fale com o responsável pelo sistema.</li>
     </ul>
   </div>
+
+  <div class="help-card wide" id="hp-prod" data-h="produção diária pcp boletim de fusão bruto líquido importar programação calendário dia cor panelões corridas kg fundido">
+    <h3>17. 🔥 Produção diária, PCP e Boletim de Fusão</h3>
+    <ul>
+      <li><b>Produção do dia:</b> Lançamentos › <b>Produção diária da Fundição</b>. Informe data, peso <b>bruto</b>, peso <b>líquido</b> e corridas. O total do mês é a soma dos dias lançados.</li>
+      <li><b>📥 Importar programação do PCP:</b> no mesmo local, escolha as planilhas do PCP (várias de uma vez). O app lê o peso bruto e o líquido de cada dia. Os dados já lançados são mantidos e o que foi importado pode ser corrigido dia a dia.</li>
+      <li><b>Boletim de Fusão:</b> Lançamentos › <b>Boletim de Fusão</b> (digitar ou importar a planilha). Alimenta lingotes, respingos, perda na fusão, rendimento e as quantidades de <b>insumos</b>.</li>
+      <li><b>Calendário colorido:</b> o dia aparece em <b>outra cor</b> quando o total do PCP difere do Boletim. O total dos panelões costuma ficar um pouco maior mesmo; a cor é só um aviso.</li>
+      <li><b>Bruto x líquido:</b> o seletor <b>PESO</b> define qual aparece nos totais. A % de refugo usa a produção da Fundição no tipo de peso escolhido.</li>
+      <li><b>Pendências:</b> pergunte à IA <i>“quais dias estão sem produção lançada?”</i> ou veja o resumo na tela <b>Hoje</b>.</li>
+    </ul>
+  </div>
+
+  <div class="help-card wide" id="hp-ins" data-h="insumos custos gusa sucata ferro liga elemento preço quantidade mês excel painel 360 custo por kg fundido">
+    <h3>18. 🧪 Insumos e custos</h3>
+    <ul>
+      <li><b>Cadastro › 🧪 Insumos:</b> tabela com a <b>quantidade</b> de cada elemento por mês (vinda do Boletim de Fusão ou digitada) e o <b>preço pago</b> por mês. Use <b>repetir nos meses seguintes</b> para copiar um preço.</li>
+      <li><b>Custo</b> = quantidade × preço do mês. Meses com quantidade e sem preço deixam o custo parcial; o aviso aponta quantos faltam.</li>
+      <li><b>Painel 360 › 🧪 Insumos e custos:</b> total gasto, custo por insumo, evolução mensal e <b>custo por kg fundido</b> (compara com a produção bruta).</li>
+      <li><b>Excel:</b> o botão da própria aba baixa quantidades, preços e custos do ano.</li>
+      <li><b>🔒 Valores:</b> preços e custos em R$ só aparecem com a senha de custos liberada. As quantidades ficam sempre visíveis.</li>
+    </ul>
+  </div>
+
+  <div class="help-card" id="hp-hoje" data-h="hoje menu inferior celular desfazer duplicado tema automático atalhos aviso lançamento repetido">
+    <h3>19. 🏠 Hoje, atalhos e proteções</h3>
+    <ul>
+      <li><b>Menu › Hoje:</b> resumo do dia com lançamentos recentes, pendências e atalhos.</li>
+      <li><b>Celular:</b> barra inferior com os atalhos principais.</li>
+      <li><b>Desfazer:</b> ao excluir, o botão “Desfazer” aparece por alguns segundos; depois, use a Lixeira da Auditoria.</li>
+      <li><b>Aviso de duplicado:</b> o app avisa quando um lançamento parece repetido.</li>
+      <li><b>Tema:</b> 🎨 Aparência tem Claro, Escuro, Laranja e preto e Automático (segue o aparelho).</li>
+    </ul>
+  </div>
+
+  <div class="help-card" id="hp-ia" data-h="assistente ia inteligência artificial pergunta microfone voz copiar baixar como faço onde fica pendências produção insumos">
+    <h3>20. 🤖 Assistente (IA)</h3>
+    <p>O botão 🤖 no canto da tela responde com os dados do próprio site, sem enviar nada para fora. Exemplos:</p>
+    <ul>
+      <li><i>“Principal motivo de refugo em setembro”</i>, <i>“Compare este mês com o mês passado”</i>, <i>“Por que o refugo variou?”</i></li>
+      <li><i>“Quanto produzi em outubro?”</i>, <i>“Produção por mês”</i>, <i>“Quais dias estão sem produção lançada?”</i></li>
+      <li><i>“Quanto gastei de gusa em julho?”</i>, <i>“Qual insumo tem maior custo?”</i></li>
+      <li><i>“Como importo o PCP?”</i>, <i>“Onde fica o backup em Excel?”</i> — a IA explica e leva você até a tela.</li>
+      <li>Toque no 🎤 para falar; cada resposta pode ser copiada ou baixada.</li>
+    </ul>
+    <div style="margin-top:8px"><button type="button" class="help-chip" onclick="helpAsk('Resumo geral')">🤖 Abrir a IA agora</button></div>
+  </div>
 </div>
 
 <div class="panel help-faq" id="hp-faq" style="margin-top:16px">
@@ -1224,6 +1290,12 @@ service cloud.firestore {
   <details data-h="celular tela lado rolagem"><summary>A tela do celular está cortada ou rolando para o lado</summary><p>Atualize a página para carregar a versão mais recente. Tabelas largas rolam para o lado de propósito. Se continuar, avise o responsável informando a aba.</p></details>
   <details data-h="dois computadores online compartilhar dados sincronizar"><summary>Quero ver os mesmos dados em outro aparelho</summary><p>Use <b>Conectar online</b> (Firebase) em Dados e backup. Sem isso, os dados ficam só no aparelho em uso — faça backup JSON com frequência.</p></details>
   <details data-h="aparelho número auditoria quem alterou nome"><summary>O que é o número do aparelho na Auditoria?</summary><p>É um código gerado para cada computador ou celular, usado junto com o nome para identificar de onde veio a alteração.</p></details>
+  <details data-h="pcp importar planilha bruto líquido produção dia não entrou"><summary>Importei o PCP, onde vejo os pesos?</summary><p>Em <b>Lançamentos › Produção diária da Fundição</b>: cada dia mostra o peso bruto e o líquido. Os totais do mês aparecem nos dashboards conforme o seletor <b>PESO</b>.</p></details>
+  <details data-h="dia outra cor calendário produção boletim diferente panelões"><summary>Por que um dia aparece em outra cor no calendário da produção?</summary><p>O total do PCP é diferente do Boletim de Fusão naquele dia. O total dos panelões costuma ficar um pouco maior, então a cor serve como aviso para conferir.</p></details>
+  <details data-h="percentual refugo fundição usinagem fundição na usinagem executivo maior"><summary>Quais refugos entram na % de refugo?</summary><p>Somente os da planta <b>Fundição</b>, divididos pela produção da Fundição. Refugos da Usinagem e da Fundição na Usinagem não entram na %, mas aparecem nos totais em kg e quantidade.</p></details>
+  <details data-h="insumos custo parcial sem preço mês faltando"><summary>O custo dos insumos aparece “parcial”</summary><p>Há meses com quantidade e sem preço. Abra <b>Cadastro › Insumos</b> e preencha o preço dos meses indicados (use “repetir nos meses seguintes” para agilizar).</p></details>
+  <details data-h="excel exportar tudo planilha backup baixar"><summary>Como baixo tudo em Excel?</summary><p><b>Menu › Auditoria › Backup › Exportar tudo para Excel</b>. A planilha traz refugos, devoluções, retrabalhos, produção, boletim, insumos e cadastros.</p></details>
+  <details data-h="ia assistente não achou dado novo atualizar lançamento recente"><summary>A IA não mostrou o lançamento que acabei de fazer</summary><p>Atualize a página (Ctrl+F5) para carregar a versão mais recente do site e pergunte de novo. A IA lê os dados na hora da pergunta; se o lançamento tem data diferente do período perguntado, cite o mês, por exemplo “em novembro”.</p></details>
 </div>
 
 <div class="panel help-faq" style="margin-top:16px" data-h="glossário termos pareto reincidente alvo fq095 fq103 fq013 refugo percentual ppm criticidade 6m">
@@ -1246,6 +1318,11 @@ service cloud.firestore {
 <div class="panel help-faq" id="hp-novo" style="margin-top:16px" data-h="novidades atualizações versão">
   <h3>🆕 Novidades</h3>
   <ul>
+    <li><b>Assistente (IA)</b> agora responde sobre produção, insumos e custos, pendências de lançamento e ensina a usar o site (“como faço…”, “onde fica…”).</li>
+    <li><b>Produção e PCP:</b> importação da programação do PCP (bruto e líquido por dia) e dias com diferença marcados em outra cor.</li>
+    <li><b>Insumos:</b> quantidades, preços e custos por mês, com aba no Painel 360 e Excel.</li>
+    <li><b>Hoje</b>, menu inferior no celular, desfazer exclusão e aviso de lançamento duplicado.</li>
+    <li><b>% de refugo do Executivo</b> considera somente a planta Fundição.</li>
     <li><b>Menu enxuto:</b> Dashboards (Peso, Quantidade e Painel 360) e Dados e auditoria em abas únicas.</li>
     <li><b>Painel 360</b> com análise executiva, Pareto, mapa de calor, peças críticas, clientes e calendário; <b>espinha de peixe 6M</b> com quantidade, peso e valor.</li>
     <li><b>Quadro de meses</b> clicável nos dashboards e na apresentação.</li>
@@ -1273,6 +1350,8 @@ window.helpBusca=function(){
   var faq=document.getElementById('hp-faq');if(faq){var vis=faq.querySelectorAll('details');var any=[].some.call(vis,function(d){return d.style.display!=='none'});faq.style.display=(!q||any)?'':'none'}
   var em=document.getElementById('helpEmpty');if(em)em.style.display=(q&&!n)?'':'none';
 };
+window.helpGo=function(page,sub,tab){try{asstIr(page,sub,tab)}catch(e){try{navigate(page)}catch(_){}}};
+window.helpAsk=function(t){var s=document.getElementById('helpSearch'),q=t||(s&&s.value)||'';try{if(window.asstPerguntar)asstPerguntar(q||'Resumo geral');else if(window.asstAbrir)asstAbrir()}catch(e){}};
 window.helpIr=function(id){
   var s=document.getElementById('helpSearch');if(s&&s.value){s.value='';helpBusca()}
   var el=document.getElementById(id);if(!el)return;el.scrollIntoView({behavior:'smooth',block:'start'});
@@ -1361,22 +1440,22 @@ window.helpIr=function(id){
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script src="dados-iniciais.js?v=219"></script>
-<script src="analises.js?v=219"></script>
-<script src="filtros.js?v=219"></script>
-<script src="retrabalhos.js?v=219"></script>
-<script src="boletim.js?v=219"></script>
-<script src="app.js?v=219"></script>
-<script src="assistente.js?v=219"></script>
-<script src="devolucoes.js?v=219"></script>
-<script src="gestao.js?v=219"></script>
-<script src="relatorios.js?v=219"></script>
-<script src="previsao.js?v=219"></script>
-<script src="reuniao.js?v=219"></script>
-<script src="auditoria.js?v=219"></script>
-<script src="composicao.js?v=219"></script>
-<script src="extras.js?v=219"></script>
-<script src="versao.js?v=219"></script>
+<script src="dados-iniciais.js?v=222"></script>
+<script src="analises.js?v=222"></script>
+<script src="filtros.js?v=222"></script>
+<script src="retrabalhos.js?v=222"></script>
+<script src="boletim.js?v=222"></script>
+<script src="app.js?v=222"></script>
+<script src="assistente.js?v=222"></script>
+<script src="devolucoes.js?v=222"></script>
+<script src="gestao.js?v=222"></script>
+<script src="relatorios.js?v=222"></script>
+<script src="previsao.js?v=222"></script>
+<script src="reuniao.js?v=222"></script>
+<script src="auditoria.js?v=222"></script>
+<script src="composicao.js?v=222"></script>
+<script src="extras.js?v=222"></script>
+<script src="versao.js?v=222"></script>
 <script>if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost")){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}</script>
 <script>
 /* aviso automático quando algum arquivo do site está desatualizado (cache ou envio incompleto) */
