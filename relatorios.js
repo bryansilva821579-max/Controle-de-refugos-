@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.relatorios='v226';
+window.__V=window.__V||{};window.__V.relatorios='v227';
 /* ==================================================================
    RELATÓRIOS MENSAIS — Retrabalhos e Devoluções
    Mesmo formato do relatório mensal de refugos: gráficos com análise

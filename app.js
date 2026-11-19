@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v226';
+window.__V=window.__V||{};window.__V.app='v227';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -2917,7 +2917,7 @@ function normalizarCustoRefugoHistorico(){
   salvarHistoricoFonte();
 }
 normalizarCustoRefugoHistorico();
-function saveProducao(){localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));salvarHistoricoFonte();dashboardDirty=true;}
+function saveProducao(){localStorage.setItem(PROD_KEY,JSON.stringify(producaoFundicao));salvarHistoricoFonte();dashboardDirty=true;try{prodAgendarSync()}catch(e){}}
 const DIAS_SEMANA_CAL=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 let prodCalAno=new Date().getFullYear(),prodCalMes=new Date().getMonth()+1;
 function prodHojeISO(){const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10)}
@@ -3542,11 +3542,12 @@ function insMesclarRemoto(R){
   if(R.preco&&temP(R.preco)&&((R.preco.em||0)>I.preco.em||!temP(I.preco))){localStorage.setItem(INS_PRECO_KEY,JSON.stringify(R.preco));ch=true}
   if(ch&&document.getElementById('insBox')&&document.getElementById('insBox').offsetParent)insRender();
   return ch}
-async function insLerNuvem(){
-  const col=blobCol(),d0=await col.doc('blob_insumos__0').get();if(!d0.exists)return null;
-  const x=d0.data();if(!x||typeof x.json!=='string')return null;let txt=x.json;const n=x.n||1;blobN['insumos']=n;
-  for(let i=1;i<n;i++){const di=await col.doc('blob_insumos__'+i).get(),xi=di.exists&&di.data();if(!xi||xi.v!==x.v||typeof xi.json!=='string')return null;txt+=xi.json}
+async function blobLerNome(name){
+  const col=blobCol(),d0=await col.doc('blob_'+name+'__0').get();if(!d0.exists)return null;
+  const x=d0.data();if(!x||typeof x.json!=='string')return null;let txt=x.json;const n=x.n||1;blobN[name]=n;
+  for(let i=1;i<n;i++){const di=await col.doc('blob_'+name+'__'+i).get(),xi=di.exists&&di.data();if(!xi||xi.v!==x.v||typeof xi.json!=='string')return null;txt+=xi.json}
   try{return JSON.parse(txt)}catch(e){return null}}
+async function insLerNuvem(){return blobLerNome('insumos')}
 let insSyncBusy=false,insSyncMsg='';
 function insSyncStatus(t){insSyncMsg=t;const e=document.getElementById('insNuvemSt');if(e)e.textContent=t}
 /* sincronização dos insumos: independe do modo de sincronização dos lançamentos (usa documentos próprios) */
@@ -3563,6 +3564,33 @@ async function insSync(forcar){
     return{nI,nP,ch,up,nLocal:I.qtd.itens.length,pLocal:Object.keys(I.preco.v).length};
   }catch(e){console.warn('Insumos (sincronização):',e);insSyncStatus('☁ Erro ao sincronizar: '+(e&&e.message||e));return{erro:e&&e.message||String(e)}}
   finally{insSyncBusy=false}}
+/* sincronização da produção diária (PCP/lançamentos): documentos próprios, independe do modo de sincronização */
+let prodSyncBusy=false,prodSyncMsg='';
+function prodSyncStatus(t){prodSyncMsg=t;const e=document.getElementById('prodNuvemSt');if(e)e.textContent=t}
+async function prodSync(forcar){
+  if(prodSyncBusy)return null;
+  if(typeof firebaseDbOnline==='undefined'||!firebaseDbOnline||!firebaseOnlineConnected){prodSyncStatus('☁ Sem conexão online neste aparelho.');return null}
+  prodSyncBusy=true;
+  try{
+    const R=await blobLerNome('producao'),nR=R&&Array.isArray(R.arr)?R.arr.length:0;let ch=false,precisa=!R,up=false;
+    if(R&&Array.isArray(R.arr)){const r=prodAplicar(R.arr,R.del);ch=r.local;precisa=r.nuvem}
+    if(ch){try{renderProducao()}catch(e){}dashboardDirty=true;try{dashboard()}catch(e){}try{window.__painel360&&window.__painel360.render&&window.__painel360.render(true)}catch(e){}}
+    if((producaoFundicao.length||producaoDel.length)&&(precisa||forcar)){await blobEnviar('producao',{arr:producaoFundicao,del:producaoDel},true);up=true}
+    const hh=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    prodSyncStatus('☁ Produção sincronizada às '+hh+(ch?' (trouxe dados da nuvem)':up?' (enviou deste aparelho)':'')+'.');
+    return{nR,ch,up,nLocal:producaoFundicao.length}
+  }catch(e){console.warn('Produção (sincronização):',e);prodSyncStatus('☁ Erro ao sincronizar a produção: '+(e&&e.message||e));return{erro:e&&e.message||String(e)}}
+  finally{prodSyncBusy=false}}
+let prodSyncT=null;
+function prodAgendarSync(){clearTimeout(prodSyncT);prodSyncT=setTimeout(()=>{prodSync(false)},1500)}
+async function prodNuvem(){
+  if(typeof firebaseDbOnline==='undefined'||!firebaseDbOnline||!firebaseOnlineConnected){alert('Este aparelho não está conectado online. Abra Dados e backup, use “Conectar online” e tente de novo.');return}
+  const r=await prodSync(true);if(!r)return;
+  if(r.erro){alert('Não consegui sincronizar a produção:\n'+r.erro);return}
+  alert('Produção sincronizada.\n\nNa nuvem havia: '+r.nR+' dia(s)/mês(es).\nNeste aparelho agora: '+r.nLocal+'.'+(r.ch?'\nOs dados da nuvem foram trazidos para cá.':'')+(r.up?'\nOs dados deste aparelho foram enviados para a nuvem.':''))}
+setInterval(()=>{try{if(!document.hidden&&typeof firebaseOnlineConnected!=='undefined'&&firebaseOnlineConnected)prodSync(false)}catch(e){}},60000);
+setTimeout(()=>{try{prodSync(false)}catch(e){}},11000);
+document.addEventListener('visibilitychange',()=>{try{if(!document.hidden)setTimeout(()=>prodSync(false),1200)}catch(e){}});
 let insSyncT=null;
 function insAgendarSync(){clearTimeout(insSyncT);insSyncT=setTimeout(()=>{insSync(false)},1500)}
 async function insNuvem(){
