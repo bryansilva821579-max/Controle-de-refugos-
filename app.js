@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v225';
+window.__V=window.__V||{};window.__V.app='v226';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -3542,15 +3542,40 @@ function insMesclarRemoto(R){
   if(R.preco&&temP(R.preco)&&((R.preco.em||0)>I.preco.em||!temP(I.preco))){localStorage.setItem(INS_PRECO_KEY,JSON.stringify(R.preco));ch=true}
   if(ch&&document.getElementById('insBox')&&document.getElementById('insBox').offsetParent)insRender();
   return ch}
+async function insLerNuvem(){
+  const col=blobCol(),d0=await col.doc('blob_insumos__0').get();if(!d0.exists)return null;
+  const x=d0.data();if(!x||typeof x.json!=='string')return null;let txt=x.json;const n=x.n||1;blobN['insumos']=n;
+  for(let i=1;i<n;i++){const di=await col.doc('blob_insumos__'+i).get(),xi=di.exists&&di.data();if(!xi||xi.v!==x.v||typeof xi.json!=='string')return null;txt+=xi.json}
+  try{return JSON.parse(txt)}catch(e){return null}}
+let insSyncBusy=false,insSyncMsg='';
+function insSyncStatus(t){insSyncMsg=t;const e=document.getElementById('insNuvemSt');if(e)e.textContent=t}
+/* sincronização dos insumos: independe do modo de sincronização dos lançamentos (usa documentos próprios) */
+async function insSync(forcar){
+  if(insSyncBusy)return null;
+  if(typeof firebaseDbOnline==='undefined'||!firebaseDbOnline||!firebaseOnlineConnected){insSyncStatus('☁ Sem conexão online neste aparelho.');return null}
+  insSyncBusy=true;
+  try{
+    const R=await insLerNuvem(),nI=R&&R.qtd&&R.qtd.itens?R.qtd.itens.length:0,nP=R&&R.preco&&R.preco.v?Object.keys(R.preco.v).length:0;
+    const ch=insMesclarRemoto(R),I=insLer(),loc={qtd:I.qtd,preco:I.preco},tem=I.qtd.itens.length||Object.keys(I.preco.v).length;let up=false;
+    if(tem){if(R&&fsStable(R)===fsStable(loc)){blobSig['insumos']=fsStable(loc)}else{await blobEnviar('insumos',loc,true);up=true}}
+    const hh=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    insSyncStatus('☁ Sincronizado às '+hh+(ch?' (trouxe dados da nuvem)':up?' (enviou deste aparelho)':'')+'.');
+    return{nI,nP,ch,up,nLocal:I.qtd.itens.length,pLocal:Object.keys(I.preco.v).length};
+  }catch(e){console.warn('Insumos (sincronização):',e);insSyncStatus('☁ Erro ao sincronizar: '+(e&&e.message||e));return{erro:e&&e.message||String(e)}}
+  finally{insSyncBusy=false}}
+let insSyncT=null;
+function insAgendarSync(){clearTimeout(insSyncT);insSyncT=setTimeout(()=>{insSync(false)},1500)}
 async function insNuvem(){
-  try{if(typeof firebaseDbOnline==='undefined'||!firebaseDbOnline||!firebaseOnlineConnected){alert('Este aparelho não está conectado online. Conecte em Dados e backup (Conectar online) e tente de novo.');return}
-    const r=await blobLerRemoto('insumos',firebaseRoot()),R=r&&r.valor,nI=R&&R.qtd&&R.qtd.itens?R.qtd.itens.length:0,nP=R&&R.preco&&R.preco.v?Object.keys(R.preco.v).length:0,I=insLer();
-    const ch=insMesclarRemoto(R),J=insLer();
-    if(J.qtd.itens.length||Object.keys(J.preco.v).length){await blobEnviar('insumos',{qtd:J.qtd,preco:J.preco},true)}
-    insRender();alert('Insumos sincronizados.\n\nNa nuvem havia: '+nI+' insumo(s) e '+nP+' com preço.\nNeste aparelho agora: '+J.qtd.itens.length+' insumo(s) e '+Object.keys(J.preco.v).length+' com preço.'+(ch?'\nOs dados da nuvem foram trazidos para cá.':'\nNenhum dado novo veio da nuvem.')+(!nI&&!J.qtd.itens.length?'\n\nA nuvem está vazia: importe o Boletim de Fusão no aparelho que tem os dados e use este botão lá.':''))
-  }catch(e){alert('Não consegui sincronizar: '+(e&&e.message||e))}}
-function insGravarQtd(q){q.em=Date.now();localStorage.setItem(INS_QTD_KEY,JSON.stringify(q))}
-function insGravarPreco(p){p.em=Date.now();localStorage.setItem(INS_PRECO_KEY,JSON.stringify(p))}
+  if(typeof firebaseDbOnline==='undefined'||!firebaseDbOnline||!firebaseOnlineConnected){alert('Este aparelho não está conectado online. Abra Dados e backup, use “Conectar online” e tente de novo.');return}
+  const r=await insSync(true);if(!r)return;
+  if(r.erro){alert('Não consegui sincronizar os insumos:\n'+r.erro+'\n\nSe aparecer “permission”/“insufficient”, as regras do Firebase estão bloqueando a gravação em config.');return}
+  try{insRender()}catch(e){}
+  alert('Insumos sincronizados.\n\nNa nuvem havia: '+r.nI+' insumo(s) e '+r.nP+' com preço.\nNeste aparelho agora: '+r.nLocal+' insumo(s) e '+r.pLocal+' com preço.'+(r.ch?'\nOs dados da nuvem foram trazidos para cá.':'')+(r.up?'\nOs dados deste aparelho foram enviados para a nuvem.':'')+(!r.nI&&!r.nLocal?'\n\nA nuvem e este aparelho estão vazios: importe o Boletim de Fusão no aparelho que tem os dados e use este botão lá.':''))}
+setInterval(()=>{try{if(!document.hidden&&typeof firebaseOnlineConnected!=='undefined'&&firebaseOnlineConnected)insSync(false)}catch(e){}},60000);
+setTimeout(()=>{try{insSync(false)}catch(e){}},9000);
+document.addEventListener('visibilitychange',()=>{try{if(!document.hidden)setTimeout(()=>insSync(false),800)}catch(e){}});
+function insGravarQtd(q){q.em=Date.now();localStorage.setItem(INS_QTD_KEY,JSON.stringify(q));try{insAgendarSync()}catch(e){}}
+function insGravarPreco(p){p.em=Date.now();localStorage.setItem(INS_PRECO_KEY,JSON.stringify(p));try{insAgendarSync()}catch(e){}}
 function insAplicarLinhas(rows){
   if(!rows||rows.length<2)return{meses:0,itens:0};
   const norm=t=>String(t==null?'':t).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -3589,7 +3614,7 @@ function insRender(){
   const host=document.getElementById('insBox');if(!host)return;
   const L=insLer(),itens=L.qtd.itens,anos=new Set([new Date().getFullYear()]);Object.keys(L.qtd.meses).forEach(k=>anos.add(+k.slice(0,4)));
   const ver=(typeof costAccessAllowed!=='function')||costAccessAllowed();
-  const bar=`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0"><label>Ano <select onchange="insAno=+this.value;insRender()">${[...anos].sort().map(a=>`<option${a===insAno?' selected':''}>${a}</option>`).join('')}</select></label><button type="button" class="btn secondary" onclick="insNuvem()">☁ Sincronizar com a nuvem</button><label class="btn secondary" style="cursor:pointer">📥 Ler quantidades do Boletim (.xlsx)<input type="file" multiple accept=".xlsx,.xlsm" style="display:none" onchange="insImportar(this.files);this.value=''"></label>${itens.length?'<button type="button" class="btn secondary" onclick="insExcel()">📊 Baixar planilha (Excel)</button>':''}</div>`;
+  const bar=`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0"><label>Ano <select onchange="insAno=+this.value;insRender()">${[...anos].sort().map(a=>`<option${a===insAno?' selected':''}>${a}</option>`).join('')}</select></label><button type="button" class="btn secondary" onclick="insNuvem()">☁ Sincronizar com a nuvem</button><span id="insNuvemSt" class="hint" style="align-self:center">${typeof escapeHtml==='function'?escapeHtml(insSyncMsg||''):String(insSyncMsg||'').replace(/</g,'&lt;')}</span><label class="btn secondary" style="cursor:pointer">📥 Ler quantidades do Boletim (.xlsx)<input type="file" multiple accept=".xlsx,.xlsm" style="display:none" onchange="insImportar(this.files);this.value=''"></label>${itens.length?'<button type="button" class="btn secondary" onclick="insExcel()">📊 Baixar planilha (Excel)</button>':''}</div>`;
   if(!itens.length){host.innerHTML=bar+'<div class="small">Ainda não há quantidades. Toque em <b>Ler quantidades do Boletim</b> e escolha os arquivos do Boletim de Fusão (a aba “BOLETIM - Carregamento” traz Gusa, Sucatas, Ligas, Nodularizante etc. de cada corrida). Também são lidas automaticamente quando você importa o Boletim na aba Produção.</div>';return}
   const C=insCalc(),f2=v=>v?v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'',f0=v=>v?v.toLocaleString('pt-BR',{maximumFractionDigits:1}):'';
   const th='<th style="text-align:left;position:sticky;left:0;background:var(--card)">Material</th>'+INS_MES.map(x=>`<th>${x}</th>`).join('');
