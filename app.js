@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v227';
+window.__V=window.__V||{};window.__V.app='v228';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
