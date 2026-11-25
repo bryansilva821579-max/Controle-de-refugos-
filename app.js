@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.app='v228';
+window.__V=window.__V||{};window.__V.app='v230';
 /* ==================================================================
    APLICAÇÃO PRINCIPAL
    Lançamentos, histórico, dashboards, cadastros, Firebase e relatórios.
@@ -1527,11 +1527,14 @@ function addPeca(){
  if(editIndex!==null && Number.isInteger(editIndex) && cadastros.pecas[editIndex]){
    const duplicate=cadastros.pecas.some((x,idx)=>idx!==editIndex&&String(x.codigo??'').trim()===c&&String(x.cliente??'').trim().toUpperCase()===cliente.toUpperCase());
    if(duplicate)return alert('Essa combinação de cliente + código já está cadastrada em outro produto.');
+   const __a=__snapPesosCad();
    cadastros.pecas[editIndex]={...cadastros.pecas[editIndex],...registro, _origemExcel:cadastros.pecas[editIndex]._origemExcel??false};
+   let __pr={n:0,prop:0,itens:[]};if(String(planta||'').toUpperCase().indexOf('FUND')>=0){try{__pr=propagarPesosFundida(__a)}catch(e){console.error(e)}}
    saveCad();
    renderCadastro();
    cancelEditPeca();
-   alert('Produto atualizado com sucesso.');
+   alert('Produto atualizado com sucesso.'+(__pr.n?'\n\nPeso fracionado das peças usinadas ajustado pelo novo peso da fundida em '+__pr.n+' peça(s):\n'+__pr.itens.slice(0,8).join('\n')+(__pr.n>8?'\n…':''):''));
+   if(__pr.n){try{const m=__aplicarPesosNovos(__a);if(m)alert('Lançamentos:'+m)}catch(e){console.error(e)}}
    return;
  }
  if(cadastros.pecas.some(x=>String(x.codigo)===c&&String(x.cliente).toUpperCase()===cliente.toUpperCase()))return alert('Essa combinação de cliente + código já está cadastrada.');
@@ -4346,6 +4349,28 @@ function mapImportedProduct(raw){
 /* ===== Pesos novos valem só a partir de uma data (v202) =====
    Ao atualizar o cadastro pela planilha, os pesos mudados são aplicados aos lançamentos
    a partir da data informada. Lançamentos anteriores continuam com o peso antigo. */
+/* Quando o peso (bruto fracionado e/ou líq. Fund./bruto Usin.) de uma peça FUNDIDA muda, as peças usinadas que saem dela
+   recebem o novo peso fracionado = peso da fundida ÷ quantidade de peças usinadas por fundida (ex.: bucha 3 kg → 3 anéis = 1 kg cada;
+   bucha 4 kg → 1,333 kg). Se a usinada tinha um peso que já não seguia essa regra, o peso dela é ajustado na mesma proporção da fundida. */
+function propagarPesosFundida(antes){
+  const f4=v=>Number(v).toLocaleString('pt-BR',{maximumFractionDigits:4});
+  const L=(cadastros&&cadastros.pecas)||[],K=c=>String(c??'').trim().toUpperCase(),ehF=p=>String(p&&p.planta||'').toUpperCase().indexOf('FUND')>=0;
+  const fm=new Map();
+  L.forEach(p=>{if(!ehF(p))return;const k=K(p.codigo),o=antes&&antes.get(k);if(!o)return;const pp=n(p.pesoPrincipal),pf=n(p.pesoFundUsin);if(pp!==o.pp||pf!==o.pf)fm.set(k,{pp0:o.pp,pp1:pp,pf0:o.pf,pf1:pf})});
+  const out={n:0,prop:0,itens:[]};if(!fm.size)return out;
+  const r9=v=>Math.round(v*1e9)/1e9,nova=(cur,f0,f1,q)=>{
+    if(!(f1>0)||f1===f0||!(f0>0))return null;const esp=f0/q;
+    if(cur>0&&Math.abs(cur/esp-1)>0.02){return{v:r9(cur*f1/f0),prop:true}}
+    return{v:r9(f1/q),prop:false}};
+  L.forEach(p=>{
+    if(ehF(p))return;const f=fm.get(K(p.origemCod)),q=n(p.origemQtd);if(!f||!(q>0))return;
+    let mud=false,desc=[];
+    const a=nova(n(p.pesoPrincipal),f.pp0,f.pp1,q);if(a&&a.v>0&&a.v!==n(p.pesoPrincipal)){desc.push('bruto frac. '+f4(n(p.pesoPrincipal))+' → '+f4(a.v));p.pesoPrincipal=a.v;p._pesoPrincipalFonte='Peso da peça fundida';mud=true;if(a.prop)out.prop++}
+    const b=nova(n(p.pesoFundUsin),f.pf0,f.pf1,q);if(b&&b.v>0&&b.v!==n(p.pesoFundUsin)){desc.push('líq. Fund./bruto Usin. '+f4(n(p.pesoFundUsin))+' → '+f4(b.v));p.pesoFundUsin=b.v;mud=true;if(b.prop)out.prop++}
+    if(mud){out.n++;out.itens.push(String(p.codigo)+' ('+(p.origemCod)+' ÷ '+q+'): '+desc.join('; '))}
+  });
+  return out}
+window.propagarPesosFundida=propagarPesosFundida;
 function __snapPesosCad(){
   const m=new Map();((cadastros&&cadastros.pecas)||[]).forEach(p=>{const k=String(p.codigo??'').trim().toUpperCase();if(!k)return;m.set(k,{pp:n(p.pesoPrincipal),pa:n(p.pesoArvore),pf:n(p.pesoFundUsin),pu:n(p.pesoUsinado)})});
   return m;
@@ -4418,9 +4443,10 @@ async function importProdutosExcel(mode){
     });
     cadastros.pecas=[...map.values()];
     cadastros.pecas.sort((a,b)=>String(a.descricao||'').localeCompare(String(b.descricao||''),'pt-BR'));
+    let __prop={n:0,prop:0,itens:[]};try{__prop=propagarPesosFundida(__pesosAntes)}catch(e){console.error(e)}
     saveCad();renderCadastro();
     let __msgPesos='';try{__msgPesos=__aplicarPesosNovos(__pesosAntes)}catch(e){console.error(e);__msgPesos=' (não consegui atualizar os lançamentos: '+e.message+')'}
-    status.textContent=`Cadastro atualizado: ${imported.length.toLocaleString('pt-BR')} produtos lidos da planilha (${cadastros.pecas.length.toLocaleString('pt-BR')} no cadastro).`+__msgPesos;
+    status.textContent=`Cadastro atualizado: ${imported.length.toLocaleString('pt-BR')} produtos lidos da planilha (${cadastros.pecas.length.toLocaleString('pt-BR')} no cadastro).`+(__prop.n?` Peso das peças usinadas ajustado pelo peso da fundida em ${__prop.n} peça(s)${__prop.prop?` (${__prop.prop} ajustadas na mesma proporção)`:''}: ${__prop.itens.slice(0,6).join(' | ')}${__prop.n>6?' …':''}.`:'')+__msgPesos;
     status.className='small import-status ok';
     alert(status.textContent);
   }catch(err){
