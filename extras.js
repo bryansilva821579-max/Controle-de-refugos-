@@ -39,6 +39,12 @@ function hojeDados(){
   var dm=lerDev().filter(function(r){return String(r.data).slice(0,7)===ym});
   return{hoje:hoje.length,kgH:kgH,qH:qH,ult:ult,perc:perc,metaP:metaP,kgF:kgF,prod:prod,rtPend:rts.length,rtPar:parados.length,devN:dm.length,devQ:dm.reduce(function(a,r){return a+(+r.qtd||0)},0)};
 }
+function critSubindo(){
+  var now=Date.now(),a0=now-30*864e5,b0=now-60*864e5,A={},B={},nm={};
+  (typeof data!=='undefined'?data:[]).forEach(function(r){var t=0;try{t=historyDateMs(r)}catch(e){}if(!t||t<b0)return;var c=String(val(r,'codigo')||'').trim();if(!c)return;nm[c]=String(val(r,'produto')||'');var k=kg(r);if(t>=a0)A[c]=(A[c]||0)+k;else B[c]=(B[c]||0)+k});
+  var best=null;Object.keys(A).forEach(function(c){var a=A[c],b=B[c]||0;if(a>=50&&a>b*1.5){var g=a-b;if(!best||g>best.g)best={c:c,a:a,b:b,g:g}}});
+  return best?best.c+(nm[best.c]?' — '+nm[best.c]:'')+': '+fm(best.a)+' kg nos últimos 30 dias contra '+fm(best.b)+' kg nos 30 dias anteriores.':''
+}
 function hojeRender(){
   var root=$('hoje');if(!root)return;var D=hojeDados(),now=new Date();
   var dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'],h=now.getHours(),sd=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
@@ -48,6 +54,17 @@ function hojeRender(){
   var k3='<div class="hj-k '+(D.rtPar?'bad':D.rtPend?'warn':'ok')+'"><small>Retrabalhos pendentes</small><b>'+D.rtPend+'</b><i>'+(D.rtPar?D.rtPar+' parado'+(D.rtPar>1?'s':'')+' há mais de 7 dias':D.rtPend?'nenhum parado há mais de 7 dias':'tudo em dia')+'</i></div>';
   var k4='<div class="hj-k '+(D.devN?'warn':'ok')+'"><small>Devoluções no mês</small><b>'+D.devN+'</b><i>'+(D.devN?fm(D.devQ)+' peças':'nenhuma devolução')+'</i></div>';
   var al=[];try{['refugo','devol','retrab','forno'].forEach(function(d){var t={refugo:'Refugos',devol:'Devoluções',retrab:'Retrabalhos',forno:'Forno e produção'}[d];(window.asstDestaques?window.asstDestaques(d):[]).forEach(function(x){al.push('<li><b>'+t+':</b> '+esc(x)+'</li>')})})}catch(e){}
+  /* alertas automáticos: meta %, lançamento faltando, ações vencidas, metas por cliente/peça, peça crítica subindo */
+  try{
+    if(D.metaP&&D.perc!=null&&D.perc>D.metaP)al.unshift('<li><b>Meta:</b> o % de refugo da Fundição no mês ('+fm(D.perc,2)+'%) está acima da meta ('+fm(D.metaP,2)+'%).</li>');
+    var dw=now.getDay(),hh=now.getHours();
+    if(dw>=1&&dw<=5&&hh>=14&&!D.hoje)al.push('<li><b>Lançamento:</b> ainda não há refugo lançado hoje. Se não houve refugo, ignore; senão, lance antes de fechar o dia.</li>');
+    var ontem=new Date(now.getTime()-864e5),yo=ontem.getDay();
+    if(typeof producaoFundicao!=='undefined'&&Array.isArray(producaoFundicao)&&producaoFundicao.length&&yo>=1&&yo<=5){var yk=ymd(ontem);if(!producaoFundicao.some(function(p){return p&&p.data===yk}))al.push('<li><b>Produção:</b> não há produção lançada em '+ontem.toLocaleDateString('pt-BR')+'.</li>')}
+    (window.__acVencidas?window.__acVencidas():[]).slice(0,5).forEach(function(x){al.push('<li><b>Ação vencida:</b> '+esc(x)+'</li>')});
+    (window.__mfAlertas?window.__mfAlertas():[]).slice(0,5).forEach(function(x){al.push('<li><b>Meta:</b> '+esc(x)+'</li>')});
+    var cr=critSubindo();if(cr)al.push('<li><b>Peça crítica subindo:</b> '+esc(cr)+'</li>');
+  }catch(e){console.error(e)}
   root.innerHTML='<div class="hj-h"><h2>'+sd+'! 👋</h2><span>'+dias[now.getDay()]+', '+now.toLocaleDateString('pt-BR')+'</span></div><div class="hj-grid">'+k1+k2+k3+k4+'</div>'+
   '<div class="hj-box"><h3>⚠ Pontos de atenção</h3>'+(al.length?'<ul>'+al.join('')+'</ul>':'<div class="vazio" style="padding:14px"><span class="vz-i">✅</span><b>Nada fora do normal</b>Sem alertas no momento.</div>')+'</div>'+
   '<div class="hj-box"><h3>Atalhos</h3><div class="hj-at"><button onclick="navigate(\'lancamentos\')">＋<br>Lançar refugo</button><button onclick="navigate(\'lancamentos\');setTimeout(function(){switchLaunchTab(\'producao\')},60)">🏭<br>Produção</button><button onclick="navigate(\'retrabalho\')">🔧<br>Retrabalhos</button><button onclick="navigate(\'devolucoes\')">↩<br>Devoluções</button><button onclick="navigate(\'reuniao\')">👥<br>Reunião</button><button onclick="window.asstAbrir&&window.asstAbrir()">🤖<br>Assistente</button></div></div>';

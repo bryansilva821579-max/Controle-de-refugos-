@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.previsao='v230';
+window.__V=window.__V||{};window.__V.previsao='v234';
 /* ==================================================================
    VISÃO GERAL: filtro por período + PREVISÃO + APRESENTAÇÃO animada
    Lê os mesmos dados dos módulos (refugo, retrabalho, devolução).
@@ -21,7 +21,7 @@ function perLer(){try{const o=JSON.parse(localStorage.getItem(PK)||'null');if(o&
 function perGravar(o){try{localStorage.setItem(PK,JSON.stringify(o))}catch(e){}}
 
 /* ---------- previsão (regressão linear com faixa de incerteza) ---------- */
-function cdf(z){const t=1/(1+0.2316419*Math.abs(z)),d=0.3989423*Math.exp(-z*z/2),p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return z>0?1-p:p}
+function cdf(z){const t=1/(1+0.2346419*Math.abs(z)),d=0.3989423*Math.exp(-z*z/2),p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return z>0?1-p:p}
 function prever(vals,h,meta){
   const pts=[];vals.forEach((v,i)=>{if(v!=null&&isFinite(v))pts.push([i,v])});
   if(pts.length<4)return null;

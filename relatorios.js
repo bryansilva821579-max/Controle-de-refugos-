@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.relatorios='v230';
+window.__V=window.__V||{};window.__V.relatorios='v234';
 /* ==================================================================
    RELATÓRIOS MENSAIS — Retrabalhos e Devoluções
    Mesmo formato do relatório mensal de refugos: gráficos com análise
@@ -375,11 +375,16 @@ function rank(rows,key,val,lim){const m=new Map();rows.forEach(r=>{const k=Strin
 /* ---------- gráficos SVG ---------- */
 function grad(id,c){return '<linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+mix(c,1,.55)+'"/><stop offset=".3" stop-color="'+mix(c,1,.1)+'"/><stop offset=".52" stop-color="'+c+'"/><stop offset=".56" stop-color="'+mix(c,0,.22)+'"/><stop offset="1" stop-color="'+mix(c,0,.42)+'"/></linearGradient>'}
 function nice(m){if(m<=0)return 1;const e=Math.pow(10,Math.floor(Math.log10(m))),f=m/e;return(f<=1?1:f<=2?2:f<=5?5:10)*e}
+function cwid(){return Math.max(330,Math.min(760,(window.innerWidth||760)-60))}
+function cfm(v,step){v=N(v);const a=Math.abs(v);if(step<44&&a>=1000)return fm(v/1000,a>=10000?0:1)+'k';return fm(v,a<10?1:0)}
+function vtx(x,y,t,cls,anchor,extra){return '<text transform="translate('+x+','+y+') rotate(-90)" text-anchor="'+(anchor||'start')+'" class="'+cls+'"'+(extra||'')+'>'+t+'</text>'}
+function slb(l,step){l=String(l);return step<60?l.replace(/\/20(\d\d)$/,'/$1'):l}
 function combo(o){
-  const W=760,H=o.h||290,L=54,Rr=o.line?50:14,T=16,B=o.rot?74:34,cw=W-L-Rr,ch=H-T-B,n=o.labels.length||1,step=cw/n,id='c'+(++_g);
-  const bars=o.bars||[],ns=o.stack?1:Math.max(1,bars.length),bw=Math.min(46,step*.72/ns);
+  const W=cwid(),n=o.labels.length||1,bars=o.bars||[],ns=o.stack?1:Math.max(1,bars.length);
   let mx=0;if(o.stack)for(let i=0;i<n;i++)mx=Math.max(mx,sum(bars,b=>N(b.values[i])));else bars.forEach(b=>b.values.forEach(v=>mx=Math.max(mx,N(v))));
-  mx=nice(mx*1.08||1);const lmx=o.line?(o.line.max||nice(Math.max(.1,o.ref||0,...o.line.values.map(N))*1.12)):1;
+  mx=nice(mx*1.12||1);
+  const L=Math.max(40,String(fm(mx,mx<10?1:0)).length*6.8+14),Rr=o.line?52:12,T=22,cw=W-L-Rr,step=cw/n,rot=o.rot||(n>7&&step<58),B=rot?(o.rot?84:50):34,H=o.h||(W<520?270:300),ch=H-T-B,id='c'+(++_g);
+  const bw=Math.min(54,step*(ns>1?.82:.7)/ns),lmx=o.line?(o.line.max||nice(Math.max(.1,o.ref||0,...o.line.values.map(N))*1.15)):1,showV=o.vals!==false;
   let s='<svg class="p3svg" viewBox="0 0 '+W+' '+H+'" role="img"><defs>'+bars.map((b,i)=>grad(id+'b'+i,b.color)).join('')+'</defs>';
   for(let g=0;g<=4;g++){const y=T+ch-g*ch/4;s+='<line x1="'+L+'" x2="'+(W-Rr)+'" y1="'+y+'" y2="'+y+'" class="gl"/><text x="'+(L-6)+'" y="'+(y+4)+'" text-anchor="end" class="ax">'+fm(mx*g/4,mx<10?1:0)+'</text>';if(o.line)s+='<text x="'+(W-Rr+6)+'" y="'+(y+4)+'" class="ax" fill="'+o.line.color+'">'+fm(lmx*g/4,lmx<10?1:0)+(o.line.suf||'')+'</text>'}
   if(o.ref!=null&&o.line){const y=T+ch-o.ref/lmx*ch;s+='<line x1="'+L+'" x2="'+(W-Rr)+'" y1="'+y+'" y2="'+y+'" stroke="'+RD+'" stroke-dasharray="6 4" stroke-width="1.5"/><text x="'+(L+4)+'" y="'+(y-4)+'" class="ax" fill="'+RD+'">'+(o.refTxt||'meta')+'</text>'}
@@ -387,22 +392,27 @@ function combo(o){
     const x0=L+i*step+(step-bw*ns)/2;let acc=0;
     bars.forEach((b,j)=>{const v=N(b.values[i]),h=v/mx*ch,x=o.stack?x0:x0+j*bw,y=o.stack?T+ch-(acc+v)/mx*ch:T+ch-h;acc+=v;
       if(h>.3)s+='<rect class="bar" data-i="'+i+'" data-s="'+j+'" x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="'+(o.stack?0:4)+'" fill="url(#'+id+'b'+j+')"><title>'+esc(o.labels[i])+' — '+esc(b.name)+': '+fm(v,1)+' '+(o.unit||'')+'</title></rect>';
-      if(!o.stack&&o.vals&&h>12&&bars.length===1&&n<=14)s+='<text x="'+(x+bw/2)+'" y="'+(y-4)+'" text-anchor="middle" class="vl">'+fm(v,v<10?1:0)+'</text>'});
-    const lx=L+i*step+step/2,ty=T+ch+14;
-    s+=o.rot?'<text transform="translate('+lx+','+(ty)+') rotate(-38)" text-anchor="end" class="ax">'+esc(String(o.labels[i]).slice(0,22))+'</text>':'<text x="'+lx+'" y="'+ty+'" text-anchor="middle" class="ax">'+esc(String(o.labels[i]).slice(0,10))+'</text>';
+      if(showV&&v>0){
+        if(o.stack){if(h>=15&&bw>=24)s+='<text x="'+(x+bw/2)+'" y="'+(y+h/2+3.5)+'" text-anchor="middle" class="vls">'+cfm(v,bw)+'</text>'}
+        else if(o.line&&h>=16&&(ns===1||bw>=17))s+=(step<42?(h>=30?vtx(x+bw/2+3.5,T+ch-5,cfm(v,step),'vls'):''):'<text x="'+(x+bw/2)+'" y="'+(T+ch-6)+'" text-anchor="middle" class="vls">'+cfm(v,ns>1?bw*1.6:step)+'</text>')
+        else if(!o.line&&(ns===1||bw>=17))s+=(step<42&&ns===1?vtx(x+bw/2+4,y-5,cfm(v,step),'vl'):'<text x="'+(x+bw/2)+'" y="'+(y-5)+'" text-anchor="middle" class="vl"'+(ns>1?' style="font-size:9.5px"':'')+'>'+cfm(v,ns>1?bw*1.6:step)+'</text>')}});
+    if(o.stack&&showV){const tt=acc;if(tt>0)s+=(step<42?vtx(x0+bw/2+4,T+ch-tt/mx*ch-5,cfm(tt,step),'vl'):'<text x="'+(x0+bw/2)+'" y="'+(T+ch-tt/mx*ch-5)+'" text-anchor="middle" class="vl">'+cfm(tt,step)+'</text>')}
+    const lx=L+i*step+step/2,ty=T+ch+15,lab=o.rot?String(o.labels[i]).slice(0,22):slb(o.labels[i],step);
+    s+=rot?'<text transform="translate('+(lx+4)+','+ty+') rotate(-40)" text-anchor="end" class="ax">'+esc(lab)+'</text>':'<text x="'+lx+'" y="'+ty+'" text-anchor="middle" class="ax">'+esc(lab.slice(0,10))+'</text>';
   }
-  if(o.line){const pts=o.line.values.map((v,i)=>v==null?null:[L+i*step+step/2,T+ch-N(v)/lmx*ch]).filter(Boolean);
-    if(pts.length){s+='<polyline fill="none" stroke="'+o.line.color+'" stroke-width="3" stroke-linejoin="round" class="glow" points="'+pts.map(p=>p.join(',')).join(' ')+'"/>'+pts.map((p,i)=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="4" fill="'+o.line.color+'" stroke="#fff" stroke-width="1.2"><title>'+esc(o.line.name)+': '+fm(o.line.values.filter(v=>v!=null)[i],2)+(o.line.suf||'')+'</title></circle>').join('')}}
+  if(o.line){const vv=o.line.values,pts=vv.map((v,i)=>v==null?null:[L+i*step+step/2,T+ch-N(v)/lmx*ch,N(v)]);const pp=pts.filter(Boolean);
+    if(pp.length){s+='<polyline fill="none" stroke="'+o.line.color+'" stroke-width="3" stroke-linejoin="round" class="glow" points="'+pp.map(p=>p[0]+','+p[1]).join(' ')+'"/>'+pp.map(p=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="4" fill="'+o.line.color+'" stroke="#fff" stroke-width="1.2"><title>'+esc(o.line.name)+': '+fm(p[2],2)+(o.line.suf||'')+'</title></circle>').join('');
+      if(showV){const mxv=Math.max(...pp.map(p=>p[2])),ult=pp[pp.length-1];pp.forEach((p,pi)=>{if((n<=12&&step>=42)||pi%2===0||p===ult||p[2]===mxv)s+='<text x="'+p[0]+'" y="'+(p[1]-9)+'" text-anchor="middle" class="vl2" fill="'+o.line.color+'">'+fm(p[2],o.line.suf==='%'?1:0)+(o.line.suf||'')+'</text>'})}}}
   return s+'</svg>';
 }
 function lines(o){ // várias linhas com mesma escala
-  const W=760,H=o.h||260,L=54,Rr=14,T=14,B=34,cw=W-L-Rr,ch=H-T-B,n=o.labels.length;let mx=nice(Math.max(1,...o.series.flatMap(s=>s.values.map(N)))*1.1);
+  const W=cwid(),n=o.labels.length,L=Math.max(40,50),Rr=24,T=26,H=o.h||(W<520?250:270),step0=(W-L-Rr)/Math.max(1,n-1),rot=n>7&&step0<58,B=rot?50:34,cw=W-L-Rr,ch=H-T-B;let mx=nice(Math.max(1,...o.series.flatMap(s=>s.values.map(N)))*1.15);
   let s='<svg class="p3svg" viewBox="0 0 '+W+' '+H+'">';
   for(let g=0;g<=4;g++){const y=T+ch-g*ch/4;s+='<line x1="'+L+'" x2="'+(W-Rr)+'" y1="'+y+'" y2="'+y+'" class="gl"/><text x="'+(L-6)+'" y="'+(y+4)+'" text-anchor="end" class="ax">'+fm(mx*g/4,mx<10?1:0)+'</text>'}
   const xs=i=>L+(n===1?cw/2:i*cw/(n-1));
-  o.labels.forEach((l,i)=>{s+='<text x="'+xs(i)+'" y="'+(T+ch+16)+'" text-anchor="middle" class="ax">'+esc(String(l).slice(0,10))+'</text>'});
-  o.series.forEach(se=>{const p=se.values.map((v,i)=>xs(i)+','+(T+ch-N(v)/mx*ch));s+='<polyline fill="none" stroke="'+se.color+'" stroke-width="3" class="glow" stroke-linejoin="round" points="'+p.join(' ')+'"/>'+se.values.map((v,i)=>'<circle cx="'+xs(i)+'" cy="'+(T+ch-N(v)/mx*ch)+'" r="3.5" fill="'+se.color+'"><title>'+esc(se.name)+' — '+esc(o.labels[i])+': '+fm(v,1)+'</title></circle>').join('')});
-  s+='<g transform="translate('+L+',2)">'+o.series.map((se,i)=>'<rect x="'+(i*120)+'" y="0" width="10" height="10" rx="2" fill="'+se.color+'"/><text x="'+(i*120+14)+'" y="9" class="ax">'+esc(se.name)+'</text>').join('')+'</g>';
+  o.labels.forEach((l,i)=>{const lab=slb(l,step0);s+=rot?'<text transform="translate('+(xs(i)+4)+','+(T+ch+15)+') rotate(-40)" text-anchor="end" class="ax">'+esc(lab)+'</text>':'<text x="'+xs(i)+'" y="'+(T+ch+16)+'" text-anchor="middle" class="ax">'+esc(lab.slice(0,10))+'</text>'});
+  o.series.forEach((se,si)=>{const p=se.values.map((v,i)=>xs(i)+','+(T+ch-N(v)/mx*ch)),vmax=Math.max(...se.values.map(N));s+='<polyline fill="none" stroke="'+se.color+'" stroke-width="3" class="glow" stroke-linejoin="round" points="'+p.join(' ')+'"/>'+se.values.map((v,i)=>'<circle cx="'+xs(i)+'" cy="'+(T+ch-N(v)/mx*ch)+'" r="3.5" fill="'+se.color+'"><title>'+esc(se.name)+' — '+esc(o.labels[i])+': '+fm(v,1)+'</title></circle>'+((n<=10||i===n-1||N(v)===vmax)&&N(v)>0?'<text x="'+xs(i)+'" y="'+(T+ch-N(v)/mx*ch+(si%2?15:-8))+'" text-anchor="middle" class="vl2" fill="'+se.color+'">'+cfm(v,(cw/Math.max(1,n))*1.2)+'</text>':'')).join('')});
+  s+='<g transform="translate('+L+',4)">'+o.series.map((se,i)=>'<rect x="'+(i*130)+'" y="0" width="10" height="10" rx="2" fill="'+se.color+'"/><text x="'+(i*130+14)+'" y="9" class="ax">'+esc(se.name)+'</text>').join('')+'</g>';
   return s+'</svg>';
 }
 function spark(v,c){v=v.map(N);if(v.length<2)return '';const w=84,h=26,mx=Math.max(...v,1e-9),mn=Math.min(...v),r=mx-mn||1;return '<svg class="p3sp" viewBox="0 0 '+w+' '+h+'"><polyline fill="none" stroke="'+(c||OR)+'" stroke-width="2" stroke-linejoin="round" points="'+v.map((x,i)=>(i*w/(v.length-1)).toFixed(1)+','+(h-3-(x-mn)/r*(h-6)).toFixed(1)).join(' ')+'"/></svg>'}
@@ -410,7 +420,7 @@ function hbar(items,fmtv,tot,c){const mx=Math.max(1,...items.map(e=>e.v));return
 function delta(c,p,bad){if(p==null||!(p>0)||c==null)return '<small class="mu">sem base anterior</small>';const d=(c-p)/p*100;const up=d>0;return '<small class="'+((up===(bad!==false))?'up':'dn')+'">'+(up?'▲ +':'▼ ')+fm(Math.abs(d),0)+'% vs período anterior</small>'}
 
 /* ---------- abas ---------- */
-const TABS=[['exec','🏁 Executivo'],['pareto','📉 Pareto e causas'],['heat','🔥 Mapa de calor'],['pecas','🧩 Peças críticas'],['cli','👥 Clientes'],['cal','📅 Calendário'],['peixe','🐟 Espinha 6M'],['ling','🧲 Lingotes e respingos'],['ins','🧪 Insumos e custos']];
+const TABS=[['exec','🏁 Executivo'],['pareto','📉 Pareto e causas'],['heat','🔥 Mapa de calor'],['pecas','🧩 Peças críticas'],['cli','👥 Clientes'],['cal','📅 Calendário'],['peixe','🐟 Espinha 6M'],['ling','🧲 Lingotes e respingos'],['ins','🧪 Insumos e custos'],['metas','🎯 Metas e projeção'],['acoes','✅ Ações da ata']];
 const KINFO=[
  ['refugo (','Refugo (kg ou peças)','Lançamentos de refugo (Lançamentos › Lançar refugo / Histórico) com data dentro do período e da planta escolhidos no topo.','Soma do peso (ou das peças, se você escolheu peças) conforme o tipo de peso selecionado: bruto fracionado, líquido ou usinado. A seta compara com o período anterior de mesmo tamanho; o mini-gráfico mostra mês a mês.'],
  ['% refugo','% refugo Fundição','Refugos da planta Fundição (Lançamentos de refugo) e a Produção diária da Fundição (Lançamentos › Produção diária, vinda do PCP ou lançada).','Refugo da Fundição (kg) ÷ produção da Fundição (kg) × 100, no período. Só entra a planta “Fundição”: Usinagem e Fundição na Usinagem ficam de fora. A produção segue o tipo de peso escolhido (bruto ou líquido). A meta vem de Cadastro › Metas. Só aparece em kg e com a planta Fundição marcada.'],
@@ -514,8 +524,9 @@ function diag(d){
 document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('#p3dgcp');if(!b)return;var t=window.__p3diag||'';try{navigator.clipboard.writeText(t).then(function(){b.textContent='✅ Copiado'})}catch(x){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');b.textContent='✅ Copiado'}catch(y){}a.remove()}});
 function tExec(d){
   const g=G(),lb=d.ms.map(g.lblM),U=d.un,mt=d.mt==='qtd';
+  const relBtn='<div class="p3bar" style="margin-bottom:8px"><button class="btn secondary" type="button" data-a="rel">📄 Relatório mensal (PDF) — '+g.lblM(S.b)+'</button><span class="p3hint">Gera uma página pronta para imprimir ou salvar em PDF, do mês final do período.</span></div>';
   const yld=d.tot.perc!=null?100-d.tot.perc:null,yp=d.prev.perc!=null?100-d.prev.perc:null;
-  let h='<div class="p3kp">'+
+  let h=relBtn+'<div class="p3kp">'+
    kpi('Refugo ('+U+')',fm(d.tot.ref,mt?0:1),delta(d.tot.ref,d.prev.ref),spark(d.ref,OR))+
    (d.tot.perc!=null?kpi('% refugo Fundição',fm(d.tot.perc,2)+'%',delta(d.tot.perc,d.prev.perc)+(typeof meta!=='undefined'&&meta&&meta.perc>0?'<small class="'+(d.tot.perc>meta.perc?'up':'dn')+'"> · meta '+fm(meta.perc,1)+'%</small>':''),spark(d.perc.map(N),RD),RD)+kpi('Rendimento de qualidade',fm(yld,2)+'%','<small class="mu">produção boa ÷ produção</small>',spark(d.perc.map(v=>100-N(v)),GR),GR):'')+
    kpi('Retrabalho (peças)',fm(d.tot.rt),delta(d.tot.rt,d.prev.rt),spark(d.rtq,BL),BL)+
@@ -529,7 +540,7 @@ function tExec(d){
   /* montante por mês: devolução + refugo da Fundição + refugo da Fundição na Usinagem */
   {const mm=(cls,f)=>d.ms.map(k=>sum(d.R.filter(r=>r.k===k&&plc(r.pl)===cls),f)),mF=mm('F',d.vv),mN=mm('M',d.vv),mD=d.dev,tt=d.ms.map((k,i)=>N(mF[i])+N(mN[i])+N(mD[i])),
     leg='<div class="p3lg"><i style="--c:'+OR+'"></i>Refugo Fundição <i style="--c:'+YL+'"></i>Refugo Fundição na Usinagem <i style="--c:'+PU+'"></i>Devolução</div>',
-    tab=(a,b,c,u,dec)=>'<div class="tablewrap"><table class="p3t"><thead><tr><th>Mês</th><th>Fundição</th><th>Fund. na Usinagem</th><th>Devolução</th><th>Total</th></tr></thead><tbody>'+d.ms.map((k,i)=>'<tr><td>'+esc(lb[i])+'</td><td>'+fm(a[i],dec)+'</td><td>'+fm(b[i],dec)+'</td><td>'+fm(c[i],dec)+'</td><td><b>'+fm(N(a[i])+N(b[i])+N(c[i]),dec)+'</b></td></tr>').join('')+'</tbody><tfoot><tr><td><b>Total</b></td><td><b>'+fm(sum(a,x=>N(x)),dec)+'</b></td><td><b>'+fm(sum(b,x=>N(x)),dec)+'</b></td><td><b>'+fm(sum(c,x=>N(x)),dec)+'</b></td><td><b>'+fm(sum(tt,x=>x),dec)+'</b></td></tr></tfoot></table></div>';
+    tab=(a,b,c,u,dec)=>'<div class="tablewrap"><table class="p3t"><thead><tr><th>Mês</th><th>Fundição</th><th>Fund. Usin.</th><th>Devolução</th><th>Total</th></tr></thead><tbody>'+d.ms.map((k,i)=>'<tr><td>'+esc(lb[i])+'</td><td>'+fm(a[i],dec)+'</td><td>'+fm(b[i],dec)+'</td><td>'+fm(c[i],dec)+'</td><td><b>'+fm(N(a[i])+N(b[i])+N(c[i]),dec)+'</b></td></tr>').join('')+'</tbody><tfoot><tr><td><b>Total</b></td><td><b>'+fm(sum(a,x=>N(x)),dec)+'</b></td><td><b>'+fm(sum(b,x=>N(x)),dec)+'</b></td><td><b>'+fm(sum(c,x=>N(x)),dec)+'</b></td><td><b>'+fm(sum(tt,x=>x),dec)+'</b></td></tr></tfoot></table></div>';
    h+='<div class="p3c"><h4>📊 Montante por mês — Devolução + Refugo da Fundição + Refugo da Fundição na Usinagem ('+U+')</h4>'+combo({labels:lb,stack:true,bars:[{name:'Refugo Fundição',color:OR,values:mF},{name:'Refugo Fundição na Usinagem',color:YL,values:mN},{name:'Devolução',color:PU,values:mD}],unit:U,h:320})+leg+tab(mF,mN,mD,U,mt?0:1)+
      '<span class="mu">Cada barra soma, no mês, o refugo da planta Fundição, o refugo da planta Fundição na Usinagem e a devolução procedente. Refugo da Usinagem pura não entra neste gráfico.</span></div>';
    if(d.cu){const rF=d.ms.map(k=>sum(d.R.filter(r=>r.k===k&&plc(r.pl)==='F'),r=>N(r.rs))),rN=d.ms.map(k=>sum(d.R.filter(r=>r.k===k&&plc(r.pl)==='M'),r=>N(r.rs))),rD=d.ms.map(k=>sum(d.D.filter(r=>r.k===k),r=>N(r.rs)));
@@ -625,7 +636,7 @@ function fishSvg(o){
      '<text x="891" y="'+(SY+66)+'" text-anchor="middle" font-size="19" font-weight="900" fill="#ffb27a">'+money(tr)+'</text>';
   /* ossos */
   A.forEach((a,i)=>{
-    const top=i<3,col=i%3,cx=(top?150:150)+col*232,bx=cx-95,by=top?6:H-6-86,y0=top?by+86:by,y1=SY,x1=cx+112,sh=tk>0?a.k/tk:0,sw=(3+sh*13).toFixed(1);
+    const top=i<3,col=i%3,cx=(top?150:150)+col*234,bx=cx-95,by=top?6:H-6-86,y0=top?by+86:by,y1=SY,x1=cx+112,sh=tk>0?a.k/tk:0,sw=(3+sh*13).toFixed(1);
     const xAt=y=>cx+(y-y0)*(x1-cx)/(y1-y0);
     s+='<g class="p3m" data-m="'+esc(a.nome)+'" style="cursor:pointer"><line x1="'+cx+'" y1="'+y0+'" x2="'+x1+'" y2="'+y1+'" stroke="url(#'+id+i+')" stroke-width="'+sw+'" stroke-linecap="round"/>';
     a.mot.forEach((m,j)=>{const y=top?y0+34+j*40:y0-34-j*40,x=xAt(y),pc=a.k>0?m.v/a.k*100:0;
@@ -720,13 +731,99 @@ const CSS='@media(max-width:640px){.p3 .p3bar{display:grid!important;grid-templa
 '.p3k span{display:block;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}.p3k b{display:block;font-size:26px;font-weight:900;margin:3px 0}.p3k small{display:block;font-size:11px}.p3sk{margin-top:4px;height:26px}.p3sp{width:100%;height:26px}'+
 '.p3g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-bottom:12px}.p3g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}'+
 '.p3c{border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;background:linear-gradient(150deg,rgba(255,255,255,.08),rgba(255,255,255,.01) 40%),var(--card);box-shadow:var(--shadow,0 4px 14px rgba(0,0,0,.12)),inset 0 1px 0 rgba(255,255,255,.22);min-width:0}.p3g2 .p3c{margin-bottom:0}.p3c h4{margin:0 0 10px;font-size:14px;display:flex;gap:8px;align-items:center}.p3c h4::before{content:"";width:5px;height:16px;border-radius:3px;background:linear-gradient(180deg,#ffb27a,#ff6a1f,#b53a04)}.p3c h5{margin:0 0 6px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}'+
-'.p3svg{width:100%;height:auto;display:block;overflow:visible}.p3svg .gl{stroke:var(--border);stroke-width:1}.p3svg .ax{font-size:10.5px;fill:var(--muted)}.p3svg .vl{font-size:10px;font-weight:800;fill:var(--text)}.p3svg .bar{cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,.28));transition:opacity .15s}.p3svg .bar:hover{opacity:.82}.p3svg .glow{filter:drop-shadow(0 0 5px currentColor)}'+
+'.p3svg{width:100%;height:auto;display:block;overflow:visible}.p3svg .gl{stroke:var(--border);stroke-width:1}.p3svg .ax{font-size:11.5px;fill:var(--muted)}.p3svg .vl{font-size:11.5px;font-weight:800;fill:var(--text);paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round}.p3svg .vl2{font-size:11px;font-weight:800;paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round}.p3svg .vls{font-size:10.5px;font-weight:800;fill:#fff;paint-order:stroke;stroke:rgba(0,0,0,.55);stroke-width:2.5px;stroke-linejoin:round;pointer-events:none}.p3svg .bar{cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,.28));transition:opacity .15s}.p3svg .bar:hover{opacity:.82}.p3svg .glow{filter:drop-shadow(0 0 5px currentColor)}'+
 '.p3hint{font-size:12px;color:var(--muted);margin:6px 0}.mu{color:var(--muted)}.up{color:#ef4444;font-weight:800}.dn{color:#22c55e;font-weight:800}.p3lg{font-size:12px;color:var(--muted)}.p3lg i{display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--c);margin:0 4px 0 10px}'+
 '.p3ul{margin:0;padding-left:18px;line-height:1.7}.hb .hr{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:8px;align-items:center;margin:5px 0;font-size:12.5px;cursor:default}.hb .hn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hb .ht{height:14px;border-radius:7px;background:rgba(0,0,0,.2);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);overflow:hidden}.hb .ht i{display:block;height:100%;border-radius:7px;background:linear-gradient(180deg,var(--c),color-mix(in srgb,var(--c) 55%,#000));box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}.hb .hv{font-weight:800;white-space:nowrap}.hb small{color:var(--muted);font-weight:600}'+
 '.p3hm{overflow:auto}.p3hm table{border-collapse:separate;border-spacing:3px;font-size:11.5px;width:100%}.p3hm th{font-weight:800;text-align:left;padding:3px 6px;white-space:nowrap;color:var(--muted)}.p3hm thead th{text-align:center}.p3hm td{min-width:40px;height:30px;text-align:center;border-radius:6px;background:rgba(127,140,155,.1);cursor:default}.p3hm td.on{background:rgba(255,106,31,calc(.12 + var(--a)*.88));color:#fff;font-weight:800;cursor:pointer;text-shadow:0 1px 2px rgba(0,0,0,.4)}.p3hm td.on:hover{outline:2px solid #fff}.p3hm td.tt{background:none;font-weight:900;color:var(--text)}'+
+'@media(max-width:600px){.p3t{font-size:11.5px}.p3t th,.p3t td{padding:6px 4px!important}}'+
 '.p3t tfoot td{border-top:2px solid #ff6a1f;padding:8px}.p3t{width:100%;border-collapse:collapse;font-size:12.5px}.p3t th{text-align:left;padding:8px;background:linear-gradient(180deg,#52657a,#26323f);color:#fff;border-bottom:2px solid #ff6a1f;white-space:nowrap}.p3t td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle}.p3t tbody tr{cursor:pointer}.p3t tbody tr:hover td{background:rgba(255,106,31,.1)}.ib{display:inline-block;width:60px;height:8px;border-radius:4px;background:rgba(0,0,0,.25);margin-right:6px;vertical-align:middle;overflow:hidden}.ib i{display:block;height:100%;background:linear-gradient(90deg,#ffb27a,#ff6a1f)}.p3t .p3sp{width:84px}'+
 '.p3fish{overflow-x:auto}.p3fs{min-width:720px;max-width:1100px;margin:0 auto}.p3m:hover line{filter:brightness(1.2)}.p3dt{margin-top:12px;padding:12px;border:1px dashed var(--border);border-radius:12px;animation:p3in .3s both}@keyframes p3in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}@media(max-width:820px){.p3g2{grid-template-columns:1fr}.p3k b{font-size:21px}}';
 let built=false,SIG='';
+/* ---------- metas finas (cliente/peça), projeção, ações da ata e relatório mensal ---------- */
+function ymdS(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function mfOk(){try{if(typeof cadastroAccessAllowed==='function'&&!cadastroAccessAllowed()){alert('Para alterar metas, libere o acesso ao Cadastro (senha).');return false}}catch(e){}return true}
+function mfStat(real,proj,meta){return real>meta?'bad':proj>meta?'warn':'ok'}
+function mfLinhas(){
+  const g=G(),k=hk(),Rm=g.refAll().filter(r=>r.k===k),dt=new Date(),dd=dt.getDate(),dm=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate(),f=dm/Math.max(1,dd),M=typeof mfLer==='function'?mfLer():{p:{},c:{}},out=[];
+  Object.keys(M.c||{}).forEach(n=>{const real=sum(Rm.filter(r=>r.cli===n),r=>N(r.kg)),meta=N(M.c[n]);out.push({t:'c',n,meta,real,proj:real*f})});
+  Object.keys(M.p||{}).forEach(n=>{const real=sum(Rm.filter(r=>r.cod===n),r=>N(r.kg)),meta=N(M.p[n]);out.push({t:'p',n,meta,real,proj:real*f})});
+  return out;
+}
+window.__mfAlertas=function(){try{return mfLinhas().filter(x=>x.meta>0&&x.proj>x.meta).map(x=>(x.t==='c'?'Cliente ':'Peça ')+x.n+': '+(x.real>x.meta?'já passou':'vai passar')+' a meta de '+fm(x.meta,0)+' kg no mês (realizado '+fm(x.real,0)+' kg, projeção '+fm(x.proj,0)+' kg).')}catch(e){return[]}};
+function tMetas(d){
+  const g=G(),k=hk(),R0=g.refAll(),dt=new Date(),dd=dt.getDate(),dm=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate(),f=dm/Math.max(1,dd);
+  const mt=g.metricasMes(k,R0,g.devAll()),kgF=mt.kgF,projF=kgF*f,prod=mt.prod,perc=mt.perc,mk=(typeof meta!=='undefined'&&meta)?N(meta.kg):0,mp=(typeof meta!=='undefined'&&meta)?N(meta.perc):0;
+  let h='<div class="p3c"><h4>📈 Projeção de fechamento — '+g.lblM(k)+' (Fundição)</h4><div class="p3hint">Projeção simples: ritmo do mês até hoje ('+dd+' de '+dm+' dias) mantido até o fim do mês. Usa o tipo de peso selecionado.</div><div class="p3kp">'+
+    kpi('Refugo realizado',fm(kgF,1)+' kg','<small class="mu">até hoje</small>')+
+    kpi('Projeção do mês',fm(projF,1)+' kg',mk>0?'<small class="'+(projF>mk?'up':'dn')+'">meta '+fm(mk,0)+' kg · '+(projF>mk?'acima':'dentro')+'</small>':'<small class="mu">sem meta em kg (Cadastro › Metas)</small>')+
+    kpi('% refugo atual',perc==null?'—':fm(perc,2)+'%',mp>0?'<small class="'+(perc!=null&&perc>mp?'up':'dn')+'">meta '+fm(mp,2)+'%</small>':'<small class="mu">sem meta em %</small>')+
+    (perc!=null&&mp>0&&prod>0?kpi('Folga até a meta de %',fm(mp*prod*f/100-projF,0)+' kg','<small class="mu">no ritmo atual de produção</small>'):'')+'</div></div>';
+  const M=typeof mfLer==='function'?mfLer():{p:{},c:{}},L=mfLinhas(),cl=[...new Set(R0.map(r=>r.cli))].filter(Boolean).sort(),pc=new Map();R0.forEach(r=>{if(r.cod&&!pc.has(r.cod))pc.set(r.cod,r.pec)});
+  h+='<div class="p3c"><h4>🎯 Metas por cliente e por peça (kg de refugo por mês)</h4><div class="p3hint">Defina um limite mensal. O status usa o realizado e a projeção do mês atual. Alterar exige acesso ao Cadastro.</div>'+
+    '<div class="p3bar"><select id="mfTipo"><option value="c">Cliente</option><option value="p">Peça (código)</option></select><input id="mfNome" class="p3in" style="max-width:280px" list="mfLista" placeholder="Cliente ou código da peça"><datalist id="mfLista">'+cl.map(x=>'<option value="'+esc(x)+'">').join('')+[...pc].slice(0,2000).map(x=>'<option value="'+esc(x[0])+'" label="'+esc(x[1])+'">').join('')+'</datalist><input id="mfVal" class="p3in" style="max-width:130px" type="number" min="0" step="any" placeholder="Meta kg/mês"><button type="button" class="btn secondary" data-mf="add">Adicionar</button></div>'+
+    '<div class="tablewrap"><table class="p3t"><thead><tr><th>Tipo</th><th>Cliente / peça</th><th>Meta (kg/mês)</th><th>Realizado</th><th>Projeção</th><th>Status</th><th></th></tr></thead><tbody>'+
+    L.map(x=>{const st=x.meta>0?mfStat(x.real,x.proj,x.meta):'none';return '<tr><td>'+(x.t==='c'?'Cliente':'Peça')+'</td><td>'+esc(x.n)+(x.t==='p'&&pc.get(x.n)?' <span class="mu">'+esc(pc.get(x.n))+'</span>':'')+'</td><td><input class="p3in" style="width:100px" type="number" min="0" step="any" data-mfi="1" data-t="'+x.t+'" data-n="'+esc(x.n)+'" value="'+x.meta+'"></td><td>'+fm(x.real,1)+'</td><td>'+fm(x.proj,1)+'</td><td class="'+(st==='ok'?'dn':st==='none'?'':'up')+'">'+(st==='ok'?'✔ dentro':st==='warn'?'⚠ vai passar':st==='bad'?'▲ passou':'—')+'</td><td><button type="button" class="btn secondary" data-mf="del" data-t="'+x.t+'" data-n="'+esc(x.n)+'">✕</button></td></tr>'}).join('')+(L.length?'':'<tr><td colspan="7" class="mu">Nenhuma meta definida ainda.</td></tr>')+'</tbody></table></div></div>';
+  const Rm=R0.filter(r=>r.k===k),top=(key,def)=>rank(Rm,key,r=>N(r.kg),8).map(e=>{const m=N((def||{})[e.nome]);return{nome:e.nome,v:e.v,m}});
+  h+='<div class="p3g2"><div class="p3c"><h4>Maiores clientes no mês (kg)</h4>'+hbar(top(r=>r.cli),v=>fm(v,1),0,OR)+'</div><div class="p3c"><h4>Maiores peças no mês (kg)</h4>'+hbar(rank(Rm,r=>r.cod||r.pec,r=>N(r.kg),8),v=>fm(v,1),0,OR)+'</div></div>';
+  return h;
+}
+function acAlvoMatch(alvo){const n=norm(alvo);return r=>norm(r.mot).includes(n)||norm(r.cod)===n||norm(r.pec).includes(n)||norm(r.cli).includes(n)}
+function acAvalia(m,x,R0){
+  if(!x.alvo)return null;const ref=String(x.prazo||m.data||'').slice(0,10);if(!ref)return null;
+  const hoje=ymdS(new Date()),mt=acAlvoMatch(x.alvo),add=(s,n)=>{const p=s.split('-'),dt=new Date(+p[0],+p[1]-1,+p[2]+n);return ymdS(dt)};
+  const diff=(a,b)=>Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/864e5);
+  const A=R0.filter(r=>r.dt&&mt(r));
+  if(ref>hoje)return{ref,st:'aguarda',txt:'⏳ Aguardando o prazo ('+ref.split('-').reverse().join('/')+')'};
+  const ini=add(ref,-90),fim=ref>=add(hoje,-90)?hoje:add(ref,90),db=90,da=Math.max(1,diff(ref,fim));
+  const kb=sum(A.filter(r=>r.dt>=ini&&r.dt<ref),r=>N(r.kg)),ka=sum(A.filter(r=>r.dt>=ref&&r.dt<=fim),r=>N(r.kg)),rb=kb/db*30,ra=ka/da*30,ch=rb>0?(ra-rb)/rb*100:null;
+  let st,txt;if(da<14){st='acomp';txt='🔎 Em acompanhamento (só '+da+' dia(s) depois do prazo)'}else if(rb===0&&ra===0){st='sem';txt='— Alvo sem lançamentos no período'}else if(ch==null){st='piorou';txt='▲ Alvo passou a ter refugo (antes não tinha)'}else if(ch<=-10){st='ok';txt='✅ Eficaz: queda de '+fm(Math.abs(ch),0)+'%'}else if(ch>=10){st='piorou';txt='▲ Piorou: alta de '+fm(ch,0)+'%'}else{st='neutro';txt='➖ Sem efeito claro ('+(ch>=0?'+':'')+fm(ch,0)+'%)'}
+  return{ref,st,txt,rb,ra,ch,db,da};
+}
+function acSvg(vals,labs,mi){
+  const W=cwid(),H=150,pl=8,pb=26,pt=18,n=vals.length,bw=(W-pl*2)/n,mx=Math.max(1,...vals);let s='<svg viewBox="0 0 '+W+' '+H+'" class="p3svg" style="width:100%;max-width:'+W+'px">';
+  vals.forEach((v,i)=>{const h=(H-pb-pt)*v/mx,x=pl+i*bw+bw*.15,y=H-pb-h;s+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+(bw*.7).toFixed(1)+'" height="'+Math.max(0,h).toFixed(1)+'" fill="'+(i>=mi&&mi>=0?GR:OR)+'" rx="2"/>'+(v>0?'<text x="'+(x+bw*.35).toFixed(1)+'" y="'+(y-3).toFixed(1)+'" text-anchor="middle" font-size="'+(bw<30?9:11)+'" fill="currentColor">'+fm(v,v<10?1:0)+'</text>':'')+'<text x="'+(x+bw*.35).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" font-size="'+(bw<30?8:10)+'" fill="currentColor" opacity=".7">'+esc(labs[i])+'</text>'});
+  if(mi>=0)s+='<line x1="'+(pl+mi*bw).toFixed(1)+'" x2="'+(pl+mi*bw).toFixed(1)+'" y1="4" y2="'+(H-pb)+'" stroke="#888" stroke-dasharray="4 3"/><text x="'+(pl+mi*bw+3).toFixed(1)+'" y="12" font-size="10" fill="currentColor">ação ▸</text>';
+  return s+'</svg>';
+}
+function acoesAbertas(){const hoje=ymdS(new Date()),o=[];(window.reunioes||[]).forEach(m=>(m.acoes||[]).forEach(x=>{if(x&&x.acao&&x.status!=='Concluída')o.push({m,x,venc:!!(x.prazo&&String(x.prazo).slice(0,10)<hoje)})}));return o}
+window.__acVencidas=function(){try{return acoesAbertas().filter(a=>a.venc).map(a=>a.x.acao+(a.x.resp?' ('+a.x.resp+')':'')+' — prazo '+String(a.x.prazo).slice(0,10).split('-').reverse().join('/'))}catch(e){return[]}};
+function tAcoes(d){
+  const g=G(),R0=g.refAll(),L=[];(window.reunioes||[]).forEach(m=>(m.acoes||[]).forEach(x=>{if(x&&x.acao)L.push({m,x})}));
+  L.sort((a,b)=>String(b.x.prazo||b.m.data).localeCompare(String(a.x.prazo||a.m.data)));
+  const ab=acoesAbertas(),ev=ab.filter(a=>a.venc).length,av=L.map(a=>acAvalia(a.m,a.x,R0)),ef=av.filter(a=>a&&a.st==='ok').length,ac=av.filter(a=>a).length;
+  let h='<div class="p3c"><h4>✅ Ações da ata × resultado no refugo</h4><div class="p3hint">Para cada ação com <b>alvo</b> preenchido na ata, compara o refugo do alvo (motivo, peça ou cliente) nos 90 dias antes e depois do prazo, em kg por 30 dias. Eficaz = queda de 10% ou mais. No gráfico, as barras verdes são os meses a partir do prazo.</div><div class="p3kp">'+
+    kpi('Ações cadastradas',String(L.length),'<small class="mu">em '+(window.reunioes||[]).length+' ata(s)</small>')+kpi('Abertas',String(ab.length),'<small class="'+(ev?'up':'mu')+'">'+ev+' vencida(s)</small>')+kpi('Eficazes',String(ef),'<small class="mu">de '+ac+' avaliada(s)</small>')+'</div></div>';
+  if(!L.length)return h+'<div class="p3c"><span class="mu">Nenhuma ação registrada nas atas ainda.</span></div>';
+  const m12=g.addM(hk(),-11),ms=[];for(let i=0;i<12;i++)ms.push(g.addM(m12,i));
+  L.slice(0,16).forEach((a,i)=>{const v=av[i],x=a.x,mt=x.alvo?acAlvoMatch(x.alvo):null,vals=mt?ms.map(k=>sum(R0.filter(r=>r.k===k&&mt(r)),r=>N(r.kg))):null,refK=v?v.ref.slice(0,7):'',mi=ms.indexOf(refK);
+    h+='<div class="p3c"><h4>'+esc(x.acao)+'</h4><div class="p3hint">Ata '+esc(a.m.num||'')+' · '+String(a.m.data||'').split('-').reverse().join('/')+' · resp.: '+esc(x.resp||'—')+' · prazo: '+(x.prazo?String(x.prazo).slice(0,10).split('-').reverse().join('/'):'—')+' · status: <b>'+esc(x.status||'')+'</b>'+(x.alvo?' · alvo: <b>'+esc(x.alvo)+'</b>':'')+'</div>'+
+      (v?'<p><b>'+v.txt+'</b>'+(v.rb!=null&&v.st!=='aguarda'?' <span class="mu">(antes '+fm(v.rb,1)+' kg/30d → depois '+fm(v.ra,1)+' kg/30d)</span>':'')+'</p>':'<p class="mu">Preencha o <b>alvo</b> e o prazo na ata para acompanhar o efeito no refugo.</p>')+(vals&&vals.some(q=>q>0)?acSvg(vals,ms.map(k=>k.slice(5,7)+'/'+k.slice(2,4)),mi):'')+'</div>'});
+  if(L.length>16)h+='<div class="p3c"><span class="mu">Mostrando as 16 ações mais recentes de '+L.length+'.</span></div>';
+  return h;
+}
+function relMensal(mes){
+  const g=G(),sv={a:S.a,b:S.b,pl:S.pl,mt:S.mt};let dm,d6;
+  try{S.pl='ab';S.mt='kg';S.a=S.b=mes;dm=dados();S.a=g.addM(mes,-5);S.b=mes;d6=dados()}catch(e){console.error(e);alert('Não foi possível montar o relatório.');return}finally{S.a=sv.a;S.b=sv.b;S.pl=sv.pl;S.mt=sv.mt}
+  const lb=d6.ms.map(g.lblM),U='kg',hoje=new Date().toLocaleDateString('pt-BR');
+  let h='<div class="p3rh"><h2>Relatório mensal de refugos — '+g.lblM(mes)+'</h2><span>Metal Indianápolis · gerado em '+hoje+' · peso: '+((typeof PESO_CURTO!=='undefined'&&PESO_CURTO[pesoTipo()])||pesoTipo())+'</span></div>';
+  h+='<div class="p3kp">'+kpi('Refugo (kg)',fm(dm.tot.ref,1),delta(dm.tot.ref,dm.prev.ref),spark(d6.ref,OR))+(dm.tot.perc!=null?kpi('% refugo Fundição',fm(dm.tot.perc,2)+'%',delta(dm.tot.perc,dm.prev.perc)+(typeof meta!=='undefined'&&meta&&meta.perc>0?'<small class="'+(dm.tot.perc>meta.perc?'up':'dn')+'"> · meta '+fm(meta.perc,1)+'%</small>':''),spark(d6.perc.map(N),RD),RD):'')+
+    kpi('Retrabalho (peças)',fm(dm.tot.rt),delta(dm.tot.rt,dm.prev.rt),spark(d6.rtq,BL),BL)+kpi('Devolução procedente (kg)',fm(dm.tot.dev,1),delta(dm.tot.dev,dm.prev.dev),spark(d6.dev,PU),PU)+(dm.tot.ppm!=null?kpi('PPM de devolução',fm(dm.tot.ppm,0),delta(dm.tot.ppm,dm.prev.ppm),spark(d6.ppm.map(N),YL),YL):'')+(dm.cu?kpi('Custo da não qualidade','R$ '+fm(dm.tot.rs),delta(dm.tot.rs,dm.prev.rs),spark(d6.cus,RD),RD):'')+'</div>';
+  const mm=(cls)=>d6.ms.map(k=>sum(d6.R.filter(r=>r.k===k&&plc(r.pl)===cls),d6.vv)),mF=mm('F'),mN=mm('M');
+  h+='<div class="p3g2"><div class="p3c"><h4>Refugo mensal (últimos 6 meses)</h4>'+combo({labels:lb,bars:[{name:'Refugo (kg)',color:OR,values:d6.ref}],unit:U,vals:true})+'</div><div class="p3c"><h4>Montante: refugo + devolução (kg)</h4>'+combo({labels:lb,stack:true,bars:[{name:'Refugo Fundição',color:OR,values:mF},{name:'Refugo Fund. na Usinagem',color:YL,values:mN},{name:'Devolução',color:PU,values:d6.dev}],unit:U,vals:true})+'<div class="p3lg"><i style="--c:'+OR+'"></i>Fundição <i style="--c:'+YL+'"></i>Fund. na Usinagem <i style="--c:'+PU+'"></i>Devolução</div></div></div>';
+  const t=dm.tot.ref||1;
+  h+='<div class="p3g2"><div class="p3c"><h4>Principais motivos</h4>'+hbar(rank(dm.R,r=>r.mot,dm.vv,6),v=>fm(v,1),t,OR)+'</div><div class="p3c"><h4>Principais clientes</h4>'+hbar(rank(dm.R,r=>r.cli,dm.vv,6),v=>fm(v,1),t,BL)+'</div></div>';
+  const pl=pecasLista(dm).slice(0,6);
+  h+='<div class="p3c"><h4>Peças mais críticas do mês</h4><div class="tablewrap"><table class="p3t"><thead><tr><th>Peça</th><th>Cliente</th><th>Refugo (kg)</th><th>Devolução (kg)</th><th>Retrab. (pç)</th></tr></thead><tbody>'+pl.map(e=>'<tr><td>'+esc((e.cod?e.cod+' — ':'')+(e.nome||''))+'</td><td>'+esc(e.cli||'')+'</td><td>'+fm(e.ref,1)+'</td><td>'+fm(e.dev,1)+'</td><td>'+fm(e.rt)+'</td></tr>').join('')+(pl.length?'':'<tr><td colspan="5" class="mu">Sem dados.</td></tr>')+'</tbody></table></div></div>';
+  const ab=acoesAbertas();
+  h+='<div class="p3c"><h4>Ações em aberto</h4>'+(ab.length?'<ul class="p3ul">'+ab.slice(0,12).map(a=>'<li>'+(a.venc?'<b class="up">VENCIDA · </b>':'')+esc(a.x.acao)+' — '+esc(a.x.resp||'sem responsável')+(a.x.prazo?' · prazo '+String(a.x.prazo).slice(0,10).split('-').reverse().join('/'):'')+'</li>').join('')+'</ul>':'<span class="mu">Nenhuma ação em aberto.</span>')+'</div>';
+  try{h+=diag(dm)}catch(e){}
+  let box=$('p3rel');if(box)box.remove();box=document.createElement('div');box.id='p3rel';box.className='p3';box.innerHTML=h;
+  box.querySelectorAll('#p3dgcp,.p3kp .p3info').forEach(x=>x.remove());
+  let st=$('p3relcss');if(!st){st=document.createElement('style');st.id='p3relcss';st.textContent='#p3rel{display:none}.p3rh{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:12px;border-bottom:3px solid #ff6a1f;padding-bottom:6px}.p3rh h2{margin:0}@media print{body.p3relmode>*:not(#p3rel){display:none!important}body.p3relmode #p3rel{display:block!important;padding:0;color:#111;background:#fff}body.p3relmode #p3rel .p3c{break-inside:avoid;box-shadow:none}}';document.head.appendChild(st)}
+  document.body.appendChild(box);document.body.classList.add('p3relmode');
+  const fim=()=>{document.body.classList.remove('p3relmode');const b=$('p3rel');if(b)b.remove();window.removeEventListener('afterprint',fim)};
+  window.addEventListener('afterprint',fim);setTimeout(()=>{try{window.print()}catch(e){fim()}},250);setTimeout(()=>{if($('p3rel')&&!window.__p3relKeep)fim()},120000);
+}
 function build(){
   if(built||$('painel360'))return;built=true;
   const st=document.createElement('style');st.id='p3css';st.textContent=CSS;document.head.appendChild(st);
@@ -735,29 +832,35 @@ function build(){
   document.querySelectorAll('.tab[data-page="dashboardQtd"]').forEach(b=>{const n=document.createElement('button');n.className='tab';n.dataset.page='painel360';n.type='button';n.innerHTML='📊 &nbsp; Painel 360';n.addEventListener('click',e=>{e.preventDefault();navigate('painel360');setTimeout(()=>render(true),60)});b.parentNode.insertBefore(n,b.nextSibling)});
   sec.addEventListener('click',onClick);sec.addEventListener('change',onChange);sec.addEventListener('input',onInput);
 }
+let _lw=cwid();window.addEventListener('resize',function(){clearTimeout(window.__p3rs);window.__p3rs=setTimeout(function(){const w=cwid();if(Math.abs(w-_lw)>=30){_lw=w;try{render(true)}catch(e){}}},250)});
 function render(force){
   const sec=$('painel360');if(!sec||!sec.classList.contains('active'))return;
-  let sig='';try{sig=[Array.isArray(data)?data.length:0,pesoTipo(),window.devDados?window.devDados().length:0,(typeof rtLoad==='function'?rtLoad().length:0),S.a,S.b,S.pl,S.mt,S.tab,window.__ling?window.__ling.sig():'',(typeof insLer==='function'?(()=>{const q=insLer();return q.qtd.em+'-'+q.preco.em})():'')].join('|')}catch(e){}
+  let sig='';try{sig=[Array.isArray(data)?data.length:0,pesoTipo(),window.devDados?window.devDados().length:0,(typeof rtLoad==='function'?rtLoad().length:0),S.a,S.b,S.pl,S.mt,S.tab,(typeof mfLer==='function'?mfLer().ts:0),(window.reunioes||[]).length,window.__ling?window.__ling.sig():'',(typeof insLer==='function'?(()=>{const q=insLer();return q.qtd.em+'-'+q.preco.em})():'')].join('|')}catch(e){}
   if(!force&&sig===SIG&&sec.firstChild)return;SIG=sig;
   const g=G();let d;try{d=dados()}catch(e){console.error(e);sec.innerHTML='<div class="p3c">Não foi possível montar o painel.</div>';return}
   const pesoOpts=['bruto','liquido','usinado'].map(t=>'<option value="'+t+'"'+(pesoTipo()===t?' selected':'')+'>'+((typeof PESO_CURTO!=='undefined'&&PESO_CURTO[t])||t)+'</option>').join('');
   const f=document.activeElement&&document.activeElement.id==='p3q';
   let h=(window.__dbSubHtml?window.__dbSubHtml('painel360'):'')+'<div class="p3bar"><label>De</label><input type="month" id="p3a" value="'+S.a+'"><label>até</label><input type="month" id="p3b" value="'+S.b+'"><select id="p3pl"><option value="ab"'+(S.pl==='ab'?' selected':'')+'>Fundição + Usinagem</option><option value="f"'+(S.pl==='f'?' selected':'')+'>Só Fundição</option><option value="u"'+(S.pl==='u'?' selected':'')+'>Só Usinagem</option></select><select id="p3mt"><option value="kg"'+(S.mt==='kg'?' selected':'')+'>Peso (kg)</option><option value="qtd"'+(S.mt==='qtd'?' selected':'')+'>Quantidade (peças)</option></select><select id="p3pe" title="Tipo de peso">'+pesoOpts+'</select><button class="btn secondary" type="button" data-a="m6">Últimos 6 meses</button><button class="btn secondary" type="button" data-a="m12">12 meses</button><button class="btn secondary" type="button" data-a="ano">Ano atual</button><button class="btn primary" type="button" data-a="pdf">🖨 Imprimir / PDF</button></div>';
   h+='<div class="p3tabs">'+TABS.map(t=>'<button type="button" data-t="'+t[0]+'" class="'+(S.tab===t[0]?'on':'')+'">'+t[1]+'</button>').join('')+'</div>';
-  h+={exec:tExec,pareto:tPareto,heat:tHeat,pecas:tPecas,cli:tCli,cal:tCal,peixe:tPeixe,ling:tLing,ins:tIns}[S.tab](d);
+  h+={exec:tExec,pareto:tPareto,heat:tHeat,pecas:tPecas,cli:tCli,cal:tCal,peixe:tPeixe,ling:tLing,ins:tIns,metas:tMetas,acoes:tAcoes}[S.tab](d);
   sec.innerHTML=h;sec._d=d;
   if(f){const q=$('p3q');if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length)}}
 }
 function onClick(e){
   const sec=$('painel360'),d=sec._d;
+  const mf=e.target.closest('[data-mf]');if(mf){
+    if(!mfOk())return;const M=mfLer();
+    if(mf.dataset.mf==='add'){const t=$('mfTipo').value,n=String($('mfNome').value||'').trim(),v=parseFloat($('mfVal').value);if(!n||!(v>=0)){alert('Informe o cliente ou o código da peça e a meta em kg.');return}(t==='c'?M.c:M.p)[n]=v}
+    else if(mf.dataset.mf==='del'){if(!confirm('Remover esta meta?'))return;delete (mf.dataset.t==='c'?M.c:M.p)[mf.dataset.n]}
+    mfGravar(M);render(true);return}
   const t=e.target.closest('[data-t]');if(t){S.tab=t.dataset.t;save();render(true);return}
-  const a=e.target.closest('[data-a]');if(a){const k=a.dataset.a,h=hk();if(k==='m6'){S.b=h;S.a=G().addM(h,-5)}else if(k==='m12'){S.b=h;S.a=G().addM(h,-11)}else if(k==='ano'){S.a=h.slice(0,4)+'-01';S.b=h}else if(k==='pdf'){window.print();return}else if(k==='png'){pngFish();return}else if(k==='cost'){try{toggleCostAccess()}catch(x){}setTimeout(()=>render(true),400);return}save();render(true);return}
+  const a=e.target.closest('[data-a]');if(a){const k=a.dataset.a,h=hk();if(k==='m6'){S.b=h;S.a=G().addM(h,-5)}else if(k==='m12'){S.b=h;S.a=G().addM(h,-11)}else if(k==='ano'){S.a=h.slice(0,4)+'-01';S.b=h}else if(k==='pdf'){window.print();return}else if(k==='rel'){relMensal(S.b);return}else if(k==='png'){pngFish();return}else if(k==='cost'){try{toggleCostAccess()}catch(x){}setTimeout(()=>render(true),400);return}save();render(true);return}
   const mm=e.target.closest('.p3m');if(mm){detM(d,mm.dataset.m);return}
   const bar=e.target.closest('rect.bar');if(bar&&S.tab==='pareto'){const mot=rank(d.R,r=>r.mot,d.vv,14)[+bar.dataset.i];if(mot)detMotivo(d,mot.nome);return}
   const c=e.target.closest('.p3hm td.on');if(c){detCel(d,c.dataset.r,c.dataset.k,c.dataset.w);return}
   const r=e.target.closest('.p3t tbody tr[data-cod]');if(r){detPeca(d,r.dataset.cod)}
 }
-function onChange(e){const id=e.target.id;if(id==='p3a'&&e.target.value){S.a=e.target.value;if(S.a>S.b)S.b=S.a}else if(id==='p3b'&&e.target.value){S.b=e.target.value;if(S.b<S.a)S.a=S.b}else if(id==='p3pl')S.pl=e.target.value;else if(id==='p3mt')S.mt=e.target.value;else if(id==='p3pe'){setPesoTipo(e.target.value);return}else return;save();render(true)}
+function onChange(e){const id=e.target.id;if(e.target.dataset&&e.target.dataset.mfi){if(!mfOk()){render(true);return}const M=mfLer(),v=parseFloat(e.target.value);if(v>=0){(e.target.dataset.t==='c'?M.c:M.p)[e.target.dataset.n]=v;mfGravar(M)}render(true);return}if(id==='p3a'&&e.target.value){S.a=e.target.value;if(S.a>S.b)S.b=S.a}else if(id==='p3b'&&e.target.value){S.b=e.target.value;if(S.b<S.a)S.a=S.b}else if(id==='p3pl')S.pl=e.target.value;else if(id==='p3mt')S.mt=e.target.value;else if(id==='p3pe'){setPesoTipo(e.target.value);return}else return;save();render(true)}
 let tq=0;function onInput(e){if(e.target.id==='p3q'){S.q=e.target.value;clearTimeout(tq);tq=setTimeout(()=>render(true),250)}}
 function ini(){try{build()}catch(e){console.error(e)}}
 ini();
