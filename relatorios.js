@@ -1,4 +1,4 @@
-window.__V=window.__V||{};window.__V.relatorios='v234';
+window.__V=window.__V||{};window.__V.relatorios='v237';
 /* ==================================================================
    RELATÓRIOS MENSAIS — Retrabalhos e Devoluções
    Mesmo formato do relatório mensal de refugos: gráficos com análise
@@ -524,7 +524,7 @@ function diag(d){
 document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('#p3dgcp');if(!b)return;var t=window.__p3diag||'';try{navigator.clipboard.writeText(t).then(function(){b.textContent='✅ Copiado'})}catch(x){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');b.textContent='✅ Copiado'}catch(y){}a.remove()}});
 function tExec(d){
   const g=G(),lb=d.ms.map(g.lblM),U=d.un,mt=d.mt==='qtd';
-  const relBtn='<div class="p3bar" style="margin-bottom:8px"><button class="btn secondary" type="button" data-a="rel">📄 Relatório mensal (PDF) — '+g.lblM(S.b)+'</button><span class="p3hint">Gera uma página pronta para imprimir ou salvar em PDF, do mês final do período.</span></div>';
+  const relBtn='<div class="p3bar" style="margin-bottom:8px"><button class="btn secondary" type="button" data-a="rel">📄 Relatório mensal (PDF) — '+g.lblM(S.b)+'</button><span class="p3hint">Gera uma página pronta para imprimir ou salvar em PDF, do mês final do período.</span><button class="btn secondary" type="button" data-a="rf">📑 Relatório de fundição (nodular × cinzento)</button></div>';
   const yld=d.tot.perc!=null?100-d.tot.perc:null,yp=d.prev.perc!=null?100-d.prev.perc:null;
   let h=relBtn+'<div class="p3kp">'+
    kpi('Refugo ('+U+')',fm(d.tot.ref,mt?0:1),delta(d.tot.ref,d.prev.ref),spark(d.ref,OR))+
@@ -636,7 +636,7 @@ function fishSvg(o){
      '<text x="891" y="'+(SY+66)+'" text-anchor="middle" font-size="19" font-weight="900" fill="#ffb27a">'+money(tr)+'</text>';
   /* ossos */
   A.forEach((a,i)=>{
-    const top=i<3,col=i%3,cx=(top?150:150)+col*234,bx=cx-95,by=top?6:H-6-86,y0=top?by+86:by,y1=SY,x1=cx+112,sh=tk>0?a.k/tk:0,sw=(3+sh*13).toFixed(1);
+    const top=i<3,col=i%3,cx=(top?150:150)+col*237,bx=cx-95,by=top?6:H-6-86,y0=top?by+86:by,y1=SY,x1=cx+112,sh=tk>0?a.k/tk:0,sw=(3+sh*13).toFixed(1);
     const xAt=y=>cx+(y-y0)*(x1-cx)/(y1-y0);
     s+='<g class="p3m" data-m="'+esc(a.nome)+'" style="cursor:pointer"><line x1="'+cx+'" y1="'+y0+'" x2="'+x1+'" y2="'+y1+'" stroke="url(#'+id+i+')" stroke-width="'+sw+'" stroke-linecap="round"/>';
     a.mot.forEach((m,j)=>{const y=top?y0+34+j*40:y0-34-j*40,x=xAt(y),pc=a.k>0?m.v/a.k*100:0;
@@ -817,12 +817,16 @@ function relMensal(mes){
   const ab=acoesAbertas();
   h+='<div class="p3c"><h4>Ações em aberto</h4>'+(ab.length?'<ul class="p3ul">'+ab.slice(0,12).map(a=>'<li>'+(a.venc?'<b class="up">VENCIDA · </b>':'')+esc(a.x.acao)+' — '+esc(a.x.resp||'sem responsável')+(a.x.prazo?' · prazo '+String(a.x.prazo).slice(0,10).split('-').reverse().join('/'):'')+'</li>').join('')+'</ul>':'<span class="mu">Nenhuma ação em aberto.</span>')+'</div>';
   try{h+=diag(dm)}catch(e){}
-  let box=$('p3rel');if(box)box.remove();box=document.createElement('div');box.id='p3rel';box.className='p3';box.innerHTML=h;
+  let box=$('p3rel');if(box)box.remove();box=document.createElement('div');box.id='p3rel';
+  box.innerHTML='<div class="p3rbar"><button type="button" class="p3rb1" id="p3relPrint">🖨 Imprimir / salvar em PDF</button><button type="button" id="p3relClose">✕ Fechar</button></div><div class="p3 p3rbody">'+h+'</div>';
   box.querySelectorAll('#p3dgcp,.p3kp .p3info').forEach(x=>x.remove());
-  let st=$('p3relcss');if(!st){st=document.createElement('style');st.id='p3relcss';st.textContent='#p3rel{display:none}.p3rh{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:12px;border-bottom:3px solid #ff6a1f;padding-bottom:6px}.p3rh h2{margin:0}@media print{body.p3relmode>*:not(#p3rel){display:none!important}body.p3relmode #p3rel{display:block!important;padding:0;color:#111;background:#fff}body.p3relmode #p3rel .p3c{break-inside:avoid;box-shadow:none}}';document.head.appendChild(st)}
-  document.body.appendChild(box);document.body.classList.add('p3relmode');
-  const fim=()=>{document.body.classList.remove('p3relmode');const b=$('p3rel');if(b)b.remove();window.removeEventListener('afterprint',fim)};
-  window.addEventListener('afterprint',fim);setTimeout(()=>{try{window.print()}catch(e){fim()}},250);setTimeout(()=>{if($('p3rel')&&!window.__p3relKeep)fim()},120000);
+  let st=$('p3relcss');if(st)st.remove();st=document.createElement('style');st.id='p3relcss';
+  st.textContent='#p3rel{position:fixed;inset:0;z-index:100000;overflow:auto;background:#fff;color:#111;--text:#111;--muted:#555;--card:#fff;--border:#d0d5dd;--shadow:none;--bg:#fff;padding:14px 16px}#p3rel *{text-shadow:none}#p3rel .p3rbar{display:flex;gap:8px;margin-bottom:12px;position:sticky;top:0;background:#fff;padding:6px 0;z-index:2}#p3rel .p3rbar button{border:1px solid #ccc;background:#f4f4f4;color:#111;border-radius:8px;padding:8px 14px;font:inherit;font-weight:700;cursor:pointer}#p3rel .p3rbar .p3rb1{background:#ff6a1f;color:#fff;border-color:#ff6a1f}#p3rel .p3c{background:#fff!important;color:#111!important;border:1px solid #d0d5dd!important;box-shadow:none!important}#p3rel .p3rbody{max-width:1100px;margin:0 auto;--text:#111;--muted:#555;--card:#fff;--border:#d0d5dd;--shadow:none;color:#111}#p3rel .p3k{background:#fff!important;box-shadow:none!important;color:#111!important}#p3rel .p3k b,#p3rel .p3t td,#p3rel li,#p3rel p,#p3rel h4,#p3rel h5,#p3rel .hn,#p3rel .hv{color:#111!important}#p3rel .p3t th{color:#fff!important}.p3rh{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:12px;border-bottom:3px solid #ff6a1f;padding-bottom:6px}.p3rh h2{margin:0;color:#111}@media print{body.p3relmode>*:not(#p3rel){display:none!important}body.p3relmode #p3rel{position:static!important;overflow:visible!important;padding:0!important;display:block!important}#p3rel .p3rbar{display:none!important}#p3rel .p3c{break-inside:avoid}}';
+  document.head.appendChild(st);document.body.appendChild(box);
+  const fim=()=>{document.body.classList.remove('p3relmode');const b=$('p3rel');if(b)b.remove();document.body.style.overflow=''};
+  document.body.style.overflow='hidden';
+  $('p3relClose').onclick=fim;
+  $('p3relPrint').onclick=()=>{document.body.classList.add('p3relmode');setTimeout(()=>{try{window.print()}catch(e){}setTimeout(()=>document.body.classList.remove('p3relmode'),500)},100)};
 }
 function build(){
   if(built||$('painel360'))return;built=true;
@@ -842,7 +846,7 @@ function render(force){
   const f=document.activeElement&&document.activeElement.id==='p3q';
   let h=(window.__dbSubHtml?window.__dbSubHtml('painel360'):'')+'<div class="p3bar"><label>De</label><input type="month" id="p3a" value="'+S.a+'"><label>até</label><input type="month" id="p3b" value="'+S.b+'"><select id="p3pl"><option value="ab"'+(S.pl==='ab'?' selected':'')+'>Fundição + Usinagem</option><option value="f"'+(S.pl==='f'?' selected':'')+'>Só Fundição</option><option value="u"'+(S.pl==='u'?' selected':'')+'>Só Usinagem</option></select><select id="p3mt"><option value="kg"'+(S.mt==='kg'?' selected':'')+'>Peso (kg)</option><option value="qtd"'+(S.mt==='qtd'?' selected':'')+'>Quantidade (peças)</option></select><select id="p3pe" title="Tipo de peso">'+pesoOpts+'</select><button class="btn secondary" type="button" data-a="m6">Últimos 6 meses</button><button class="btn secondary" type="button" data-a="m12">12 meses</button><button class="btn secondary" type="button" data-a="ano">Ano atual</button><button class="btn primary" type="button" data-a="pdf">🖨 Imprimir / PDF</button></div>';
   h+='<div class="p3tabs">'+TABS.map(t=>'<button type="button" data-t="'+t[0]+'" class="'+(S.tab===t[0]?'on':'')+'">'+t[1]+'</button>').join('')+'</div>';
-  h+={exec:tExec,pareto:tPareto,heat:tHeat,pecas:tPecas,cli:tCli,cal:tCal,peixe:tPeixe,ling:tLing,ins:tIns,metas:tMetas,acoes:tAcoes}[S.tab](d);
+  h+={exec:tExec,pareto:tPareto,heat:tHeat,pecas:tPecas,cli:tCli,cal:tCal,peixe:tPeixe,ling:tLing,ins:d=>'<div class="p3bar" style="margin-bottom:8px"><button class="btn secondary" type="button" data-a="rf">📑 Relatório de fundição (nodular × cinzento)</button></div>'+tIns(d),metas:tMetas,acoes:tAcoes}[S.tab](d);
   sec.innerHTML=h;sec._d=d;
   if(f){const q=$('p3q');if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length)}}
 }
@@ -854,7 +858,7 @@ function onClick(e){
     else if(mf.dataset.mf==='del'){if(!confirm('Remover esta meta?'))return;delete (mf.dataset.t==='c'?M.c:M.p)[mf.dataset.n]}
     mfGravar(M);render(true);return}
   const t=e.target.closest('[data-t]');if(t){S.tab=t.dataset.t;save();render(true);return}
-  const a=e.target.closest('[data-a]');if(a){const k=a.dataset.a,h=hk();if(k==='m6'){S.b=h;S.a=G().addM(h,-5)}else if(k==='m12'){S.b=h;S.a=G().addM(h,-11)}else if(k==='ano'){S.a=h.slice(0,4)+'-01';S.b=h}else if(k==='pdf'){window.print();return}else if(k==='rel'){relMensal(S.b);return}else if(k==='png'){pngFish();return}else if(k==='cost'){try{toggleCostAccess()}catch(x){}setTimeout(()=>render(true),400);return}save();render(true);return}
+  const a=e.target.closest('[data-a]');if(a){const k=a.dataset.a,h=hk();if(k==='m6'){S.b=h;S.a=G().addM(h,-5)}else if(k==='m12'){S.b=h;S.a=G().addM(h,-11)}else if(k==='ano'){S.a=h.slice(0,4)+'-01';S.b=h}else if(k==='pdf'){window.print();return}else if(k==='rel'){relMensal(S.b);return}else if(k==='rf'){if(window.relFund)relFund.abrir(S.b);return}else if(k==='png'){pngFish();return}else if(k==='cost'){try{toggleCostAccess()}catch(x){}setTimeout(()=>render(true),400);return}save();render(true);return}
   const mm=e.target.closest('.p3m');if(mm){detM(d,mm.dataset.m);return}
   const bar=e.target.closest('rect.bar');if(bar&&S.tab==='pareto'){const mot=rank(d.R,r=>r.mot,d.vv,14)[+bar.dataset.i];if(mot)detMotivo(d,mot.nome);return}
   const c=e.target.closest('.p3hm td.on');if(c){detCel(d,c.dataset.r,c.dataset.k,c.dataset.w);return}
